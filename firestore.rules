@@ -81,6 +81,16 @@ service cloud.firestore {
       allow delete: if compteActif() && estPca();
     }
 
+    // Pièces jointes (photo ou PDF d'un document de camion), moins de 1 Mo chacune ;
+    // suppression réservée au PCA.
+    match /pieces/{id} {
+      allow read: if compteActif();
+      allow create, update: if compteActif() && signe()
+        && request.resource.data.data is string && request.resource.data.data.size() < 1000000
+        && request.resource.data.type in ['image', 'pdf'];
+      allow delete: if compteActif() && estPca();
+    }
+
     // Historique : chacun ajoute ses propres lignes ; personne ne peut les modifier ni les effacer.
     match /journal/{id} {
       allow read: if compteActif() && estPca();

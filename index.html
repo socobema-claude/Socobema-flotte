@@ -136,6 +136,11 @@ body.ro .w{display:none!important}
 .linkbox{font-family:var(--f-mono);font-size:.78rem;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
 .doc-cell{display:grid;gap:3px;min-width:118px}
 .doc-cell .dd{font-size:.8rem;color:var(--muted)}
+.pj{font:inherit;font-size:.76rem;font-weight:600;border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:3px 6px;cursor:pointer;text-align:left}
+.pj.has{border-style:solid;color:var(--accent);border-color:var(--accent)}
+.pj-view{grid-column:1/-1;display:grid;gap:10px}
+.pj-view img{width:100%;border-radius:8px;border:1px solid var(--line);background:#fff}
+.pj-meta{font-size:.82rem;color:var(--muted)}
 td.doc{vertical-align:top}
 .docs-sum{display:flex;flex-wrap:wrap;gap:6px}
 body:not(.locked) #v-lock{display:none}
@@ -493,7 +498,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 5)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 6)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -676,6 +681,87 @@ function missionCard(m){
   </div>`;
 }
 
+/* ---------- Pièces jointes (photo ou PDF de chaque document) ---------- */
+const PJ_MAX=900000; // ~900 Ko par pièce (limite d'un enregistrement Firestore : 1 Mo)
+const docLabel=k=>(DOCS.find(d=>d[0]===k)||[k,k])[1];
+const pieceId=(cid,k)=>cid+"_"+k;
+function pieceBtn(c,k){
+  const m=c.pieces&&c.pieces[k];
+  return m?`<button type="button" class="pj has" data-pj-view="${c.id}" data-k="${k}">Voir le document</button>`
+          :`<button type="button" class="pj w" data-pj-add="${c.id}" data-k="${k}">+ Joindre</button>`;
+}
+function fileToDataURL(f){return new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ko(r.error);r.readAsDataURL(f)})}
+async function compressImage(file){
+  const url=await fileToDataURL(file);
+  const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ko(new Error("image illisible"));i.src=url});
+  let max=1800,q=.75,out="";
+  for(let t=0;t<6;t++){
+    const sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement("canvas");cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+    const x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.drawImage(img,0,0,cv.width,cv.height);
+    out=cv.toDataURL("image/jpeg",q); if(out.length<=PJ_MAX) return out;
+    max=Math.round(max*.8);q=Math.max(.5,q-.08);
+  }
+  return out;
+}
+function openPieceUpload(cid,k){
+  const c=camById(cid); if(!c) return;
+  if(!canWrite){toast("Lecture seule : vous ne pouvez pas joindre de document.");return}
+  $("#dlg-t").textContent=docLabel(k)+" — "+c.immat;
+  const has=c.pieces&&c.pieces[k];
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
+    <p class="confirm">${has?"Remplacer le document joint":"Joindre le document"} : prenez une <b>photo nette</b> du document, ou choisissez un <b>PDF</b> (900 Ko maximum).</p>
+    <div class="fld full"><label for="pj-file">Photo ou PDF</label><input id="pj-file" type="file" accept="image/*,application/pdf"></div>
+    <div class="fld full"><label for="pj-date">Date de fin de validité</label><input id="pj-date" type="date" value="${esc(c[k]||"")}"><span class="hint">Mettez à jour la date en même temps si le document est renouvelé.</span></div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn primary" id="dlg-ok">Enregistrer</button>`;
+  ctx={kind:"confirm",label:"Enregistrer",saving:false,fn:async()=>{
+    const f=$("#pj-file").files[0], d=$("#pj-date").value;
+    if(!f){setMsgs(["Choisissez une photo ou un PDF."],[]);throw {silent:true}}
+    let data,type;
+    if(f.type==="application/pdf"){ if(f.size>PJ_MAX*0.74){setMsgs([`PDF trop lourd (${Math.round(f.size/1000)} Ko). Maximum : 650 Ko. Prenez plutôt une photo.`],[]);throw {silent:true}} data=await fileToDataURL(f);type="pdf"}
+    else if(/^image\//.test(f.type)||/\.(jpe?g|png|webp|heic)$/i.test(f.name)){ data=await compressImage(f);type="image"; if(data.length>PJ_MAX){setMsgs(["Photo trop lourde même compressée. Reprenez-la de plus près."],[]);throw {silent:true}} }
+    else {setMsgs(["Format non accepté : photo ou PDF seulement."],[]);throw {silent:true}}
+    if(d){const y=+d.slice(0,4),yr=new Date().getFullYear(); if(y<yr-5||y>yr+6){setMsgs(["Date de fin invraisemblable."],[]);throw {silent:true}}}
+    const st=stamp(), meta={type,nom:f.name.slice(0,80),taille:data.length,le:st.majLe,par:st.gest||""};
+    const b=fdb.batch();
+    b.set(fdb.collection("pieces").doc(pieceId(cid,k)),{camionId:cid,docKey:k,type,nom:meta.nom,data,...st});
+    const upd={["pieces."+k]:meta,...st}; if(d) upd[k]=d;
+    b.update(fdb.collection("camions").doc(cid),upd);
+    b.set(jRef(),jEntry(has?"document remplacé":"document joint","camions",cid,c.immat+" · "+docLabel(k)));
+    await queued(b.commit()); toast("Document enregistré");
+  }};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+async function openPieceView(cid,k){
+  const c=camById(cid); if(!c) return; const m=(c.pieces||{})[k]||{};
+  $("#dlg-t").textContent=docLabel(k)+" — "+c.immat;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="pj-view"><p class="confirm">Chargement du document…</p></div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button>`;
+  ctx={kind:"pj"}; if(!$("#dlg").open) $("#dlg").showModal();
+  try{
+    const s=await fdb.collection("pieces").doc(pieceId(cid,k)).get(); const p=s.exists?s.data():null;
+    const box=$("#dlg-b .pj-view"); if(!box) return;
+    if(!p||!p.data){box.innerHTML=`<p class="confirm">Document introuvable. Joignez-le de nouveau.</p>`;return}
+    const info=`<div class="pj-meta">${docLabel(k)} · fin : <b>${c[k]?fdate(c[k]):"non saisie"}</b> · joint le ${fdt(m.le||p.majLe)}${(m.par||p.gest)?" par "+esc(m.par||p.gest):""}</div>`;
+    if(p.type==="image") box.innerHTML=info+`<img src="${p.data}" alt="${esc(docLabel(k))} du camion ${esc(c.immat)}">`;
+    else { const bin=atob(p.data.split(",")[1]||""); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));
+      box.innerHTML=info+`<a class="btn primary" href="${url}" target="_blank" rel="noopener" download="${esc(c.immat+"_"+docLabel(k))}.pdf" style="text-align:center;text-decoration:none;display:block;line-height:24px">Ouvrir le PDF</a>`;}
+    $("#dlg-f").innerHTML=`${canWrite?`<button type="button" class="btn" data-pj-add="${cid}" data-k="${k}">Remplacer</button>`:""}${isOwner?`<button type="button" class="btn ghost" data-pj-del="${cid}" data-k="${k}">Supprimer</button>`:""}<button type="button" class="btn primary" data-close>Fermer</button>`;
+  }catch(e){const box=$("#dlg-b .pj-view"); if(box) box.innerHTML=`<p class="confirm">${esc(errMsg(e))}</p>`}
+}
+document.addEventListener("click",e=>{
+  const a=e.target.closest("[data-pj-add]"); if(a){e.stopPropagation();openPieceUpload(a.dataset.pjAdd,a.dataset.k);return}
+  const v=e.target.closest("[data-pj-view]"); if(v){e.stopPropagation();openPieceView(v.dataset.pjView,v.dataset.k);return}
+  const d=e.target.closest("[data-pj-del]"); if(d){const cid=d.dataset.pjDel,k=d.dataset.k,c=camById(cid);
+    openConfirm("Supprimer le document",`Supprimer le document « ${esc(docLabel(k))} » joint au camion <span class="plate">${esc(c&&c.immat)}</span> ? La date de fin est conservée.`,"Supprimer",async()=>{
+      const b=fdb.batch(); b.delete(fdb.collection("pieces").doc(pieceId(cid,k)));
+      b.update(fdb.collection("camions").doc(cid),{["pieces."+k]:firebase.firestore.FieldValue.delete(),...stamp()});
+      b.set(jRef(),jEntry("document supprimé","camions",cid,(c?c.immat:"")+" · "+docLabel(k)));
+      await queued(b.commit()); toast("Document supprimé");
+    });}
+},true);
+
 function renderDocuments(){
   const C=alive("camions"), f=filters.doc||"tous";
   const rows=C.map(c=>({c,sts:DOCS.map(([k])=>docSt(c,k))})).map(r=>({...r,worst:Math.min(...r.sts.map(x=>x.o)),soonest:Math.min(...r.sts.map(x=>x.d==null?1e9:x.d))}));
@@ -685,6 +771,7 @@ function renderDocuments(){
   const chip=(k,l)=>`<button class="chip" aria-pressed="${f===k}" data-f="doc" data-val="${k}">${l}</button>`;
   $("#v-documents").innerHTML=loadingOr(`
     <div class="bar"><h2>Documents des camions</h2></div>
+    <p class="trace" style="margin:-6px 0 14px;font-size:.84rem">Pour chaque document : la date de fin, et la photo ou le PDF du document (bouton « Joindre »).</p>
     ${C.length===0?`<div class="empty">Ajoutez d'abord un camion pour suivre ses documents.<br><button class="btn primary w" data-a="newCamion">Ajouter un camion</button></div>`:`
     <div class="kpis">
       <div class="kpi"><div class="l">Expirés</div><div class="v num" style="color:var(--bad)">${n("expire")}</div><div class="s">à renouveler tout de suite</div></div>
@@ -694,7 +781,7 @@ function renderDocuments(){
     </div>
     <div class="chips" style="margin-bottom:12px">${chip("tous","Tous les camions")}${chip("traiter","À traiter")}</div>
     ${list.length?`<div class="panel scroll" style="padding:0 6px"><table><thead><tr><th>Camion</th>${DOCS.map(d=>`<th>${d[1]}</th>`).join("")}<th class="w"></th></tr></thead><tbody>
-      ${list.map(({c,sts})=>`<tr><td class="doc"><span class="plate">${esc(c.immat)}</span><div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${sts.map((st,i)=>`<td class="doc"><div class="doc-cell">${docPill(st)}<span class="dd">${c[DOCS[i][0]]?fdate(c[DOCS[i][0]]):"—"}</span></div></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
+      ${list.map(({c,sts})=>`<tr><td class="doc"><span class="plate">${esc(c.immat)}</span><div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${sts.map((st,i)=>`<td class="doc"><div class="doc-cell">${docPill(st)}<span class="dd">${c[DOCS[i][0]]?fdate(c[DOCS[i][0]]):"—"}</span>${pieceBtn(c,DOCS[i][0])}</div></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">Aucun document à traiter. Tout est en règle.</div>`}`}`);
 }
 
@@ -883,7 +970,7 @@ $("#frm").addEventListener("submit",async e=>{
   } else if(ctx.kind==="confirm"){
     ctx.saving=true; ok.disabled=true; ok.textContent="Patientez…";
     try{const r=await ctx.fn(); if(r!==false&&$("#dlg").open&&ctx.kind==="confirm") $("#dlg").close()}
-    catch(err){setMsgs([errMsg(err)],[]);ctx.saving=false;ok.disabled=false;ok.textContent="Réessayer"}
+    catch(err){if(!(err&&err.silent))setMsgs([errMsg(err)],[]);ctx.saving=false;ok.disabled=false;ok.textContent=err&&err.silent?ctx.label:"Réessayer"}
   }
 });
 $("#dlg").addEventListener("click",e=>{if(e.target.closest("[data-close]")) $("#dlg").close()});
