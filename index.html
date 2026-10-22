@@ -151,6 +151,20 @@ body:not(.locked) #v-lock{display:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lk-field:#222C28;--lk-focus:#D9A066;--lk-btn:#3E7A4A}}
 :root[data-theme="dark"]{--lk-field:#222C28;--lk-focus:#D9A066;--lk-btn:#3E7A4A}
 body.locked main>section:not(#v-lock),body.locked .tabs,body.locked #btn-tools,body.locked #btn-lock{display:none!important}
+body.driver main>section:not(#v-driver),body.driver .tabs,body.driver #btn-tools,body.driver #banner{display:none!important}
+body:not(.driver) #v-driver{display:none}
+#map{height:min(62vh,520px);border-radius:12px;border:1px solid var(--line);background:var(--sunk);z-index:0}
+.mk{font-family:var(--f-mono);font-weight:700;font-size:11px;white-space:nowrap;padding:2px 6px;border-radius:6px;border:2px solid #111;background:#fff;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-50%,-120%);display:inline-block}
+.mk.live{background:#DCF1E3;border-color:#1E7A45}.mk.old{background:#eee;border-color:#888;color:#555}.mk.mid{background:#FBEBC6;border-color:#8A5A00}
+.mk-dot{width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.leaflet-container{font:inherit}
+.gps-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.gps-row:first-child{border-top:0}
+.drv{gap:14px}
+.drv-state{border-radius:12px;padding:16px;text-align:center;font-weight:700;font-size:1.05rem}
+.drv-state.on{background:var(--ok-bg);color:var(--ok)}.drv-state.off{background:var(--sunk);color:var(--muted)}.drv-state.err{background:var(--bad-bg);color:var(--bad)}
+.drv-state small{display:block;font-weight:500;font-size:.85rem;margin-top:4px}
+.lk-btn.stop{background:var(--bad)}
 .lock{max-width:440px;margin:28px auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:30px 26px 26px;display:grid;gap:16px}
 .lk-eyebrow{font-family:var(--f-body);font-size:.82rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .lk-title{font-family:var(--f-body);font-weight:700;font-size:1.75rem;line-height:1.3;text-transform:none;letter-spacing:0;margin:-4px 0 0;color:var(--ink)}
@@ -192,6 +206,7 @@ body.locked::before{background:var(--bg)}
       <button class="tab" role="tab" data-v="missions" id="t-missions">Missions</button>
       <button class="tab" role="tab" data-v="documents" id="t-documents">Documents<span id="doc-n"></span></button>
       <button class="tab" role="tab" data-v="depenses" id="t-depenses">Dépenses</button>
+      <button class="tab" role="tab" data-v="carte" id="t-carte">Carte GPS</button>
     </nav>
   </div>
 </header>
@@ -204,6 +219,8 @@ body.locked::before{background:var(--bg)}
   <section id="v-missions" hidden></section>
   <section id="v-documents" hidden></section>
   <section id="v-depenses" hidden></section>
+  <section id="v-carte" hidden></section>
+  <section id="v-driver"></section>
 </main>
 
 <dialog id="dlg"><form id="frm" method="dialog" novalidate>
@@ -217,6 +234,8 @@ body.locked::before{background:var(--bg)}
   <option value="Tiéningboué"><option value="Marandallah"><option value="Kongasso"><option value="Sarhala"><option value="Bouandougou"><option value="Séguéla"><option value="Bouaké">
 </datalist>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -274,6 +293,8 @@ let isOwner=false, gLoaded=false, pickG=null, lockSig="";
 let lastErr=null, slowLoad=false, fdb=null, auth=null, authUser=null, adminUid=null, adminEmail=null, pendingCode=null, setupBusy=false, dataUnsubs=[];
 const DOMAIN="socobema-flotte.app";
 const ACCESS_URL=location.origin+location.pathname;
+const SUIVI=new URLSearchParams(location.search).get("suivi");
+let pendingRole=null;
 const sync={cache:{},pending:{},error:false,offline:!navigator.onLine};
 let filters={camType:"tous",mSt:"actives",dCam:"tous"};
 
@@ -291,8 +312,9 @@ const who=id=>{if(!id)return"";const g=state.gestionnaires.find(x=>x.id===id);re
 const auteur=x=>x.gest?x.gest:who(x.majPar);
 const trace=x=>x.majLe?`<div class="trace">Modifié le ${fdt(x.majLe)}${auteur(x)?" par "+esc(auteur(x)):""}</div>`:"";
 const pcaDoc=()=>state.gestionnaires.find(g=>g.id===adminUid);
-const activeG=()=>state.gestionnaires.filter(g=>g.actif!==false&&g.role!=="pca"&&!g.remplace);
-const pool=()=>[pcaDoc(),...activeG().sort((a,b)=>(a.nom||"").localeCompare(b.nom||""))].filter(Boolean);
+const activeG=()=>state.gestionnaires.filter(g=>g.actif!==false&&g.role!=="pca"&&g.role!=="chauffeur"&&!g.remplace);
+const chauffeurs=()=>state.gestionnaires.filter(g=>g.actif!==false&&g.role==="chauffeur"&&!g.remplace).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+const pool=()=>SUIVI?chauffeurs():[pcaDoc(),...activeG().sort((a,b)=>(a.nom||"").localeCompare(b.nom||""))].filter(Boolean);
 const curG=()=>authUser&&state.gestionnaires.find(g=>g.id===authUser.uid&&g.actif!==false&&!g.remplace);
 const isLocked=()=>mode!=="db"||!curG();
 
@@ -323,8 +345,9 @@ async function createCompte(o){
   const code=pendingCode; pendingCode=null; if(!code) throw {code:"x"};
   const u=await newAuthUser(code);
   const b=fdb.batch();
-  b.set(fdb.collection("comptes").doc(u.uid),{nom:o.nom,tel:o.tel||"",role:"gestionnaire",actif:true,email:u.email,codeLe:new Date().toISOString(),...stamp()});
-  b.set(jRef(),jEntry("ajout","gestionnaires",u.uid,o.nom));
+  const role=pendingRole==="chauffeur"?"chauffeur":"gestionnaire"; pendingRole=null;
+  b.set(fdb.collection("comptes").doc(u.uid),{nom:o.nom,tel:o.tel||"",role,actif:true,email:u.email,codeLe:new Date().toISOString(),...stamp()});
+  b.set(jRef(),jEntry("ajout "+role,"gestionnaires",u.uid,o.nom));
   await b.commit();
 }
 async function renewCode(id,code){
@@ -333,7 +356,7 @@ async function renewCode(id,code){
   if(g.id===adminUid){await auth.currentUser.updatePassword(code);await fdb.collection("comptes").doc(id).update({codeLe:now,...stamp()});return}
   const u=await newAuthUser(code);
   const b=fdb.batch();
-  b.set(fdb.collection("comptes").doc(u.uid),{nom:g.nom,tel:g.tel||"",role:"gestionnaire",actif:true,email:u.email,codeLe:now,...stamp()});
+  b.set(fdb.collection("comptes").doc(u.uid),{nom:g.nom,tel:g.tel||"",role:g.role||"gestionnaire",actif:true,email:u.email,codeLe:now,...stamp()});
   b.update(fdb.collection("comptes").doc(id),{actif:false,remplace:true,remplacePar:u.uid,...stamp()});
   b.set(jRef(),jEntry("nouveau code","gestionnaires",u.uid,g.nom));
   await b.commit();
@@ -487,9 +510,13 @@ function render(){
   document.body.classList.toggle("locked",L);
   if(L) renderLock(); else lockSig="";
   const g=curG();
-  $("#who").textContent=!g?"":isOwner?"PCA (propriétaire)":"Gestionnaire : "+g.nom;
+  const drv=!L&&!!g&&(g.role==="chauffeur"||!!SUIVI);
+  document.body.classList.toggle("driver",drv);
+  if(drv) renderDriver(); else drvSig="";
+  $("#who").textContent=!g?"":isOwner?"PCA (propriétaire)":(g.role==="chauffeur"?"Chauffeur : ":"Gestionnaire : ")+g.nom;
   $("#btn-lock").hidden=!g; $("#btn-lock").textContent=isOwner?"Verrouiller":"Changer";
   renderTableau(); renderCamions(); renderMissions(); renderDocuments(); renderDepenses(); showSync(); backupBanner();
+  if(!$("#v-carte").hidden) renderCarte();
   const nPb=alive("camions").reduce((n,c)=>n+docsFor(c).filter(([k])=>{const s=docSt(c,k).s;return s==="expire"||s==="bientot"}).length,0);
   $("#doc-n").innerHTML=nPb?`<span class="badge">${nPb}</span>`:"";
   const n=trashed("camions").length+trashed("missions").length+trashed("depenses").length;
@@ -509,7 +536,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 9)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 10)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -522,7 +549,8 @@ function renderLock(){
   const lab=g=>g.id===adminUid?"Moi, propriétaire (Traore Ibrahima)":g.nom;
   box.innerHTML=`<form class="lock" id="lock-form" novalidate>
     ${lkHead}
-    <p>Choisissez votre nom et tapez votre code d'accès à 6 chiffres.</p>
+    <p>${SUIVI?"<b>Suivi GPS du camion.</b> Chauffeur : choisissez votre nom et tapez votre code à 6 chiffres.":"Choisissez votre nom et tapez votre code d'accès à 6 chiffres."}</p>
+    ${SUIVI&&!G.length?`<p class="lk-help">Aucun chauffeur n'est encore enregistré. Le PCA doit créer votre accès dans <b>Outils → Chauffeurs</b>.</p>`:""}
     <div class="lk-f"><label for="lk-who">Qui êtes-vous ?</label>
       <select id="lk-who" class="lk-in">${G.length!==1?`<option value="">Choisir votre nom…</option>`:""}${G.map(g=>`<option value="${g.id}"${pickG===g.id?" selected":""}>${esc(lab(g))}</option>`).join("")}</select></div>
     <div class="lk-f"><label for="pin">Code d'accès</label>
@@ -541,7 +569,7 @@ document.addEventListener("click",async e=>{
     const mail=(pcaDoc()||{}).email||adminEmail;
     try{await auth.sendPasswordResetEmail(mail);h.textContent=`Un e-mail vient d'être envoyé à ${mail.replace(/^(.{2}).*(@.*)$/,"$1•••$2")}. Ouvrez-le et choisissez un nouveau code à 6 chiffres.`}
     catch(err){h.textContent="L'e-mail n'a pas pu être envoyé. Vérifiez la connexion internet et réessayez."}
-  } else h.textContent=pickG?"Appelez le PCA de la coopérative au 07 07 64 41 06 : il vous générera un nouveau code depuis Outils → Gestionnaires.":"Choisissez d'abord votre nom dans la liste.";
+  } else h.textContent=pickG?(SUIVI?"Appelez le PCA de la coopérative au 07 07 64 41 06 pour recevoir un nouveau code chauffeur.":"Appelez le PCA de la coopérative au 07 07 64 41 06 : il vous générera un nouveau code depuis Outils → Gestionnaires.")+"":"Choisissez d'abord votre nom dans la liste.";
 });
 document.addEventListener("submit",async e=>{
   if(e.target.id==="setup-form"){
@@ -663,7 +691,7 @@ function camCard(c){
     <div class="meta"><span>Chauffeur <b>${esc(c.chauffeur||"non affecté")}</b></span>${c.telChauffeur?`<span class="num">${esc(c.telChauffeur)}</span>`:""}</div>
     ${docSummary(c)}
     <div class="row between"><div class="meta"><span>${miss} livraison${miss>1?"s":""}</span><span>Dépenses du mois <b>${fcfa(dep)}</b></span></div>
-      <div class="row w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Modifier</button><button class="btn sm ghost" data-a="del" data-c="camions" data-id="${c.id}">Supprimer</button></div></div>
+      <div class="row w"><button class="btn sm" type="button" data-qrgps="${c.id}">QR code GPS</button><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Modifier</button><button class="btn sm ghost" data-a="del" data-c="camions" data-id="${c.id}">Supprimer</button></div></div>
     ${trace(c)}
   </div>`;
 }
@@ -1058,7 +1086,13 @@ function openTools(){
   const lab=({c,x})=>c==="camions"?`Camion <span class="plate">${esc(x.immat)}</span>`:c==="missions"?`Mission ${esc(x.origine)} → ${esc(x.destination)} (${fdate(x.date)})`:`Dépense ${esc(x.categorie)} ${fcfa(x.montant)} (${fdate(x.date)})`;
   $("#dlg-t").textContent="Outils";
   const pca=pcaDoc();
-  const G=state.gestionnaires.filter(g=>g.role!=="pca"&&!g.remplace).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+  const CH=state.gestionnaires.filter(g=>g.role==="chauffeur"&&!g.remplace).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+  const chHtml=isOwner&&mode==="db"?`<div class="tool"><h3 style="margin:8px 0 0">Chauffeurs — suivi GPS (${CH.filter(g=>g.actif!==false).length} actifs)</h3>
+      <p style="margin:0;font-size:.85rem;color:var(--muted)">Un chauffeur entre avec son code et ne voit que l'écran de suivi GPS de son camion.</p>
+      ${CH.map(g=>`<div class="item"><div><b>${esc(g.nom)}</b> ${g.actif===false?'<span class="pill p-mut nodot">Désactivé</span>':'<span class="pill p-ok nodot">Actif</span>'}<div class="trace">${g.tel?esc(g.tel)+" · ":""}code créé le ${fdt(g.codeLe)}</div></div>
+        <div class="row"><button type="button" class="btn sm" data-gedit="${g.id}">Modifier</button><button type="button" class="btn sm" data-gcode="${g.id}">Nouveau code</button><button type="button" class="btn sm ghost" data-gtoggle="${g.id}">${g.actif===false?"Réactiver":"Désactiver"}</button></div></div>`).join("")}
+      <div class="row"><button type="button" class="btn sm primary" data-chadd>+ Ajouter un chauffeur</button></div></div>`:"";
+  const G=state.gestionnaires.filter(g=>g.role!=="pca"&&g.role!=="chauffeur"&&!g.remplace).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
   const gestHtml=isOwner&&mode==="db"?`<div class="tool"><h3 style="margin:0">Gestionnaires (${G.filter(g=>g.actif!==false).length} actifs)</h3>
       <p style="margin:0;font-size:.85rem;color:var(--muted)">Chaque gestionnaire entre avec son code à 6 chiffres. Ses saisies portent son nom. Aucun compte n'est nécessaire.</p>
       ${G.map(g=>`<div class="item"><div><b>${esc(g.nom)}</b> ${g.actif===false?'<span class="pill p-mut nodot">Désactivé</span>':'<span class="pill p-ok nodot">Actif</span>'}<div class="trace">${g.tel?esc(g.tel)+" · ":""}code créé le ${fdt(g.codeLe)}</div></div>
@@ -1070,7 +1104,7 @@ function openTools(){
         <div style="flex:1;min-width:200px;display:grid;gap:8px"><input class="linkbox" id="acc-link" readonly value="${ACCESS_URL}" aria-label="Lien d'accès">
           <div class="row"><button type="button" class="btn sm" data-copylink>Copier le lien</button><button type="button" class="btn sm primary" data-qrdl>Télécharger le QR code</button></div></div></div>
       <p class="trace" style="margin:0">Aucun compte n'est nécessaire : le nom et le code à 6 chiffres suffisent. Les codes sont vérifiés par le serveur Firebase.</p></div>`:"";
-  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>${gestHtml}${qrHtml}
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>${gestHtml}${chHtml}${qrHtml}
     ${isOwner?`<div class="tool"><h3 style="margin:8px 0 0">Sécurité des données</h3>
       <p style="margin:0;font-size:.85rem;color:var(--muted)">Sauvegarde complète à garder sur une clé USB ou Google Drive, au moins une fois par semaine.${backupAt?" Dernière : "+fdt(backupAt)+".":""}</p>
       <div class="row"><button type="button" class="btn sm primary" data-backup>Sauvegarde complète</button><label class="btn sm" for="restore-file" style="display:inline-flex;align-items:center">Restaurer une sauvegarde</label><input type="file" id="restore-file" accept="application/json,.json" hidden><button type="button" class="btn sm" data-journal>Historique des modifications</button></div></div>`:""}
@@ -1114,7 +1148,8 @@ $("#dlg").addEventListener("click",e=>{
   if(e.target.closest("[data-qrdl]")){
     const c=qrPoster(); if(!c){toast("QR code indisponible : envoyez plutôt le lien.");return}
     c.toBlob(b=>{try{saveBlob(b,"acces-flotte-socobema.png");toast("QR code téléchargé")}catch(err){toast("Téléchargement impossible : faites une capture d'écran.")}},"image/png");return}
-  if(e.target.closest("[data-gadd]")){openForm("gestionnaires");return}
+  if(e.target.closest("[data-gadd]")){pendingRole=null;openForm("gestionnaires");return}
+  if(e.target.closest("[data-chadd]")){openForm("gestionnaires");pendingRole="chauffeur";$("#dlg-t").textContent="Nouveau chauffeur";return}
   const ge=e.target.closest("[data-gedit]"); if(ge){openForm("gestionnaires",ge.dataset.gedit);return}
   const gc=e.target.closest("[data-gcode]"); if(gc){const g=state.gestionnaires.find(x=>x.id===gc.dataset.gcode); if(!g) return;
     openConfirm("Nouveau code",`Générer un nouveau code pour <b>${esc(g.nom)}</b> ? L'ancien code ne fonctionnera plus.`,"Générer le code",async()=>{const code=newCode();await store.update("gestionnaires",g.id,await codeFields(code));showCode(g.nom,code);return false},false);return}
@@ -1170,12 +1205,165 @@ document.addEventListener("change",async e=>{
   if(e.target.id==="dCam"){filters.dCam=e.target.value;renderDepenses()}
 });
 
+/* ---------- Suivi GPS ---------- */
+const MANKONO=[8.06,-6.19];
+const ago=iso=>{if(!iso)return"jamais";const m=Math.round((Date.now()-new Date(iso))/6e4);if(m<1)return"à l'instant";if(m<60)return"il y a "+m+" min";const h=Math.round(m/60);if(h<48)return"il y a "+h+" h";return"le "+fdt(iso)};
+const fresh=iso=>{if(!iso)return"none";const m=(Date.now()-new Date(iso))/6e4;return m<=10?"live":m<=60?"mid":"old"};
+const FRESH_L={live:"En direct",mid:"Récent",old:"Ancien",none:"Pas de position"};
+const FRESH_C={live:"p-ok",mid:"p-warn",old:"p-mut",none:"p-mut"};
+const gpsUrl=cid=>ACCESS_URL+"?suivi="+encodeURIComponent(cid);
+const gmapsUrl=p=>`https://www.google.com/maps?q=${p.lat},${p.lng}`;
+function distM(a,b){const R=6371e3,r=x=>x*Math.PI/180;const d1=r(b[0]-a[0]),d2=r(b[1]-a[1]);const h=Math.sin(d1/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(d2/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+
+/* Carte */
+let gmap=null, gMarkers={}, gLine=null, gFitted=false, gSel=null;
+function renderCarte(){
+  const box=$("#v-carte"), C=alive("camions");
+  if(!box.querySelector("#map")){
+    box.innerHTML=`<div class="bar"><h2>Carte GPS des camions</h2></div>
+      <p class="trace" style="margin:-6px 0 12px;font-size:.84rem">Position envoyée par le téléphone du chauffeur. Pour équiper un camion : bouton <b>QR code GPS</b> sur sa fiche.</p>
+      <div id="map" role="region" aria-label="Carte des camions"></div>
+      <div class="panel" style="margin-top:14px"><h3>Camions</h3><div id="gps-list"></div></div>`;
+    if(window.L){
+      gmap=L.map("map",{zoomControl:true}).setView(MANKONO,7);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(gmap);
+    } else $("#map").innerHTML=`<p style="padding:16px;color:var(--muted)">La carte ne s'affiche pas (connexion ?). Les liens « Voir sur Google Maps » ci-dessous fonctionnent.</p>`;
+  }
+  const withPos=C.filter(c=>c.pos&&c.pos.lat!=null);
+  if(gmap){
+    Object.keys(gMarkers).forEach(id=>{if(!withPos.find(c=>c.id===id)){gmap.removeLayer(gMarkers[id]);delete gMarkers[id]}});
+    withPos.forEach(c=>{
+      const f=fresh(c.pos.le), ll=[c.pos.lat,c.pos.lng];
+      const icon=L.divIcon({className:"",html:`<span class="mk ${f}">${esc(c.immat)}</span>`,iconSize:[0,0]});
+      const pop=`<b>${esc(platesTxt(c))}</b><br>${esc(TYPES[c.type]?TYPES[c.type].l:"")} · ${FRESH_L[f]}<br>Position ${ago(c.pos.le)}${c.pos.vit!=null?" · "+c.pos.vit+" km/h":""}<br>Chauffeur : ${esc(c.pos.par||c.chauffeur||"?")}<br><a href="${gmapsUrl(c.pos)}" target="_blank" rel="noopener">Voir sur Google Maps</a>`;
+      if(gMarkers[c.id]){gMarkers[c.id].setLatLng(ll).setIcon(icon).setPopupContent(pop)}
+      else gMarkers[c.id]=L.marker(ll,{icon}).addTo(gmap).bindPopup(pop);
+    });
+    if(!gFitted&&withPos.length){gFitted=true; if(withPos.length===1) gmap.setView([withPos[0].pos.lat,withPos[0].pos.lng],13); else gmap.fitBounds(withPos.map(c=>[c.pos.lat,c.pos.lng]),{padding:[40,40]})}
+    drawTrace();
+  }
+  const rows=C.slice().sort((a,b)=>((b.pos&&b.pos.le)||"").localeCompare((a.pos&&a.pos.le)||""));
+  $("#gps-list").innerHTML=rows.length?rows.map(c=>{const f=fresh(c.pos&&c.pos.le);return `<div class="gps-row"><div style="display:grid;gap:4px">${plates(c)}<div class="trace"><span class="pill ${FRESH_C[f]} nodot">${FRESH_L[f]}</span> ${c.pos?"position "+ago(c.pos.le)+(c.pos.par?" · "+esc(c.pos.par):""):"Aucune position reçue"}</div></div>
+     <div class="row">${c.pos?`<button type="button" class="btn sm" data-gps-see="${c.id}">Voir</button><a class="btn sm" style="text-decoration:none;display:inline-flex;align-items:center" href="${gmapsUrl(c.pos)}" target="_blank" rel="noopener">Google Maps</a>`:""}<button type="button" class="btn sm" data-qrgps="${c.id}">QR code GPS</button></div></div>`}).join("")
+    :`<div class="empty">Ajoutez d'abord un camion.</div>`;
+}
+function drawTrace(){
+  if(!gmap) return; if(gLine){gmap.removeLayer(gLine);gLine=null}
+  const c=gSel&&camById(gSel); if(!c||!c.trace||c.trace.length<2) return;
+  gLine=L.polyline(c.trace.map(p=>[p.a,p.o]),{color:"#E2A410",weight:4,opacity:.85}).addTo(gmap);
+}
+document.addEventListener("click",e=>{
+  const s=e.target.closest("[data-gps-see]"); if(s){const c=camById(s.dataset.gpsSee); if(!c||!c.pos||!gmap) return; gSel=c.id; drawTrace(); gmap.setView([c.pos.lat,c.pos.lng],14); gMarkers[c.id]&&gMarkers[c.id].openPopup(); window.scrollTo({top:0,behavior:"smooth"}); return}
+  const q=e.target.closest("[data-qrgps]"); if(q){e.stopPropagation(); openQrGps(q.dataset.qrgps); return}
+},true);
+
+/* QR code à coller dans la cabine */
+function openQrGps(cid){
+  const c=camById(cid); if(!c) return; const url=gpsUrl(cid);
+  $("#dlg-t").textContent="QR code GPS — "+c.immat;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="tool">
+    <p style="margin:0;font-size:.9rem">Imprimez ce QR code et collez-le dans la cabine. Le chauffeur le scanne, tape son code, puis appuie sur <b>Démarrer le suivi</b>.</p>
+    <div class="qr-wrap"><div class="qr" id="qr-gps" role="img" aria-label="QR code de suivi GPS"></div>
+    <div style="flex:1;min-width:200px;display:grid;gap:8px"><input class="linkbox" id="gps-link" readonly value="${esc(url)}" aria-label="Lien de suivi">
+    <button type="button" class="btn sm" data-gps-copy>Copier le lien</button><button type="button" class="btn sm primary" data-gps-dl="${cid}">Télécharger l'affiche à imprimer</button></div></div>
+    <p class="trace" style="margin:0">Créez d'abord le chauffeur dans <b>Outils → Chauffeurs</b>.</p></div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button>`;
+  ctx={kind:"qr"}; if(!$("#dlg").open) $("#dlg").showModal();
+  if(window.QRCode){try{new QRCode($("#qr-gps"),{text:url,width:320,height:320,correctLevel:QRCode.CorrectLevel.M})}catch(e){}}
+}
+function gpsPoster(c){
+  const src=document.querySelector("#qr-gps canvas"); if(!src) return null;
+  const W=720,H=1000,cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
+  x.fillStyle="#fff";x.fillRect(0,0,W,H);x.fillStyle="#1E6A49";x.fillRect(0,0,W,110);
+  x.fillStyle="#fff";x.textAlign="center";x.font="700 50px 'Barlow Condensed',Arial Narrow,Arial,sans-serif";x.fillText("SUIVI GPS DU CAMION",W/2,72);
+  x.fillStyle="#111";x.font="700 44px 'IBM Plex Mono',monospace";x.fillText(c.immat,W/2,180);
+  if(c.immatRemorque){x.font="500 28px 'IBM Plex Mono',monospace";x.fillStyle="#555";x.fillText("Remorque "+c.immatRemorque,W/2,222)}
+  x.imageSmoothingEnabled=false;x.drawImage(src,140,250,440,440);
+  x.fillStyle="#17201C";x.font="600 30px 'IBM Plex Sans',Arial,sans-serif";
+  ["1. Scannez ce code avec votre téléphone","2. Choisissez votre nom, tapez votre code","3. Appuyez sur « Démarrer le suivi »"].forEach((t,i)=>x.fillText(t,W/2,750+i*46));
+  x.fillStyle="#B3261E";x.font="600 26px 'IBM Plex Sans',Arial,sans-serif";x.fillText("Gardez la page ouverte pendant le trajet",W/2,920);
+  x.fillStyle="#5A6862";x.font="400 22px 'IBM Plex Sans',Arial,sans-serif";x.fillText("SOCOBEMA · Mankono · 07 07 64 41 06",W/2,965);
+  return cv;
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-gps-copy]")){const t=$("#gps-link");(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast("Lien copié")).catch(()=>{t.focus();t.select()});return}
+  const d=e.target.closest("[data-gps-dl]"); if(d){const c=camById(d.dataset.gpsDl), cv=c&&gpsPoster(c); if(!cv){toast("QR code indisponible.");return}
+    cv.toBlob(b=>{try{saveBlob(b,"QR-GPS_"+c.immat.replace(/\s+/g,"-")+".png");toast("Affiche téléchargée : imprimez-la")}catch(err){toast("Téléchargement impossible : faites une capture d'écran.")}},"image/png")}
+});
+
+/* Écran chauffeur */
+let drvSig="", trackCam=null, watchId=null, lastSent=0, lastPos=null, lastFix=null, trackErr="", wakeLock=null, hbTimer=null;
+try{trackCam=localStorage.getItem("flotte-track-cam")||null}catch(e){}
+function renderDriver(){
+  const C=alive("camions"), g=curG();
+  let cid=trackCam||SUIVI||""; if(cid&&!camById(cid)) cid=SUIVI&&camById(SUIVI)?SUIVI:"";
+  const on=watchId!=null;
+  const sig=[C.map(c=>c.id+c.immat).join(","),cid,on,lastSent,trackErr,lastFix&&lastFix.acc].join("|");
+  if(sig===drvSig) return; drvSig=sig;
+  const c=camById(cid);
+  const state=trackErr?`<div class="drv-state err">${esc(trackErr)}</div>`:on?`<div class="drv-state on">Suivi en cours<small>${lastSent?"Dernière position envoyée "+ago(new Date(lastSent).toISOString()):"Recherche du signal GPS…"}${lastFix&&lastFix.acc?" · précision "+lastFix.acc+" m":""}</small></div>`:`<div class="drv-state off">Suivi arrêté<small>Appuyez sur « Démarrer le suivi » avant de partir</small></div>`;
+  $("#v-driver").innerHTML=`<div class="lock drv">
+    <div class="lk-eyebrow">Suivi GPS</div>
+    <h2 class="lk-title">${c?esc(platesTxt(c)):"Choisissez le camion"}</h2>
+    <div class="lk-f"><label for="drv-cam">Camion</label><select id="drv-cam" class="lk-in"${on?" disabled":""}><option value="">Choisir le camion…</option>${C.map(x=>`<option value="${x.id}"${x.id===cid?" selected":""}>${esc(platesTxt(x))}</option>`).join("")}</select></div>
+    ${state}
+    ${on?`<button class="lk-btn stop" type="button" id="drv-stop">Arrêter le suivi</button>`:`<button class="lk-btn" type="button" id="drv-start">Démarrer le suivi</button>`}
+    <p class="lk-help">Pendant le trajet : <b>laissez cette page ouverte</b>, l'écran allumé et le téléphone chargé. La position est envoyée environ chaque minute.</p>
+    <p class="trace" style="margin:0">Chauffeur : ${esc(g?g.nom:"")}${g&&g.role!=="chauffeur"?` · <a href="${ACCESS_URL}">Ouvrir la plateforme</a>`:""}</p>
+  </div>`;
+}
+async function keepAwake(){try{if(navigator.wakeLock&&document.visibilityState==="visible"&&watchId!=null) wakeLock=await navigator.wakeLock.request("screen")}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") keepAwake()});
+function startTrack(cid){
+  if(!cid){toast("Choisissez d'abord le camion.");return}
+  if(!navigator.geolocation){trackErr="Ce téléphone ne donne pas sa position GPS.";drvSig="";render();return}
+  trackCam=cid; trackErr=""; try{localStorage.setItem("flotte-track-cam",cid);localStorage.setItem("flotte-track-on","1")}catch(e){}
+  watchId=navigator.geolocation.watchPosition(onPos,onPosErr,{enableHighAccuracy:true,maximumAge:15000,timeout:60000});
+  clearInterval(hbTimer); hbTimer=setInterval(()=>{if(watchId!=null&&Date.now()-lastSent>120000) navigator.geolocation.getCurrentPosition(onPos,()=>{},{enableHighAccuracy:true,maximumAge:60000,timeout:45000}); drvSig="";render()},60000);
+  keepAwake(); drvSig=""; render();
+}
+function stopTrack(){
+  if(watchId!=null) navigator.geolocation.clearWatch(watchId); watchId=null; clearInterval(hbTimer);
+  try{localStorage.removeItem("flotte-track-on")}catch(e){}
+  try{wakeLock&&wakeLock.release()}catch(e){} wakeLock=null; drvSig=""; render();
+}
+function onPosErr(err){
+  trackErr=err.code===1?"Position refusée. Autorisez la localisation pour ce site dans les réglages de Chrome, puis réessayez.":err.code===2?"Signal GPS introuvable. Activez la localisation du téléphone.":"Le GPS met du temps à répondre…";
+  if(err.code===1) stopTrack(); else {drvSig="";render()}
+}
+async function onPos(p){
+  const {latitude:lat,longitude:lng,accuracy,speed}=p.coords; trackErr=""; lastFix={acc:Math.round(accuracy||0)};
+  const now=Date.now(), moved=lastPos?distM(lastPos,[lat,lng]):1e9;
+  if(now-lastSent<55000&&moved<150){drvSig="";render();return}
+  const c=camById(trackCam), g=curG(); if(!c||!g) return;
+  lastSent=now; lastPos=[lat,lng];
+  const iso=new Date().toISOString();
+  const tr=((c.trace||[]).filter(x=>now-new Date(x.t)<24*36e5)).slice(-119); tr.push({a:+lat.toFixed(5),o:+lng.toFixed(5),t:iso});
+  try{await queued(fdb.collection("camions").doc(trackCam).update({pos:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(accuracy||0),vit:speed!=null&&speed>=0?Math.round(speed*3.6):null,le:iso,par:g.nom,parId:authUser.uid},trace:tr,majPar:authUser.uid}))}
+  catch(e){trackErr="Envoi impossible : "+errMsg(e)}
+  drvSig=""; render();
+}
+document.addEventListener("change",e=>{if(e.target.id==="drv-cam"){trackCam=e.target.value||null;try{trackCam?localStorage.setItem("flotte-track-cam",trackCam):localStorage.removeItem("flotte-track-cam")}catch(_){}drvSig="";render()}});
+document.addEventListener("click",e=>{
+  if(e.target.id==="drv-start"){startTrack(($("#drv-cam")||{}).value||trackCam||SUIVI);return}
+  if(e.target.id==="drv-stop"){stopTrack();return}
+});
+/* Reprise automatique si le suivi était en cours (permission déjà accordée) */
+(async()=>{try{
+  if(localStorage.getItem("flotte-track-on")!=="1") return;
+  const st=navigator.permissions?await navigator.permissions.query({name:"geolocation"}):null;
+  if(st&&st.state!=="granted") return;
+  const t=setInterval(()=>{const g=curG(); if(g&&camById(trackCam)&&watchId==null){clearInterval(t);startTrack(trackCam)}},1500);
+  setTimeout(()=>clearInterval(t),60000);
+}catch(e){}})();
+
 /* ---------- Onglets ---------- */
-const VIEWS=["tableau","camions","missions","documents","depenses"];
+const VIEWS=["tableau","camions","missions","documents","depenses","carte"];
 function show(v){
   if(!VIEWS.includes(v)) v="tableau";
   VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v;$("#t-"+x).setAttribute("aria-selected",x===v)});
   try{localStorage.setItem("flotte-tab",v)}catch(e){}
+  if(v==="carte") setTimeout(()=>{renderCarte();if(gmap)gmap.invalidateSize()},50);
 }
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{show(t.dataset.v);window.scrollTo(0,0)}));
 let start=(location.hash||"").slice(1);
