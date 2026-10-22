@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1E6A49">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Flotte SOCOBEMA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -238,6 +241,7 @@ body.locked::before{background:var(--bg)}
       <button class="tab" role="tab" data-v="documents" id="t-documents">Documents<span id="doc-n"></span></button>
       <button class="tab" role="tab" data-v="depenses" id="t-depenses">Dépenses</button>
       <button class="tab" role="tab" data-v="carte" id="t-carte">Carte GPS</button>
+      <button class="tab" role="tab" data-v="rapports" id="t-rapports">Rapports</button>
     </nav>
   </div>
 </header>
@@ -252,6 +256,7 @@ body.locked::before{background:var(--bg)}
   <section id="v-documents" hidden></section>
   <section id="v-depenses" hidden></section>
   <section id="v-carte" hidden></section>
+  <section id="v-rapports" hidden></section>
   <section id="v-driver"></section>
 </main>
 
@@ -514,7 +519,8 @@ async function init(){
   try{
     firebase.initializeApp(C); fdb=firebase.firestore(); auth=firebase.auth();
     try{fdb.settings({experimentalForceLongPolling:true,merge:true})}catch(e){console.warn(e)}
-    /* Pas de stockage hors ligne au démarrage : certains navigateurs intégrés (WebView) le bloquent indéfiniment. */
+    /* Stockage hors ligne : lancé sans attendre (si le navigateur le refuse, l'application continue normalement). */
+    try{fdb.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
   }catch(e){mode="nocfg";render();return}
   store=dataStore();
   let cfgLoaded=false, cLoaded=false;
@@ -551,6 +557,7 @@ function render(){
   $("#btn-lock").hidden=!g; $("#btn-lock").textContent=isOwner?"Verrouiller":"Changer";
   renderTableau(); renderCamions(); renderMissions(); renderDocuments(); renderDepenses(); showSync(); backupBanner();
   if(!$("#v-carte").hidden) renderCarte();
+  if(!$("#v-rapports").hidden) renderRapports();
   const nPb=alive("camions").reduce((n,c)=>n+docsFor(c).filter(([k])=>{const s=docSt(c,k).s;return s==="expire"||s==="bientot"}).length,0);
   $("#doc-n").innerHTML=nPb?`<span class="badge">${nPb}</span>`:"";
   const n=trashed("camions").length+trashed("missions").length+trashed("depenses").length;
@@ -570,7 +577,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 12)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 13)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -660,6 +667,7 @@ function renderTableau(){
   const livMois=M.filter(m=>m.statut==="livree"&&thisMonth(m.date));
   const tonType=t=>livMois.filter(m=>(camById(m.camionId)||{}).type===t).reduce((s,m)=>s+(+m.poidsKg||0),0)/1000;
   const depMois=D.filter(d=>thisMonth(d.date)).reduce((s,d)=>s+(+d.montant||0),0);
+  const recMois=M.filter(m=>m.facture&&thisMonth(m.date)).reduce((s,m)=>s+(+m.facture.ht||0),0);
   const fraisMois=livMois.reduce((s,m)=>s+(+m.fraisRoute||0),0);
   const alerts=[];
   C.forEach(c=>{
@@ -692,6 +700,7 @@ function renderTableau(){
       <div class="kpi"><div class="l">Ramassé ce mois</div><div class="v num">${nb(tonType("ramassage"))} t</div><div class="s">livré au magasin</div></div>
       <div class="kpi"><div class="l">Transporté ce mois</div><div class="v num">${nb(tonType("transport"))} t</div><div class="s">vers ports et acheteurs</div></div>
       <div class="kpi"><div class="l">Dépenses du mois</div><div class="v num" style="font-size:1.5rem">${fcfa(depMois+fraisMois)}</div><div class="s">dont frais de route ${fcfa(fraisMois)}</div></div>
+      <div class="kpi"><div class="l">Résultat du mois</div><div class="v num ${recMois-depMois-fraisMois>=0?"res-pos":"res-neg"}" style="font-size:1.5rem">${fcfa(recMois-depMois-fraisMois)}</div><div class="s">facturé ${fcfa(recMois)} − dépenses · <a href="#" data-goto="rapports">rapport</a></div></div>
     </div>
     <div class="grid2">
       <div class="panel"><h3>Alertes${alerts.length?` (${alerts.length})`:""}</h3>${alerts.length?alerts.map(a=>`<div class="alert">${a.h}</div>`).join(""):`<p style="color:var(--muted);margin:0;font-size:.9rem">Aucune alerte. Tous les documents sont à jour pour les 30 prochains jours.</p>`}</div>
@@ -1390,6 +1399,58 @@ document.addEventListener("click",e=>{
     return}
 },true);
 
+/* ---------- Rapports : rentabilité par camion et par mois ---------- */
+function rapportData(mois){
+  const inM=d=>(d||"").slice(0,7)===mois;
+  const M=alive("missions").filter(m=>inM(m.date)), D=alive("depenses").filter(d=>inM(d.date));
+  const rows=alive("camions").map(c=>{
+    const ms=M.filter(m=>m.camionId===c.id), liv=ms.filter(m=>m.statut==="livree");
+    const tonnes=liv.reduce((s,m)=>s+(+m.poidsKg||0),0)/1000;
+    const recettes=ms.reduce((s,m)=>s+(m.facture?+m.facture.ht||0:0),0);
+    const dep=D.filter(d=>d.camionId===c.id).reduce((s,d)=>s+(+d.montant||0),0)+ms.reduce((s,m)=>s+(+m.fraisRoute||0),0);
+    const carb=D.filter(d=>d.camionId===c.id&&d.categorie==="Carburant").reduce((s,d)=>s+(+d.montant||0),0);
+    const sal=D.filter(d=>d.camionId===c.id&&d.categorie==="Salaire chauffeur").reduce((s,d)=>s+(+d.montant||0),0);
+    const nonFact=liv.filter(m=>!m.facture).length;
+    return {c,missions:liv.length,tonnes,recettes,dep,carb,sal,res:recettes-dep,nonFact};
+  }).filter(r=>r.missions||r.dep||r.recettes);
+  const tot=rows.reduce((t,r)=>{["missions","tonnes","recettes","dep","carb","sal","res","nonFact"].forEach(k=>t[k]+=r[k]);return t},{missions:0,tonnes:0,recettes:0,dep:0,carb:0,sal:0,res:0,nonFact:0});
+  const cats={}; D.forEach(d=>cats[d.categorie]=(cats[d.categorie]||0)+(+d.montant||0)); const fr=M.reduce((s,m)=>s+(+m.fraisRoute||0),0); if(fr) cats["Frais de route / péage"]=(cats["Frais de route / péage"]||0)+fr;
+  return {rows:rows.sort((a,b)=>b.res-a.res),tot,cats:Object.entries(cats).sort((a,b)=>b[1]-a[1])};
+}
+let rapSig="";
+function renderRapports(){
+  const mois=filters.mois||today().slice(0,7);
+  const R=rapportData(mois), T=R.tot;
+  const sig=mois+"|"+JSON.stringify(T)+R.rows.length+state.depenses.length+state.missions.length; if(sig===rapSig&&$("#v-rapports").innerHTML) return; rapSig=sig;
+  const nomMois=new Date(mois+"-01T00:00:00").toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  const maxCat=R.cats.length?R.cats[0][1]:1;
+  $("#v-rapports").innerHTML=loadingOr(`
+    <div class="bar"><h2>Rapport — ${esc(nomMois)}</h2><div class="row"><input type="month" id="rap-mois" class="status" value="${mois}" aria-label="Mois du rapport" style="min-height:40px"><button class="btn" type="button" data-rap-csv>Exporter (Excel)</button></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Facturé (HT)</div><div class="v num" style="font-size:1.5rem">${fcfa(T.recettes)}</div><div class="s">${T.missions} mission${T.missions>1?"s":""} livrée${T.missions>1?"s":""} · ${nb(T.tonnes)} t</div></div>
+      <div class="kpi"><div class="l">Dépenses</div><div class="v num" style="font-size:1.5rem">${fcfa(T.dep)}</div><div class="s">carburant ${fcfa(T.carb)} · chauffeurs ${fcfa(T.sal)}</div></div>
+      <div class="kpi"><div class="l">Résultat</div><div class="v num ${T.res>=0?"res-pos":"res-neg"}" style="font-size:1.5rem">${fcfa(T.res)}</div><div class="s">${T.recettes?Math.round(T.res/T.recettes*100)+" % du facturé":"aucune facture"}</div></div>
+      <div class="kpi"><div class="l">Coût par tonne</div><div class="v num" style="font-size:1.5rem">${T.tonnes?fcfa(T.dep/T.tonnes):"—"}</div><div class="s">dépenses ÷ tonnes livrées</div></div>
+    </div>
+    ${T.nonFact?`<div class="banner warn" style="margin-bottom:14px">${T.nonFact} mission${T.nonFact>1?"s":""} livrée${T.nonFact>1?"s":""} sans facture ce mois : leurs recettes manquent dans le résultat. <button class="btn sm" type="button" data-goto="missions">Voir les missions</button></div>`:""}
+    <div class="panel" style="margin-bottom:18px"><h3>Rentabilité par camion</h3>
+      ${R.rows.length?`<div class="scroll"><table><thead><tr><th>Camion</th><th class="r">Missions</th><th class="r">Tonnes</th><th class="r">Facturé</th><th class="r">Dépenses</th><th class="r">Résultat</th><th class="r">Coût / t</th></tr></thead><tbody>
+      ${R.rows.map(r=>`<tr><td>${plates(r.c)}</td><td class="r num">${r.missions}${r.nonFact?` <span class="pill p-warn nodot" title="Missions sans facture">${r.nonFact} sans facture</span>`:""}</td><td class="r num">${nb(r.tonnes)}</td><td class="r num">${fcfa(r.recettes)}</td><td class="r num">${fcfa(r.dep)}</td><td class="r num ${r.res>=0?"res-pos":"res-neg"}"><b>${fcfa(r.res)}</b></td><td class="r num">${r.tonnes?fcfa(r.dep/r.tonnes):"—"}</td></tr>`).join("")}
+      <tr><td><b>Total</b></td><td class="r num"><b>${T.missions}</b></td><td class="r num"><b>${nb(T.tonnes)}</b></td><td class="r num"><b>${fcfa(T.recettes)}</b></td><td class="r num"><b>${fcfa(T.dep)}</b></td><td class="r num ${T.res>=0?"res-pos":"res-neg"}"><b>${fcfa(T.res)}</b></td><td class="r num"><b>${T.tonnes?fcfa(T.dep/T.tonnes):"—"}</b></td></tr>
+      </tbody></table></div>`:`<p style="margin:0;color:var(--muted)">Aucune mission ni dépense ce mois.</p>`}
+    </div>
+    <div class="panel"><h3>Où va l'argent — dépenses par poste</h3>
+      ${R.cats.length?R.cats.map(([k,v])=>`<div class="cat"><span>${esc(k)}</span><b class="num">${fcfa(v)} · ${T.dep?Math.round(v/T.dep*100):0} %</b><div class="track"><i style="width:${Math.max(3,v/maxCat*100)}%"></i></div></div>`).join(""):`<p style="margin:0;color:var(--muted)">Aucune dépense ce mois.</p>`}
+    </div>`);
+}
+document.addEventListener("change",e=>{if(e.target.id==="rap-mois"&&e.target.value){filters.mois=e.target.value;rapSig="";renderRapports()}});
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-goto]"); if(g){e.preventDefault();show(g.dataset.goto);window.scrollTo(0,0);return}
+  if(e.target.closest("[data-rap-csv]")){const mois=filters.mois||today().slice(0,7), R=rapportData(mois);
+    const data=csv(R.rows.map(r=>({...r,cam:platesTxt(r.c)})).concat([{cam:"TOTAL",...R.tot}]),[["cam","Camion"],["missions","Missions livrées"],[r=>String(Math.round(r.tonnes*10)/10).replace(".",","),"Tonnes"],["recettes","Facturé HT (FCFA)"],["carb","Carburant (FCFA)"],["sal","Salaires chauffeurs (FCFA)"],["dep","Dépenses totales (FCFA)"],["res","Résultat (FCFA)"]]);
+    try{saveBlob(new Blob([data],{type:"text/csv;charset=utf-8"}),`rapport-flotte-socobema_${mois}.csv`);toast("Rapport téléchargé")}catch(err){toast("Téléchargement impossible.")}}
+});
+
 /* ---------- Suivi GPS ---------- */
 const MANKONO=[8.06,-6.19];
 const ago=iso=>{if(!iso)return"jamais";const m=Math.round((Date.now()-new Date(iso))/6e4);if(m<1)return"à l'instant";if(m<60)return"il y a "+m+" min";const h=Math.round(m/60);if(h<48)return"il y a "+h+" h";return"le "+fdt(iso)};
@@ -1575,12 +1636,13 @@ document.addEventListener("click",e=>{
 }catch(e){}})();
 
 /* ---------- Onglets ---------- */
-const VIEWS=["tableau","camions","missions","documents","depenses","carte"];
+const VIEWS=["tableau","camions","missions","documents","depenses","carte","rapports"];
 function show(v){
   if(!VIEWS.includes(v)) v="tableau";
   VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v;$("#t-"+x).setAttribute("aria-selected",x===v)});
   try{localStorage.setItem("flotte-tab",v)}catch(e){}
   if(v==="carte") setTimeout(()=>{renderCarte();if(gmap)gmap.invalidateSize()},50);
+  if(v==="rapports") renderRapports();
 }
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{show(t.dataset.v);window.scrollTo(0,0)}));
 let start=(location.hash||"").slice(1);
@@ -1589,6 +1651,7 @@ show(start);
 
 let tt;function toast(msg){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=msg;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,3200)}
 
+if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
 init();
 })();
 </script>
