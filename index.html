@@ -257,11 +257,15 @@ const CATS=["Carburant","Entretien / vidange","Réparation","Pneus","Frais de ro
 const COLL_L={camions:"camion",missions:"mission",depenses:"dépense",gestionnaires:"gestionnaire"};
 const MASC={camions:1,gestionnaires:1};
 const DOCS=[["assuranceExp","Assurance","Assurance"],["visiteExp","Visite technique","Visite"],["vignetteExp","Vignette","Vignette"],["stationnementExp","Carte de stationnement","Stationnement"],["transportExp","Carte de transport","Carte transport"],["patenteExp","Patente de transport","Patente"]];
+const DOCS_REM=[["assuranceRemExp","Assurance remorque","Assur. remorque"],["visiteRemExp","Visite technique remorque","Visite remorque"]];
+const ALL_DOCS=DOCS.concat(DOCS_REM);
+const hasRem=c=>c.type==="transport"&&!!c.immatRemorque;
+const docsFor=c=>hasRem(c)?ALL_DOCS:DOCS;
 const SOON=30;
 function docSt(c,k){const d=daysTo(c[k]);if(d===null)return{s:"manque",o:3,d};if(d<0)return{s:"expire",o:0,d};if(d<=SOON)return{s:"bientot",o:1,d};return{s:"ok",o:2,d}}
 const DOC_PILL={manque:["p-mut","À saisir"],expire:["p-bad","Expirée"],bientot:["p-warn",""],ok:["p-ok","À jour"]};
 const docPill=st=>`<span class="pill ${DOC_PILL[st.s][0]} nodot">${st.s==="bientot"?st.d+" j":st.s==="expire"?"Expirée depuis "+(-st.d)+" j":DOC_PILL[st.s][1]}</span>`;
-const expiredDocs=c=>DOCS.filter(([k])=>docSt(c,k).s==="expire").map(x=>x[1]);
+const expiredDocs=c=>docsFor(c).filter(([k])=>docSt(c,k).s==="expire").map(x=>x[1]);
 const pill=(m,k)=>m[k]?`<span class="pill ${m[k].c}">${m[k].l}</span>`:"";
 
 const state={camions:[],missions:[],depenses:[],gestionnaires:[]};
@@ -486,7 +490,7 @@ function render(){
   $("#who").textContent=!g?"":isOwner?"PCA (propriétaire)":"Gestionnaire : "+g.nom;
   $("#btn-lock").hidden=!g; $("#btn-lock").textContent=isOwner?"Verrouiller":"Changer";
   renderTableau(); renderCamions(); renderMissions(); renderDocuments(); renderDepenses(); showSync(); backupBanner();
-  const nPb=alive("camions").reduce((n,c)=>n+DOCS.filter(([k])=>{const s=docSt(c,k).s;return s==="expire"||s==="bientot"}).length,0);
+  const nPb=alive("camions").reduce((n,c)=>n+docsFor(c).filter(([k])=>{const s=docSt(c,k).s;return s==="expire"||s==="bientot"}).length,0);
   $("#doc-n").innerHTML=nPb?`<span class="badge">${nPb}</span>`:"";
   const n=trashed("camions").length+trashed("missions").length+trashed("depenses").length;
   $("#trash-n").innerHTML=n?`<span class="badge" aria-label="${n} élément(s) dans la corbeille">${n}</span>`:"";
@@ -505,7 +509,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 8)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 9)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -597,10 +601,10 @@ function renderTableau(){
   const fraisMois=livMois.reduce((s,m)=>s+(+m.fraisRoute||0),0);
   const alerts=[];
   C.forEach(c=>{
-    const manq=DOCS.filter(([k])=>!c[k]).map(x=>x[1]);
+    const manq=docsFor(c).filter(([k])=>!c[k]).map(x=>x[1]);
     if(manq.length) alerts.push({o:50,h:`<span class="pill p-mut nodot">À saisir</span><div><span class="plate">${esc(c.immat)}</span> ${manq.length} document${manq.length>1?"s":""} sans date : ${esc(manq.join(", "))}</div>`});
     const enMis=effStatut(c)==="mission";
-    DOCS.forEach(([k,l])=>{
+    docsFor(c).forEach(([k,l])=>{
       const st=docSt(c,k);
       if(st.s==="expire") alerts.push({o:st.d-(enMis?1000:0),h:`<span class="pill p-bad nodot">Expirée</span><div><span class="plate">${esc(c.immat)}</span> ${l} expirée depuis ${-st.d} j (${fdate(c[k])})${enMis?" · <b>camion en mission</b>":""}</div>`});
       else if(st.s==="bientot") alerts.push({o:st.d,h:`<span class="pill p-warn nodot">${st.d} j</span><div><span class="plate">${esc(c.immat)}</span> ${l} expire le ${fdate(c[k])}</div>`});
@@ -640,9 +644,9 @@ function renderCamions(){
     ${list.length?`<div class="list cols">${list.map(camCard).join("")}</div>`:`<div class="empty">Aucun camion dans cette catégorie.<br><button class="btn primary w" data-a="newCamion">Ajouter un camion</button></div>`}`);
 }
 function docSummary(c){
-  const sts=DOCS.map(([k,l,sh])=>({sh,...docSt(c,k)}));
+  const sts=docsFor(c).map(([k,l,sh])=>({sh,...docSt(c,k)}));
   const pb=sts.filter(x=>x.s!=="ok").sort((a,b)=>a.o-b.o);
-  if(!pb.length) return `<div class="docs-sum"><span class="pill p-ok nodot">${DOCS.length} documents à jour</span></div>`;
+  if(!pb.length) return `<div class="docs-sum"><span class="pill p-ok nodot">${docsFor(c).length} documents à jour</span></div>`;
   return `<div class="docs-sum">${pb.map(x=>`<span class="pill ${DOC_PILL[x.s][0]} nodot">${esc(x.sh)} : ${x.s==="manque"?"à saisir":x.s==="expire"?"expirée":x.d+" j"}</span>`).join("")}</div>`;
 }
 function camCard(c){
@@ -690,7 +694,7 @@ function missionCard(m){
 
 /* ---------- Pièces jointes (photo ou PDF de chaque document) ---------- */
 const PJ_MAX=900000; // ~900 Ko par pièce (limite d'un enregistrement Firestore : 1 Mo)
-const docLabel=k=>(DOCS.find(d=>d[0]===k)||[k,k])[1];
+const docLabel=k=>(ALL_DOCS.find(d=>d[0]===k)||[k,k])[1];
 const pieceId=(cid,k)=>"pj_"+cid+"_"+k;
 const pieceRef=(cid,k)=>fdb.collection("camions").doc(pieceId(cid,k));
 /* Une seule fois par appareil : marque les camions créés avant la version 7 (champ estPiece absent). */
@@ -783,7 +787,8 @@ document.addEventListener("click",e=>{
 
 function renderDocuments(){
   const C=alive("camions"), f=filters.doc||"tous";
-  const rows=C.map(c=>({c,sts:DOCS.map(([k])=>docSt(c,k))})).map(r=>({...r,worst:Math.min(...r.sts.map(x=>x.o)),soonest:Math.min(...r.sts.map(x=>x.d==null?1e9:x.d))}));
+  const COLS=C.some(hasRem)?ALL_DOCS:DOCS;
+  const rows=C.map(c=>({c,sts:docsFor(c).map(([k])=>docSt(c,k))})).map(r=>({...r,worst:Math.min(...r.sts.map(x=>x.o)),soonest:Math.min(...r.sts.map(x=>x.d==null?1e9:x.d))}));
   const all=rows.flatMap(r=>r.sts);
   const n=s=>all.filter(x=>x.s===s).length;
   const list=rows.filter(r=>f==="tous"||r.worst<2).sort((a,b)=>a.worst-b.worst||a.soonest-b.soonest);
@@ -799,8 +804,8 @@ function renderDocuments(){
       <div class="kpi"><div class="l">À jour</div><div class="v num" style="color:var(--ok)">${n("ok")}</div><div class="s">sur ${all.length} documents</div></div>
     </div>
     <div class="chips" style="margin-bottom:12px">${chip("tous","Tous les camions")}${chip("traiter","À traiter")}</div>
-    ${list.length?`<div class="panel scroll" style="padding:0 6px"><table><thead><tr><th>Camion</th>${DOCS.map(d=>`<th>${d[1]}</th>`).join("")}<th class="w"></th></tr></thead><tbody>
-      ${list.map(({c,sts})=>`<tr><td class="doc">${plates(c)}<div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${sts.map((st,i)=>`<td class="doc"><div class="doc-cell">${docPill(st)}<span class="dd">${c[DOCS[i][0]]?fdate(c[DOCS[i][0]]):"—"}</span>${pieceBtn(c,DOCS[i][0])}</div></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
+    ${list.length?`<div class="panel scroll" style="padding:0 6px"><table><thead><tr><th>Camion</th>${COLS.map(d=>`<th>${d[1]}</th>`).join("")}<th class="w"></th></tr></thead><tbody>
+      ${list.map(({c,sts})=>`<tr><td class="doc">${plates(c)}<div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${COLS.map(([k])=>docsFor(c).some(d=>d[0]===k)?`<td class="doc"><div class="doc-cell">${docPill(docSt(c,k))}<span class="dd">${c[k]?fdate(c[k]):"—"}</span>${pieceBtn(c,k)}</div></td>`:`<td class="doc"><span class="dd" style="color:var(--muted)">Sans remorque</span></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">Aucun document à traiter. Tout est en règle.</div>`}`}`);
 }
 
@@ -853,6 +858,8 @@ const FORMS={
     {k:"stationnementExp",l:"Fin carte de stationnement",type:"date"},
     {k:"transportExp",l:"Fin carte de transport",type:"date"},
     {k:"patenteExp",l:"Fin patente de transport",type:"date"},
+    {k:"assuranceRemExp",l:"Fin assurance remorque",type:"date",rem:1},
+    {k:"visiteRemExp",l:"Fin visite technique remorque",type:"date",rem:1},
     {k:"notes",l:"Remarques",type:"textarea",full:1}]},
   missions:{fields:cur=>[
     {k:"camionId",l:"Camion",type:"select",opts:camOpts(cur.camionId),req:1,full:1},
@@ -902,7 +909,7 @@ function validate(coll,o,id,ctx){
     const prev=id&&camById(id);
     if(prev&&prev.km&&o.km!=null&&o.km<prev.km) warn(`Le compteur baisse : ${nb(prev.km)} km → ${nb(o.km)} km. Est-ce une correction ?`);
     const yr=new Date().getFullYear();
-    DOCS.forEach(([k,l])=>{if(o[k]){const y=+o[k].slice(0,4); if(y<yr-5||y>yr+6) err(k,`Date de fin « ${l} » invraisemblable (${fdate(o[k])}).`)}});
+    ALL_DOCS.forEach(([k,l])=>{if(o[k]){const y=+o[k].slice(0,4); if(y<yr-5||y>yr+6) err(k,`Date de fin « ${l} » invraisemblable (${fdate(o[k])}).`)}});
     if(prev&&activeMission(id)&&o.statut!=="disponible") warn("Ce camion a une mission en cours. Pensez à la terminer ou l'annuler.");
     if(o.telChauffeur&&o.telChauffeur.replace(/\D/g,"").length<8) warn("Le numéro du chauffeur semble incomplet.");
   }
@@ -947,8 +954,8 @@ function setMsgs(E,W){
   if(E.length||W.length) box.scrollIntoView({block:"nearest"});
 }
 function toggleRemorque(){
-  const t=$("#f-camions-type"), r=$("#f-camions-immatRemorque"); if(!t||!r) return;
-  r.closest(".fld").hidden=t.value!=="transport";
+  const t=$("#f-camions-type"); if(!t) return;
+  ["immatRemorque","assuranceRemExp","visiteRemExp"].forEach(k=>{const r=$("#f-camions-"+k); if(r) r.closest(".fld").hidden=t.value!=="transport"});
 }
 document.addEventListener("change",e=>{if(e.target.id==="f-camions-type") toggleRemorque()});
 function openForm(coll,id){
@@ -972,7 +979,7 @@ function readForm(coll){
   const o={},fd=new FormData($("#frm"));
   for(const [k,v] of fd.entries()){const s=String(v).trim(); o[k]=NUMS.includes(k)?(s===""?null:Number(s.replace(",",".").replace(/\s/g,""))):s}
   if(o.immat) o.immat=normPlate(o.immat);
-  if(coll==="camions"){ if(o.type!=="transport") o.immatRemorque=""; if(o.immatRemorque) o.immatRemorque=normPlate(o.immatRemorque); }
+  if(coll==="camions"){ if(o.type!=="transport"){o.immatRemorque="";o.assuranceRemExp="";o.visiteRemExp=""} if(o.immatRemorque) o.immatRemorque=normPlate(o.immatRemorque); }
   return o;
 }
 function openConfirm(title,msg,label,fn,danger=true){
@@ -1036,7 +1043,7 @@ function csv(rows,cols){
 }
 const immat=id=>(camById(id)||{}).immat||"";
 const EXPORTS={
-  camions:()=>csv(alive("camions"),[["immat","Immatriculation tête"],["immatRemorque","Immatriculation remorque"],[r=>TYPES[r.type]?TYPES[r.type].l:"","Type"],["marque","Marque"],["capaciteT","Capacité (t)"],["chauffeur","Chauffeur"],["telChauffeur","Téléphone"],[r=>CST[effStatut(r)].l,"Statut"],["km","Compteur (km)"],["assuranceExp","Fin assurance"],["visiteExp","Fin visite technique"],["vignetteExp","Fin vignette"],["stationnementExp","Fin carte de stationnement"],["transportExp","Fin carte de transport"],["patenteExp","Fin patente de transport"],["notes","Remarques"]]),
+  camions:()=>csv(alive("camions"),[["immat","Immatriculation tête"],["immatRemorque","Immatriculation remorque"],[r=>TYPES[r.type]?TYPES[r.type].l:"","Type"],["marque","Marque"],["capaciteT","Capacité (t)"],["chauffeur","Chauffeur"],["telChauffeur","Téléphone"],[r=>CST[effStatut(r)].l,"Statut"],["km","Compteur (km)"],["assuranceExp","Fin assurance"],["visiteExp","Fin visite technique"],["vignetteExp","Fin vignette"],["stationnementExp","Fin carte de stationnement"],["transportExp","Fin carte de transport"],["patenteExp","Fin patente de transport"],["assuranceRemExp","Fin assurance remorque"],["visiteRemExp","Fin visite remorque"],["notes","Remarques"]]),
   missions:()=>csv(alive("missions").sort(byDateDesc),[["date","Date"],[r=>immat(r.camionId),"Camion"],[r=>(MST[r.statut]||{}).l,"Statut"],["origine","Départ"],["destination","Arrivée"],["produit","Produit"],["sacs","Sacs"],["poidsKg","Poids (kg)"],["fraisRoute","Frais de route (FCFA)"],["bordereau","Bordereau"],["notes","Remarques"]]),
   depenses:()=>csv(alive("depenses").sort(byDateDesc),[["date","Date"],[r=>immat(r.camionId),"Camion"],["categorie","Catégorie"],["montant","Montant (FCFA)"],["litres","Litres"],["note","Détail"]])
 };
