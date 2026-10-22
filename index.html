@@ -338,7 +338,7 @@ function dataStore(){
   return{
     add:async(c,o)=>{
       if(c==="gestionnaires"){await createCompte(o);return}
-      const ref=fdb.collection(c).doc(), data={...o,...stamp(),creeLe:new Date().toISOString(),creePar:authUser.uid};
+      const ref=fdb.collection(c).doc(), data={...o,...(c==="camions"?{estPiece:false}:{}),...stamp(),creeLe:new Date().toISOString(),creePar:authUser.uid};
       const b=fdb.batch(); b.set(ref,data); b.set(jRef(),jEntry("ajout",c,ref.id,resumeOf(c,data)));
       return queued(b.commit());
     },
@@ -355,7 +355,7 @@ function dataStore(){
       return queued(b.commit());
     },
     revert:async(c,id,avant)=>{
-      const b=fdb.batch(); b.set(fdb.collection(c).doc(id),{...avant,...stamp()}); b.set(jRef(),jEntry("rétablissement",c,id,resumeOf(c,avant),clean(state[c].find(x=>x.id===id))));
+      const b=fdb.batch(); b.set(fdb.collection(c).doc(id),{...avant,...(c==="camions"?{estPiece:false}:{}),...stamp()}); b.set(jRef(),jEntry("rétablissement",c,id,resumeOf(c,avant),clean(state[c].find(x=>x.id===id))));
       return queued(b.commit());
     }
   };
@@ -363,9 +363,11 @@ function dataStore(){
 function subscribeData(){
   dataUnsubs.forEach(u=>u()); dataUnsubs=[];
   if(!authUser){state.camions=[];state.missions=[];state.depenses=[];return}
+  migrateCamions();
   for(const c of ["camions","missions","depenses"]){
     sync.cache[c]=true;
-    dataUnsubs.push(fdb.collection(c).onSnapshot({includeMetadataChanges:true},snap=>{
+    const q=c==="camions"?fdb.collection(c).where("estPiece","==",false):fdb.collection(c);
+    dataUnsubs.push(q.onSnapshot({includeMetadataChanges:true},snap=>{
       state[c]=snap.docs.map(d=>({id:d.id,...d.data()}));
       sync.cache[c]=snap.metadata.fromCache; sync.pending[c]=snap.metadata.hasPendingWrites; sync.error=false;
       render();
@@ -418,7 +420,7 @@ async function restoreBackup(file){
   const n=["camions","missions","depenses"].reduce((t,c)=>t+((data[c]||[]).length),0);
   openConfirm("Restaurer une sauvegarde",`Sauvegarde du <b>${fdt(data.date)}</b> : ${n} fiches. Les fiches de la sauvegarde remplaceront celles qui portent le même identifiant. Les fiches créées depuis restent en place.`,"Restaurer",async()=>{
     const ops=[];["camions","missions","depenses"].forEach(c=>(data[c]||[]).forEach(x=>{if(x&&x.id){const r={...x};delete r.id;ops.push([c,x.id,r])}}));
-    for(let i=0;i<ops.length;i+=400){const b=fdb.batch();ops.slice(i,i+400).forEach(([c,id,r])=>b.set(fdb.collection(c).doc(id),{...r,...stamp()}));if(i===0)b.set(jRef(),jEntry("restauration de sauvegarde","sauvegarde","-",`${n} fiches du ${data.date.slice(0,10)}`));await b.commit()}
+    for(let i=0;i<ops.length;i+=400){const b=fdb.batch();ops.slice(i,i+400).forEach(([c,id,r])=>b.set(fdb.collection(c).doc(id),{...r,...(c==="camions"?{estPiece:false}:{}),...stamp()}));if(i===0)b.set(jRef(),jEntry("restauration de sauvegarde","sauvegarde","-",`${n} fiches du ${data.date.slice(0,10)}`));await b.commit()}
     toast(`${n} fiches restaurées`);
   },false);
 }
@@ -498,7 +500,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 6)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 7)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -684,7 +686,19 @@ function missionCard(m){
 /* ---------- Pièces jointes (photo ou PDF de chaque document) ---------- */
 const PJ_MAX=900000; // ~900 Ko par pièce (limite d'un enregistrement Firestore : 1 Mo)
 const docLabel=k=>(DOCS.find(d=>d[0]===k)||[k,k])[1];
-const pieceId=(cid,k)=>cid+"_"+k;
+const pieceId=(cid,k)=>"pj_"+cid+"_"+k;
+const pieceRef=(cid,k)=>fdb.collection("camions").doc(pieceId(cid,k));
+/* Une seule fois par appareil : marque les camions créés avant la version 7 (champ estPiece absent). */
+async function migrateCamions(){
+  try{ if(localStorage.getItem("flotte-migr7")) return }catch(e){}
+  if(!canWrite) return;
+  try{
+    const snap=await fdb.collection("camions").get();
+    const old=snap.docs.filter(d=>d.data().estPiece===undefined);
+    for(let i=0;i<old.length;i+=400){const b=fdb.batch();old.slice(i,i+400).forEach(d=>b.update(d.ref,{estPiece:false,...stamp()}));await b.commit()}
+    try{localStorage.setItem("flotte-migr7","1")}catch(e){}
+  }catch(e){console.warn("migration",e)}
+}
 function pieceBtn(c,k){
   const m=c.pieces&&c.pieces[k];
   return m?`<button type="button" class="pj has" data-pj-view="${c.id}" data-k="${k}">Voir le document</button>`
@@ -724,7 +738,7 @@ function openPieceUpload(cid,k){
     if(d){const y=+d.slice(0,4),yr=new Date().getFullYear(); if(y<yr-5||y>yr+6){setMsgs(["Date de fin invraisemblable."],[]);throw {silent:true}}}
     const st=stamp(), meta={type,nom:f.name.slice(0,80),taille:data.length,le:st.majLe,par:st.gest||""};
     const b=fdb.batch();
-    b.set(fdb.collection("pieces").doc(pieceId(cid,k)),{camionId:cid,docKey:k,type,nom:meta.nom,data,...st});
+    b.set(pieceRef(cid,k),{estPiece:true,immat:"PJ "+c.immat.slice(0,24),type:"ramassage",camionId:cid,docKey:k,ptype:type,nom:meta.nom,data,...st});
     const upd={["pieces."+k]:meta,...st}; if(d) upd[k]=d;
     b.update(fdb.collection("camions").doc(cid),upd);
     b.set(jRef(),jEntry(has?"document remplacé":"document joint","camions",cid,c.immat+" · "+docLabel(k)));
@@ -739,7 +753,7 @@ async function openPieceView(cid,k){
   $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button>`;
   ctx={kind:"pj"}; if(!$("#dlg").open) $("#dlg").showModal();
   try{
-    const s=await fdb.collection("pieces").doc(pieceId(cid,k)).get(); const p=s.exists?s.data():null;
+    const s=await pieceRef(cid,k).get(); const p=s.exists?s.data():null; if(p&&p.ptype) p.type=p.ptype;
     const box=$("#dlg-b .pj-view"); if(!box) return;
     if(!p||!p.data){box.innerHTML=`<p class="confirm">Document introuvable. Joignez-le de nouveau.</p>`;return}
     const info=`<div class="pj-meta">${docLabel(k)} · fin : <b>${c[k]?fdate(c[k]):"non saisie"}</b> · joint le ${fdt(m.le||p.majLe)}${(m.par||p.gest)?" par "+esc(m.par||p.gest):""}</div>`;
@@ -755,7 +769,7 @@ document.addEventListener("click",e=>{
   const v=e.target.closest("[data-pj-view]"); if(v){e.stopPropagation();openPieceView(v.dataset.pjView,v.dataset.k);return}
   const d=e.target.closest("[data-pj-del]"); if(d){const cid=d.dataset.pjDel,k=d.dataset.k,c=camById(cid);
     openConfirm("Supprimer le document",`Supprimer le document « ${esc(docLabel(k))} » joint au camion <span class="plate">${esc(c&&c.immat)}</span> ? La date de fin est conservée.`,"Supprimer",async()=>{
-      const b=fdb.batch(); b.delete(fdb.collection("pieces").doc(pieceId(cid,k)));
+      const b=fdb.batch(); b.delete(pieceRef(cid,k));
       b.update(fdb.collection("camions").doc(cid),{["pieces."+k]:firebase.firestore.FieldValue.delete(),...stamp()});
       b.set(jRef(),jEntry("document supprimé","camions",cid,(c?c.immat:"")+" · "+docLabel(k)));
       await queued(b.commit()); toast("Document supprimé");
