@@ -423,10 +423,11 @@ addEventListener("online",()=>{sync.offline=false;showSync()});
 addEventListener("offline",()=>{sync.offline=true;showSync()});
 
 /* Verrouillage automatique après inactivité (seulement avec réseau : hors connexion, on ne pourrait pas se reconnecter). */
+function isDrvDevice(){try{return localStorage.getItem("flotte-role")==="chauffeur"}catch(e){return false}}
 const IDLE_MIN=30; let lastAct=Date.now();
 try{const v=+localStorage.getItem("flotte-act"); if(v) lastAct=v}catch(e){}
 ["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,()=>{lastAct=Date.now();try{localStorage.setItem("flotte-act",String(lastAct))}catch(e){}},{passive:true}));
-setInterval(()=>{if(authUser&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();toast("Verrouillé après 30 minutes sans activité.")}},30000);
+setInterval(()=>{if(authUser&&!isDrvDevice()&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();toast("Verrouillé après 30 minutes sans activité.")}},30000);
 let backupAt=undefined, backupUnsub=null;
 function watchBackup(){
   if(backupUnsub){backupUnsub();backupUnsub=null}
@@ -500,7 +501,7 @@ async function init(){
   fdb.collection("comptes").onSnapshot(s=>{state.gestionnaires=s.docs.map(d=>({id:d.id,...d.data()}));cLoaded=true;update()},
     ()=>{showBanner("bad","Impossible de lire la liste des gestionnaires. Vérifiez les règles Firestore (étape 4 du guide).")});
   auth.onAuthStateChanged(u=>{
-    if(u&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();return}
+    if(u&&!isDrvDevice()&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();return}
     const changed=(u&&u.uid)!==(authUser&&authUser.uid);authUser=u;if(changed){subscribeData();watchBackup()}update()});
 }
 
@@ -511,6 +512,7 @@ function render(){
   if(L) renderLock(); else lockSig="";
   const g=curG();
   const drv=!L&&!!g&&(g.role==="chauffeur"||!!SUIVI);
+  if(g){try{localStorage.setItem("flotte-role",g.role||"")}catch(e){}}
   document.body.classList.toggle("driver",drv);
   if(drv) renderDriver(); else drvSig="";
   $("#who").textContent=!g?"":isOwner?"PCA (propriétaire)":(g.role==="chauffeur"?"Chauffeur : ":"Gestionnaire : ")+g.nom;
@@ -536,7 +538,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 10)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 11)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -637,6 +639,9 @@ function renderTableau(){
       if(st.s==="expire") alerts.push({o:st.d-(enMis?1000:0),h:`<span class="pill p-bad nodot">Expirée</span><div><span class="plate">${esc(c.immat)}</span> ${l} expirée depuis ${-st.d} j (${fdate(c[k])})${enMis?" · <b>camion en mission</b>":""}</div>`});
       else if(st.s==="bientot") alerts.push({o:st.d,h:`<span class="pill p-warn nodot">${st.d} j</span><div><span class="plate">${esc(c.immat)}</span> ${l} expire le ${fdate(c[k])}</div>`});
     });
+    const am=activeMission(c.id);
+    if(am){const h=c.pos&&c.pos.le?(Date.now()-new Date(c.pos.le))/36e5:null;
+      if(h===null||h>=SILENCE_H) alerts.push({o:-600,h:`<span class="pill p-bad nodot">Sans nouvelles</span><div><span class="plate">${esc(c.immat)}</span> en mission ${esc(am.origine)} → ${esc(am.destination)} : ${h===null?"aucun pointage reçu":"dernier pointage "+ago(c.pos.le)+(c.pos.lieu?" à "+esc(c.pos.lieu):"")}. Appelez le chauffeur${c.telChauffeur?" ("+esc(c.telChauffeur)+")":""}.</div>`})}
     if(c.statut==="panne") alerts.push({o:-999,h:`<span class="pill p-bad nodot">Panne</span><div><span class="plate">${esc(c.immat)}</span> immobilisé${c.chauffeur?" · chauffeur "+esc(c.chauffeur):""}</div>`});
   });
   M.filter(m=>m.statut==="en_cours"&&daysTo(m.date)!==null&&daysTo(m.date)<-3).forEach(m=>{
@@ -1221,7 +1226,7 @@ function renderCarte(){
   const box=$("#v-carte"), C=alive("camions");
   if(!box.querySelector("#map")){
     box.innerHTML=`<div class="bar"><h2>Carte GPS des camions</h2></div>
-      <p class="trace" style="margin:-6px 0 12px;font-size:.84rem">Position envoyée par le téléphone du chauffeur. Pour équiper un camion : bouton <b>QR code GPS</b> sur sa fiche.</p>
+      <p class="trace" style="margin:-6px 0 12px;font-size:.84rem">Le chauffeur scanne le QR code de la cabine à chaque étape (chargement, départ, villes, livraison). Alerte si un camion en mission ne donne pas de nouvelles pendant ${SILENCE_H} h.</p>
       <div id="map" role="region" aria-label="Carte des camions"></div>
       <div class="panel" style="margin-top:14px"><h3>Camions</h3><div id="gps-list"></div></div>`;
     if(window.L){
@@ -1235,7 +1240,7 @@ function renderCarte(){
     withPos.forEach(c=>{
       const f=fresh(c.pos.le), ll=[c.pos.lat,c.pos.lng];
       const icon=L.divIcon({className:"",html:`<span class="mk ${f}">${esc(c.immat)}</span>`,iconSize:[0,0]});
-      const pop=`<b>${esc(platesTxt(c))}</b><br>${esc(TYPES[c.type]?TYPES[c.type].l:"")} · ${FRESH_L[f]}<br>Position ${ago(c.pos.le)}${c.pos.vit!=null?" · "+c.pos.vit+" km/h":""}<br>Chauffeur : ${esc(c.pos.par||c.chauffeur||"?")}<br><a href="${gmapsUrl(c.pos)}" target="_blank" rel="noopener">Voir sur Google Maps</a>`;
+      const pop=`<b>${esc(platesTxt(c))}</b><br>${esc(TYPES[c.type]?TYPES[c.type].l:"")} · ${FRESH_L[f]}<br>${esc(ETAPE_L[c.pos.etape]||"Position")} ${ago(c.pos.le)}${c.pos.lieu?" · "+esc(c.pos.lieu):""}${c.pos.vit!=null?" · "+c.pos.vit+" km/h":""}<br>Chauffeur : ${esc(c.pos.par||c.chauffeur||"?")}<br><a href="${gmapsUrl(c.pos)}" target="_blank" rel="noopener">Voir sur Google Maps</a>`;
       if(gMarkers[c.id]){gMarkers[c.id].setLatLng(ll).setIcon(icon).setPopupContent(pop)}
       else gMarkers[c.id]=L.marker(ll,{icon}).addTo(gmap).bindPopup(pop);
     });
@@ -1243,17 +1248,18 @@ function renderCarte(){
     drawTrace();
   }
   const rows=C.slice().sort((a,b)=>((b.pos&&b.pos.le)||"").localeCompare((a.pos&&a.pos.le)||""));
-  $("#gps-list").innerHTML=rows.length?rows.map(c=>{const f=fresh(c.pos&&c.pos.le);return `<div class="gps-row"><div style="display:grid;gap:4px">${plates(c)}<div class="trace"><span class="pill ${FRESH_C[f]} nodot">${FRESH_L[f]}</span> ${c.pos?"position "+ago(c.pos.le)+(c.pos.par?" · "+esc(c.pos.par):""):"Aucune position reçue"}</div></div>
+  $("#gps-list").innerHTML=rows.length?rows.map(c=>{const f=fresh(c.pos&&c.pos.le);return `<div class="gps-row"><div style="display:grid;gap:4px">${plates(c)}<div class="trace"><span class="pill ${FRESH_C[f]} nodot">${FRESH_L[f]}</span> ${c.pos?`${esc(ETAPE_L[c.pos.etape]||"Position")} ${ago(c.pos.le)}${c.pos.lieu?" · "+esc(c.pos.lieu):""}${c.pos.par?" · "+esc(c.pos.par):""}`:"Aucun pointage reçu"}${activeMission(c.id)&&(!c.pos||(Date.now()-new Date(c.pos.le))/36e5>=SILENCE_H)?' <span class="pill p-bad nodot">Sans nouvelles</span>':""}</div>${gSel===c.id&&(c.pointages||[]).length?`<div class="trace" style="display:grid;gap:2px;margin-top:4px">${c.pointages.slice(-8).reverse().map(x=>`<span>${fdt(x.t)} · <b>${esc(ETAPE_L[x.e]||x.e)}</b>${x.l?" · "+esc(x.l):""}</span>`).join("")}</div>`:""}</div>
      <div class="row">${c.pos?`<button type="button" class="btn sm" data-gps-see="${c.id}">Voir</button><a class="btn sm" style="text-decoration:none;display:inline-flex;align-items:center" href="${gmapsUrl(c.pos)}" target="_blank" rel="noopener">Google Maps</a>`:""}<button type="button" class="btn sm" data-qrgps="${c.id}">QR code GPS</button></div></div>`}).join("")
     :`<div class="empty">Ajoutez d'abord un camion.</div>`;
 }
 function drawTrace(){
   if(!gmap) return; if(gLine){gmap.removeLayer(gLine);gLine=null}
-  const c=gSel&&camById(gSel); if(!c||!c.trace||c.trace.length<2) return;
-  gLine=L.polyline(c.trace.map(p=>[p.a,p.o]),{color:"#E2A410",weight:4,opacity:.85}).addTo(gmap);
+  const c=gSel&&camById(gSel); if(!c||!c.trace||!c.trace.length) return;
+  gLine=L.layerGroup([L.polyline(c.trace.map(p=>[p.a,p.o]),{color:"#E2A410",weight:4,opacity:.85}),
+    ...(c.pointages||[]).filter(x=>Date.now()-new Date(x.t)<48*36e5).map(x=>L.circleMarker([x.a,x.o],{radius:6,color:"#1E6A49",weight:2,fillColor:"#fff",fillOpacity:1}).bindTooltip(`${ETAPE_L[x.e]||x.e} · ${fdt(x.t)}${x.l?" · "+x.l:""}`))]).addTo(gmap);
 }
 document.addEventListener("click",e=>{
-  const s=e.target.closest("[data-gps-see]"); if(s){const c=camById(s.dataset.gpsSee); if(!c||!c.pos||!gmap) return; gSel=c.id; drawTrace(); gmap.setView([c.pos.lat,c.pos.lng],14); gMarkers[c.id]&&gMarkers[c.id].openPopup(); window.scrollTo({top:0,behavior:"smooth"}); return}
+  const s=e.target.closest("[data-gps-see]"); if(s){const c=camById(s.dataset.gpsSee); if(!c||!c.pos) return; gSel=c.id; renderCarte(); if(!gmap) return; drawTrace(); gmap.setView([c.pos.lat,c.pos.lng],14); gMarkers[c.id]&&gMarkers[c.id].openPopup(); window.scrollTo({top:0,behavior:"smooth"}); return}
   const q=e.target.closest("[data-qrgps]"); if(q){e.stopPropagation(); openQrGps(q.dataset.qrgps); return}
 },true);
 
@@ -1262,7 +1268,7 @@ function openQrGps(cid){
   const c=camById(cid); if(!c) return; const url=gpsUrl(cid);
   $("#dlg-t").textContent="QR code GPS — "+c.immat;
   $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="tool">
-    <p style="margin:0;font-size:.9rem">Imprimez ce QR code et collez-le dans la cabine. Le chauffeur le scanne, tape son code, puis appuie sur <b>Démarrer le suivi</b>.</p>
+    <p style="margin:0;font-size:.9rem">Imprimez ce QR code et collez-le dans la cabine. À chaque étape (chargement, départ, grandes villes, livraison), le chauffeur le scanne et appuie sur l'étape : sa position est envoyée.</p>
     <div class="qr-wrap"><div class="qr" id="qr-gps" role="img" aria-label="QR code de suivi GPS"></div>
     <div style="flex:1;min-width:200px;display:grid;gap:8px"><input class="linkbox" id="gps-link" readonly value="${esc(url)}" aria-label="Lien de suivi">
     <button type="button" class="btn sm" data-gps-copy>Copier le lien</button><button type="button" class="btn sm primary" data-gps-dl="${cid}">Télécharger l'affiche à imprimer</button></div></div>
@@ -1280,8 +1286,8 @@ function gpsPoster(c){
   if(c.immatRemorque){x.font="500 28px 'IBM Plex Mono',monospace";x.fillStyle="#555";x.fillText("Remorque "+c.immatRemorque,W/2,222)}
   x.imageSmoothingEnabled=false;x.drawImage(src,140,250,440,440);
   x.fillStyle="#17201C";x.font="600 30px 'IBM Plex Sans',Arial,sans-serif";
-  ["1. Scannez ce code avec votre téléphone","2. Choisissez votre nom, tapez votre code","3. Appuyez sur « Démarrer le suivi »"].forEach((t,i)=>x.fillText(t,W/2,750+i*46));
-  x.fillStyle="#B3261E";x.font="600 26px 'IBM Plex Sans',Arial,sans-serif";x.fillText("Gardez la page ouverte pendant le trajet",W/2,920);
+  ["À chaque étape : chargement, départ,","grandes villes, livraison, problème :","scannez ce code et appuyez sur l'étape"].forEach((t,i)=>x.fillText(t,W/2,750+i*46));
+  x.fillStyle="#B3261E";x.font="600 26px 'IBM Plex Sans',Arial,sans-serif";x.fillText("1re fois : choisissez votre nom et tapez votre code",W/2,920);
   x.fillStyle="#5A6862";x.font="400 22px 'IBM Plex Sans',Arial,sans-serif";x.fillText("SOCOBEMA · Mankono · 07 07 64 41 06",W/2,965);
   return cv;
 }
@@ -1294,24 +1300,59 @@ document.addEventListener("click",e=>{
 /* Écran chauffeur */
 let drvSig="", trackCam=null, watchId=null, lastSent=0, lastPos=null, lastFix=null, trackErr="", wakeLock=null, hbTimer=null;
 try{trackCam=localStorage.getItem("flotte-track-cam")||null}catch(e){}
+const ETAPES=[["chargement","Chargement"],["depart","Départ"],["route","En route / ville"],["livraison","Livraison"],["probleme","Problème / panne"]];
+const ETAPE_L=Object.fromEntries(ETAPES);
+const SILENCE_H=4; // alerte si un camion en mission ne pointe pas pendant 4 h
+let ckBusy=false, ckMsg="";
 function renderDriver(){
   const C=alive("camions"), g=curG();
   let cid=trackCam||SUIVI||""; if(cid&&!camById(cid)) cid=SUIVI&&camById(SUIVI)?SUIVI:"";
-  const on=watchId!=null;
-  const sig=[C.map(c=>c.id+c.immat).join(","),cid,on,lastSent,trackErr,lastFix&&lastFix.acc].join("|");
+  const c=camById(cid), on=watchId!=null;
+  const last=c&&c.pos;
+  const sig=[C.map(x=>x.id+x.immat).join(","),cid,on,lastSent,trackErr,ckBusy,ckMsg,last&&last.le].join("|");
   if(sig===drvSig) return; drvSig=sig;
-  const c=camById(cid);
-  const state=trackErr?`<div class="drv-state err">${esc(trackErr)}</div>`:on?`<div class="drv-state on">Suivi en cours<small>${lastSent?"Dernière position envoyée "+ago(new Date(lastSent).toISOString()):"Recherche du signal GPS…"}${lastFix&&lastFix.acc?" · précision "+lastFix.acc+" m":""}</small></div>`:`<div class="drv-state off">Suivi arrêté<small>Appuyez sur « Démarrer le suivi » avant de partir</small></div>`;
+  const lastTxt=last?`Dernier pointage : <b>${esc(ETAPE_L[last.etape]||"position")}</b> ${ago(last.le)}${last.lieu?" · "+esc(last.lieu):""}`:"Aucun pointage pour ce camion.";
   $("#v-driver").innerHTML=`<div class="lock drv">
-    <div class="lk-eyebrow">Suivi GPS</div>
+    <div class="lk-eyebrow">Pointage GPS</div>
     <h2 class="lk-title">${c?esc(platesTxt(c)):"Choisissez le camion"}</h2>
     <div class="lk-f"><label for="drv-cam">Camion</label><select id="drv-cam" class="lk-in"${on?" disabled":""}><option value="">Choisir le camion…</option>${C.map(x=>`<option value="${x.id}"${x.id===cid?" selected":""}>${esc(platesTxt(x))}</option>`).join("")}</select></div>
-    ${state}
-    ${on?`<button class="lk-btn stop" type="button" id="drv-stop">Arrêter le suivi</button>`:`<button class="lk-btn" type="button" id="drv-start">Démarrer le suivi</button>`}
-    <p class="lk-help">Pendant le trajet : <b>laissez cette page ouverte</b>, l'écran allumé et le téléphone chargé. La position est envoyée environ chaque minute.</p>
+    ${trackErr?`<div class="drv-state err">${esc(trackErr)}</div>`:ckBusy?`<div class="drv-state on">Envoi de la position…<small>Restez sur cette page quelques secondes</small></div>`:ckMsg?`<div class="drv-state on">${esc(ckMsg)}</div>`:`<div class="drv-state off">Où en êtes-vous ?<small>${lastTxt}</small></div>`}
+    <div style="display:grid;gap:10px">${ETAPES.map(([k,l])=>`<button class="lk-btn${k==="probleme"?" stop":""}" type="button" data-ck="${k}"${ckBusy||!c?" disabled":""}>${l}</button>`).join("")}</div>
+    <p class="lk-help">Scannez le QR code de la cabine <b>à chaque étape</b> et appuyez sur le bon bouton. La position est envoyée une fois ; vous pouvez ensuite éteindre l'écran.</p>
+    <details><summary class="trace" style="cursor:pointer">Suivi continu (écran allumé)</summary>
+      <div style="display:grid;gap:8px;margin-top:8px">${on?`<div class="drv-state on">Suivi continu en cours<small>${lastSent?"Position envoyée "+ago(new Date(lastSent).toISOString()):"Recherche du signal GPS…"}</small></div><button class="lk-btn2" type="button" id="drv-stop">Arrêter le suivi continu</button>`:`<button class="lk-btn2" type="button" id="drv-start">Démarrer le suivi continu</button><span class="trace">Seulement si le téléphone peut rester allumé et branché.</span>`}</div></details>
     <p class="trace" style="margin:0">Chauffeur : ${esc(g?g.nom:"")}${g&&g.role!=="chauffeur"?` · <a href="${ACCESS_URL}">Ouvrir la plateforme</a>`:""}</p>
   </div>`;
 }
+async function placeName(lat,lng){
+  try{const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),6000);
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=fr&lat=${lat}&lon=${lng}`,{signal:ctl.signal});clearTimeout(t);
+    const j=await r.json(),a=j.address||{};return (a.city||a.town||a.village||a.suburb||a.county||a.state||"").slice(0,60)}catch(e){return ""}
+}
+function checkin(etape){
+  const cid=($("#drv-cam")||{}).value||trackCam||SUIVI; const c=camById(cid);
+  if(!c){toast("Choisissez d'abord le camion.");return}
+  if(!navigator.geolocation){trackErr="Ce téléphone ne donne pas sa position GPS.";drvSig="";render();return}
+  trackCam=cid; try{localStorage.setItem("flotte-track-cam",cid)}catch(e){}
+  ckBusy=true; ckMsg=""; trackErr=""; drvSig=""; render();
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const {latitude:lat,longitude:lng,accuracy,speed}=p.coords;
+    const lieu=await placeName(lat,lng);
+    try{await writePos(cid,lat,lng,accuracy,speed,etape,lieu);
+      ckMsg=`${ETAPE_L[etape]} enregistré${lieu?" à "+lieu:""} à ${new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}. Vous pouvez fermer la page.`;
+    }catch(e){trackErr="Envoi impossible : "+errMsg(e)}
+    ckBusy=false; drvSig=""; render();
+  },err=>{ckBusy=false;onPosErr(err)},{enableHighAccuracy:true,timeout:45000,maximumAge:20000});
+}
+async function writePos(cid,lat,lng,accuracy,speed,etape,lieu){
+  const c=camById(cid), g=curG(); if(!c||!g) return;
+  const now=Date.now(), iso=new Date().toISOString();
+  const tr=((c.trace||[]).filter(x=>now-new Date(x.t)<24*36e5)).slice(-119); tr.push({a:+lat.toFixed(5),o:+lng.toFixed(5),t:iso,...(etape?{e:etape}:{})});
+  const upd={pos:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(accuracy||0),vit:speed!=null&&speed>=0?Math.round(speed*3.6):null,le:iso,par:g.nom,parId:authUser.uid,etape:etape||"suivi",lieu:lieu||""},trace:tr,majPar:authUser.uid};
+  if(etape){const pt=(c.pointages||[]).slice(-49);pt.push({e:etape,t:iso,a:+lat.toFixed(5),o:+lng.toFixed(5),l:lieu||"",p:g.nom});upd.pointages=pt}
+  await queued(fdb.collection("camions").doc(cid).update(upd));
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-ck]"); if(b&&!b.disabled) checkin(b.dataset.ck)});
 async function keepAwake(){try{if(navigator.wakeLock&&document.visibilityState==="visible"&&watchId!=null) wakeLock=await navigator.wakeLock.request("screen")}catch(e){}}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") keepAwake()});
 function startTrack(cid){
@@ -1335,12 +1376,8 @@ async function onPos(p){
   const {latitude:lat,longitude:lng,accuracy,speed}=p.coords; trackErr=""; lastFix={acc:Math.round(accuracy||0)};
   const now=Date.now(), moved=lastPos?distM(lastPos,[lat,lng]):1e9;
   if(now-lastSent<55000&&moved<150){drvSig="";render();return}
-  const c=camById(trackCam), g=curG(); if(!c||!g) return;
   lastSent=now; lastPos=[lat,lng];
-  const iso=new Date().toISOString();
-  const tr=((c.trace||[]).filter(x=>now-new Date(x.t)<24*36e5)).slice(-119); tr.push({a:+lat.toFixed(5),o:+lng.toFixed(5),t:iso});
-  try{await queued(fdb.collection("camions").doc(trackCam).update({pos:{lat:+lat.toFixed(6),lng:+lng.toFixed(6),acc:Math.round(accuracy||0),vit:speed!=null&&speed>=0?Math.round(speed*3.6):null,le:iso,par:g.nom,parId:authUser.uid},trace:tr,majPar:authUser.uid}))}
-  catch(e){trackErr="Envoi impossible : "+errMsg(e)}
+  try{await writePos(trackCam,lat,lng,accuracy,speed,null,"")}catch(e){trackErr="Envoi impossible : "+errMsg(e)}
   drvSig=""; render();
 }
 document.addEventListener("change",e=>{if(e.target.id==="drv-cam"){trackCam=e.target.value||null;try{trackCam?localStorage.setItem("flotte-track-cam",trackCam):localStorage.removeItem("flotte-track-cam")}catch(_){}drvSig="";render()}});
