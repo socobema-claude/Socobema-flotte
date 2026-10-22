@@ -1,0 +1,91 @@
+rules_version = '2';
+// Règles de sécurité – Flotte SOCOBEMA (version renforcée)
+// À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminExiste() { return exists(/databases/$(database)/documents/config/admin); }
+    function estPca() {
+      return connecte() && adminExiste()
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    // Compte actif = fiche dans « comptes », active et non remplacée par un nouveau code.
+    function compteActif() {
+      let p = /databases/$(database)/documents/comptes/$(request.auth.uid);
+      return connecte() && exists(p)
+        && get(p).data.actif == true
+        && get(p).data.get('remplace', false) == false;
+    }
+    // Toute écriture doit être signée par son véritable auteur (impossible d'écrire au nom d'un autre).
+    function signe() { return request.resource.data.majPar == request.auth.uid; }
+    function taille() { return request.resource.data.size() <= 60; }
+    function txt(v, mini, maxi) { return v is string && v.size() >= mini && v.size() <= maxi; }
+    function nombreOuVide(v) { return v == null || (v is number && v >= 0); }
+
+    function camionOk() {
+      let d = request.resource.data;
+      return txt(d.immat, 2, 30) && d.type in ['ramassage', 'transport']
+        && nombreOuVide(d.get('capaciteT', null)) && nombreOuVide(d.get('km', null));
+    }
+    function missionOk() {
+      let d = request.resource.data;
+      return txt(d.camionId, 1, 64) && txt(d.date, 10, 10)
+        && d.statut in ['planifiee', 'en_cours', 'livree', 'annulee']
+        && nombreOuVide(d.get('sacs', null)) && nombreOuVide(d.get('poidsKg', null))
+        && nombreOuVide(d.get('fraisRoute', null));
+    }
+    function depenseOk() {
+      let d = request.resource.data;
+      return txt(d.camionId, 1, 64) && txt(d.date, 10, 10)
+        && d.montant is number && d.montant > 0 && d.montant < 1000000000
+        && nombreOuVide(d.get('litres', null));
+    }
+
+    // Propriétaire : créé une seule fois, à la première installation, puis verrouillé.
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    // Date de la dernière sauvegarde complète.
+    match /config/sauvegarde {
+      allow read: if compteActif();
+      allow write: if estPca();
+    }
+
+    // Liste des personnes qui peuvent se connecter (nom + identifiant technique, jamais de code).
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if estPca()
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca');
+      allow update: if estPca();
+      allow delete: if false;
+    }
+
+    // Données de la flotte : lecture et saisie réservées aux comptes actifs ;
+    // suppression définitive réservée au PCA.
+    match /camions/{id} {
+      allow read: if compteActif();
+      allow create, update: if compteActif() && signe() && taille() && camionOk();
+      allow delete: if compteActif() && estPca();
+    }
+    match /missions/{id} {
+      allow read: if compteActif();
+      allow create, update: if compteActif() && signe() && taille() && missionOk();
+      allow delete: if compteActif() && estPca();
+    }
+    match /depenses/{id} {
+      allow read: if compteActif();
+      allow create, update: if compteActif() && signe() && taille() && depenseOk();
+      allow delete: if compteActif() && estPca();
+    }
+
+    // Historique : chacun ajoute ses propres lignes ; personne ne peut les modifier ni les effacer.
+    match /journal/{id} {
+      allow read: if compteActif() && estPca();
+      allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
