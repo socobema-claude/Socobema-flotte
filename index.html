@@ -82,6 +82,9 @@ h3{font-family:var(--f-disp);font-weight:600;font-size:1.05rem;letter-spacing:.0
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .row.between{justify-content:space-between}
+.plate.rem{border-style:dashed}
+.plates{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}
+.plates small{font-size:.66rem;font-weight:700;color:var(--muted);letter-spacing:.04em}
 .plate{font-family:var(--f-mono);font-weight:600;font-size:.92rem;letter-spacing:.06em;background:#FFFFFF;color:#111;border:2px solid #111;border-radius:5px;padding:1px 8px;white-space:nowrap}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;letter-spacing:.02em;border-radius:999px;padding:3px 9px;white-space:nowrap}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -276,7 +279,9 @@ const trashed=c=>state[c].filter(x=>x.supprime);
 const camById=id=>state.camions.find(c=>c.id===id);
 const activeMission=(camId,exceptId)=>alive("missions").find(m=>m.camionId===camId&&m.statut==="en_cours"&&m.id!==exceptId);
 const effStatut=c=>activeMission(c.id)?"mission":(MANUAL.includes(c.statut)?c.statut:"disponible");
-const plateOf=id=>{const c=camById(id);return c?`<span class="plate">${esc(c.immat)}</span>${c.supprime?' <span class="pill p-mut nodot">à la corbeille</span>':""}`:`<span class="pill p-mut nodot">Camion inconnu</span>`};
+const plates=c=>c.immatRemorque?`<span class="plates"><small>TÊTE</small><span class="plate">${esc(c.immat)}</span><small>REMORQUE</small><span class="plate rem">${esc(c.immatRemorque)}</span></span>`:`<span class="plate">${esc(c.immat)}</span>`;
+const platesTxt=c=>c.immat+(c.immatRemorque?" / "+c.immatRemorque:"");
+const plateOf=id=>{const c=camById(id);return c?`${plates(c)}${c.supprime?' <span class="pill p-mut nodot">à la corbeille</span>':""}`:`<span class="pill p-mut nodot">Camion inconnu</span>`};
 const byDateDesc=(a,b)=>(b.date||"").localeCompare(a.date||"")||(b.majLe||"").localeCompare(a.majLe||"");
 const who=id=>{if(!id)return"";const g=state.gestionnaires.find(x=>x.id===id);return g?(g.role==="pca"?"PCA":g.nom):""};
 const auteur=x=>x.gest?x.gest:who(x.majPar);
@@ -500,7 +505,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 7)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 8)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -648,7 +653,7 @@ function camCard(c){
   const stCtl=st==="mission"?pill(CST,"mission"):
     `<select class="status" data-camst="${c.id}" aria-label="Statut du camion ${esc(c.immat)}"${canWrite?"":" disabled"}>${MANUAL.map(k=>`<option value="${k}"${st===k?" selected":""}>${CST[k].l}</option>`).join("")}</select>`;
   return `<div class="card">
-    <div class="row between"><div class="row"><span class="plate">${esc(c.immat)}</span>${pill(TYPES,c.type)}</div>${stCtl}</div>
+    <div class="row between"><div class="row">${plates(c)}${pill(TYPES,c.type)}</div>${stCtl}</div>
     ${am?`<div class="meta">Mission en cours : <b>${esc(am.origine)} → ${esc(am.destination)}</b></div>`:""}
     <div class="meta"><span>${esc(c.marque||"Marque ?")}</span><span>Capacité <b>${c.capaciteT?nb(c.capaciteT)+" t":"—"}</b></span>${c.km?`<span>Compteur <b>${nb(c.km)} km</b></span>`:""}</div>
     <div class="meta"><span>Chauffeur <b>${esc(c.chauffeur||"non affecté")}</b></span>${c.telChauffeur?`<span class="num">${esc(c.telChauffeur)}</span>`:""}</div>
@@ -795,7 +800,7 @@ function renderDocuments(){
     </div>
     <div class="chips" style="margin-bottom:12px">${chip("tous","Tous les camions")}${chip("traiter","À traiter")}</div>
     ${list.length?`<div class="panel scroll" style="padding:0 6px"><table><thead><tr><th>Camion</th>${DOCS.map(d=>`<th>${d[1]}</th>`).join("")}<th class="w"></th></tr></thead><tbody>
-      ${list.map(({c,sts})=>`<tr><td class="doc"><span class="plate">${esc(c.immat)}</span><div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${sts.map((st,i)=>`<td class="doc"><div class="doc-cell">${docPill(st)}<span class="dd">${c[DOCS[i][0]]?fdate(c[DOCS[i][0]]):"—"}</span>${pieceBtn(c,DOCS[i][0])}</div></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
+      ${list.map(({c,sts})=>`<tr><td class="doc">${plates(c)}<div class="trace" style="margin-top:4px">${TYPES[c.type]?TYPES[c.type].l:""}</div></td>${sts.map((st,i)=>`<td class="doc"><div class="doc-cell">${docPill(st)}<span class="dd">${c[DOCS[i][0]]?fdate(c[DOCS[i][0]]):"—"}</span>${pieceBtn(c,DOCS[i][0])}</div></td>`).join("")}<td class="doc w"><button class="btn sm" data-a="edit" data-c="camions" data-id="${c.id}">Mettre à jour</button></td></tr>`).join("")}
     </tbody></table></div>`:`<div class="empty">Aucun document à traiter. Tout est en règle.</div>`}`}`);
 }
 
@@ -830,10 +835,11 @@ function renderDepenses(){
 }
 
 /* ---------- Formulaires ---------- */
-const camOpts=keepId=>state.camions.filter(c=>!c.supprime||c.id===keepId).map(c=>[c.id,`${c.immat} · ${TYPES[c.type]?TYPES[c.type].l:""}${effStatut(c)!=="disponible"?" ("+CST[effStatut(c)].l.toLowerCase()+")":""}`]);
+const camOpts=keepId=>state.camions.filter(c=>!c.supprime||c.id===keepId).map(c=>[c.id,`${platesTxt(c)} · ${TYPES[c.type]?TYPES[c.type].l:""}${effStatut(c)!=="disponible"?" ("+CST[effStatut(c)].l.toLowerCase()+")":""}`]);
 const FORMS={
   camions:{fields:cur=>[
-    {k:"immat",l:"Immatriculation",req:1,ph:"1234 AB 01"},
+    {k:"immat",l:"Immatriculation (tête / carrosserie)",req:1,ph:"1234 AB 01"},
+    {k:"immatRemorque",l:"Immatriculation remorque (arrière)",ph:"5678 CD 01",hint:"Camions de transport vers le port : numéro de la remorque, à l'arrière"},
     {k:"type",l:"Type de camion",type:"select",opts:[["ramassage","Ramassage (bord champ → magasin)"],["transport","Transport (magasin → port / acheteur)"]],req:1},
     {k:"marque",l:"Marque / modèle",ph:"Mercedes Actros, Renault…"},
     {k:"capaciteT",l:"Capacité (tonnes)",type:"number",step:"0.5",hint:"Sert à détecter les surcharges"},
@@ -882,8 +888,16 @@ function validate(coll,o,id,ctx){
   const t=today();
   if(coll==="camions"){
     if(o.immat&&plateKey(o.immat).length<4) err("immat","L'immatriculation semble incomplète.");
-    const dup=alive("camions").find(c=>c.id!==id&&plateKey(c.immat)===plateKey(o.immat));
-    if(o.immat&&dup) err("immat",`Le camion ${dup.immat} existe déjà.`);
+    const keysOf=c=>[c.immat,c.immatRemorque].filter(Boolean).map(plateKey);
+    const dup=alive("camions").find(c=>c.id!==id&&keysOf(c).includes(plateKey(o.immat)));
+    if(o.immat&&dup) err("immat",`Le numéro ${o.immat} est déjà utilisé par le camion ${platesTxt(dup)}.`);
+    if(o.immatRemorque){
+      if(plateKey(o.immatRemorque).length<4) err("immatRemorque","Le numéro de la remorque semble incomplet.");
+      if(plateKey(o.immatRemorque)===plateKey(o.immat||"")) err("immatRemorque","La remorque et la tête ne peuvent pas avoir le même numéro.");
+      const dupR=alive("camions").find(c=>c.id!==id&&keysOf(c).includes(plateKey(o.immatRemorque)));
+      if(dupR) err("immatRemorque",`La remorque ${o.immatRemorque} est déjà attelée au camion ${platesTxt(dupR)}.`);
+    }
+    if(o.type==="transport"&&!o.immatRemorque) warn("Numéro de la remorque (arrière) non saisi.");
     if(o.capaciteT!=null&&(o.capaciteT===0||o.capaciteT>60)) err("capaciteT","La capacité doit être comprise entre 0,5 et 60 tonnes.");
     const prev=id&&camById(id);
     if(prev&&prev.km&&o.km!=null&&o.km<prev.km) warn(`Le compteur baisse : ${nb(prev.km)} km → ${nb(o.km)} km. Est-ce une correction ?`);
@@ -932,6 +946,11 @@ function setMsgs(E,W){
   box.innerHTML=(E.length?`<ul class="e" role="alert">${E.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"")+(W.length?`<ul class="w">${W.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"");
   if(E.length||W.length) box.scrollIntoView({block:"nearest"});
 }
+function toggleRemorque(){
+  const t=$("#f-camions-type"), r=$("#f-camions-immatRemorque"); if(!t||!r) return;
+  r.closest(".fld").hidden=t.value!=="transport";
+}
+document.addEventListener("change",e=>{if(e.target.id==="f-camions-type") toggleRemorque()});
 function openForm(coll,id){
   const cur=id?(state[coll].find(x=>x.id===id)||{}):{};
   const L=COLL_L[coll];
@@ -946,12 +965,14 @@ function openForm(coll,id){
   }).join("");
   $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn primary" id="dlg-ok">${id?"Enregistrer":"Ajouter"}</button>`;
   ctx={kind:"form",coll,id,openedMaj:cur.majLe||null,confirmed:false,saving:false,label:id?"Enregistrer":"Ajouter"};
+  if(coll==="camions") toggleRemorque();
   if(!$("#dlg").open) $("#dlg").showModal();
 }
 function readForm(coll){
   const o={},fd=new FormData($("#frm"));
   for(const [k,v] of fd.entries()){const s=String(v).trim(); o[k]=NUMS.includes(k)?(s===""?null:Number(s.replace(",",".").replace(/\s/g,""))):s}
   if(o.immat) o.immat=normPlate(o.immat);
+  if(coll==="camions"){ if(o.type!=="transport") o.immatRemorque=""; if(o.immatRemorque) o.immatRemorque=normPlate(o.immatRemorque); }
   return o;
 }
 function openConfirm(title,msg,label,fn,danger=true){
@@ -1015,7 +1036,7 @@ function csv(rows,cols){
 }
 const immat=id=>(camById(id)||{}).immat||"";
 const EXPORTS={
-  camions:()=>csv(alive("camions"),[["immat","Immatriculation"],[r=>TYPES[r.type]?TYPES[r.type].l:"","Type"],["marque","Marque"],["capaciteT","Capacité (t)"],["chauffeur","Chauffeur"],["telChauffeur","Téléphone"],[r=>CST[effStatut(r)].l,"Statut"],["km","Compteur (km)"],["assuranceExp","Fin assurance"],["visiteExp","Fin visite technique"],["vignetteExp","Fin vignette"],["stationnementExp","Fin carte de stationnement"],["transportExp","Fin carte de transport"],["patenteExp","Fin patente de transport"],["notes","Remarques"]]),
+  camions:()=>csv(alive("camions"),[["immat","Immatriculation tête"],["immatRemorque","Immatriculation remorque"],[r=>TYPES[r.type]?TYPES[r.type].l:"","Type"],["marque","Marque"],["capaciteT","Capacité (t)"],["chauffeur","Chauffeur"],["telChauffeur","Téléphone"],[r=>CST[effStatut(r)].l,"Statut"],["km","Compteur (km)"],["assuranceExp","Fin assurance"],["visiteExp","Fin visite technique"],["vignetteExp","Fin vignette"],["stationnementExp","Fin carte de stationnement"],["transportExp","Fin carte de transport"],["patenteExp","Fin patente de transport"],["notes","Remarques"]]),
   missions:()=>csv(alive("missions").sort(byDateDesc),[["date","Date"],[r=>immat(r.camionId),"Camion"],[r=>(MST[r.statut]||{}).l,"Statut"],["origine","Départ"],["destination","Arrivée"],["produit","Produit"],["sacs","Sacs"],["poidsKg","Poids (kg)"],["fraisRoute","Frais de route (FCFA)"],["bordereau","Bordereau"],["notes","Remarques"]]),
   depenses:()=>csv(alive("depenses").sort(byDateDesc),[["date","Date"],[r=>immat(r.camionId),"Camion"],["categorie","Catégorie"],["montant","Montant (FCFA)"],["litres","Litres"],["note","Détail"]])
 };
