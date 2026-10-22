@@ -188,6 +188,37 @@ body.locked::before{background:var(--bg)}
 .code-big{grid-column:1/-1;font-family:var(--f-mono);font-size:2.4rem;font-weight:600;letter-spacing:.3em;text-align:center;background:var(--sunk);border-radius:10px;padding:14px 8px}
 .who{font-weight:600;color:var(--ink)}
 @media (prefers-reduced-motion:no-preference){.card:hover{border-color:var(--muted)}}
+.clo-grid{grid-column:1/-1;display:grid;gap:8px}
+.clo-row{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;align-items:center}
+.clo-row label{font-size:.86rem;font-weight:600}
+.clo-row input{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px;width:100%;text-align:right}
+.clo-sum{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;gap:4px 12px;background:var(--sunk);border-radius:10px;padding:12px;font-variant-numeric:tabular-nums}
+.clo-sum b{text-align:right}
+.res-pos{color:var(--ok)}.res-neg{color:var(--bad)}
+#print-zone{display:none}
+.inv{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;color:#111;font-family:"IBM Plex Sans",Arial,sans-serif;font-size:13px;line-height:1.45;padding:28px;max-width:780px;margin:0 auto}
+.inv h1{font-family:"Barlow Condensed",Arial Narrow,Arial,sans-serif;font-size:28px;margin:0;letter-spacing:.04em;color:#1E6A49}
+.inv .hd{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #1E6A49;padding-bottom:12px;margin-bottom:16px;flex-wrap:wrap}
+.inv .org b{font-size:15px}.inv .org{font-size:12px;color:#333}
+.inv table{width:100%;border-collapse:collapse;margin:12px 0}
+.inv th{background:#1E6A49;color:#fff;text-align:left;padding:7px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;white-space:normal}
+.inv td{border-bottom:1px solid #ddd;padding:7px;vertical-align:top;white-space:normal}
+.inv .r{text-align:right;white-space:nowrap}
+.inv .tot td{font-weight:700;border-bottom:0}
+.inv .big td{font-size:15px;background:#EEF6F1}
+.inv .box{border:1px solid #ccc;border-radius:6px;padding:10px;margin:8px 0}
+.inv .sig{display:flex;justify-content:space-between;margin-top:40px;gap:20px}
+.inv .sig div{flex:1;border-top:1px solid #999;padding-top:6px;font-size:12px;text-align:center}
+.inv .pied{margin-top:28px;font-size:10px;color:#666;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+.inv-prev{grid-column:1/-1;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.inv-prev .inv{min-width:620px}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff!important}
+  body>*:not(#print-zone){display:none!important}
+  #print-zone{display:block!important}
+  .inv{padding:0;max-width:none}
+}
 </style>
 </head>
 <body>
@@ -211,6 +242,7 @@ body.locked::before{background:var(--bg)}
   </div>
 </header>
 
+<div id="print-zone"></div>
 <main class="wrap">
   <div id="banner" class="banner" hidden></div>
   <section id="v-lock"></section>
@@ -272,7 +304,7 @@ const CST={disponible:{l:"Disponible",c:"p-ok"},mission:{l:"En mission",c:"p-inf
 const MANUAL=["disponible","maintenance","panne"];
 const MST={planifiee:{l:"Planifiée",c:"p-mut"},en_cours:{l:"En cours",c:"p-info"},livree:{l:"Livrée",c:"p-ok"},annulee:{l:"Annulée",c:"p-bad"}};
 const PRODUITS=["Cacao","Café","Anacarde","Maïs","Riz","Coton","Intrants","Autre"];
-const CATS=["Carburant","Entretien / vidange","Réparation","Pneus","Frais de route / péage","Salaire chauffeur","Assurance","Visite technique","Autre"];
+const CATS=["Carburant","Entretien / vidange","Réparation","Pneus","Frais de route / péage","Salaire chauffeur","Manutention (chargement / déchargement)","Assurance","Visite technique","Autre"];
 const COLL_L={camions:"camion",missions:"mission",depenses:"dépense",gestionnaires:"gestionnaire"};
 const MASC={camions:1,gestionnaires:1};
 const DOCS=[["assuranceExp","Assurance","Assurance"],["visiteExp","Visite technique","Visite"],["vignetteExp","Vignette","Vignette"],["stationnementExp","Carte de stationnement","Stationnement"],["transportExp","Carte de transport","Carte transport"],["patenteExp","Patente de transport","Patente"]];
@@ -538,7 +570,7 @@ function renderLock(){
   if(sig===lockSig) return; lockSig=sig;
   const box=$("#v-lock");
   if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead}<p>La plateforme n'est pas encore reliée à Firebase. Collez la configuration Firebase dans le fichier <b>index.html</b> (étape 5 du guide).</p></div>`;return}
-  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 11)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet. (version 12)"}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
   if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate>${lkHead}
     <p><b>Première installation.</b> Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
     <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span class="hint" style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
@@ -720,7 +752,8 @@ function missionCard(m){
     <div class="route">${esc(m.origine||"?")}<span>→</span>${esc(m.destination||"?")}</div>
     <div class="meta"><span>${fdate(m.date)}</span><span><b>${esc(m.produit||"")}</b></span>${m.sacs?`<span><b class="num">${nb(m.sacs)}</b> sacs</span>`:""}${m.poidsKg?`<span><b class="num">${nb(m.poidsKg/1000)}</b> t</span>${over?' <span class="pill p-warn nodot">Surcharge</span>':""}`:""}${m.fraisRoute?`<span>Frais <b>${fcfa(m.fraisRoute)}</b></span>`:""}${m.bordereau?`<span>Bordereau <b>${esc(m.bordereau)}</b></span>`:""}</div>
     ${m.notes?`<div class="meta">${esc(m.notes)}</div>`:""}
-    <div class="row w" style="justify-content:flex-end">${next}<button class="btn sm" data-a="edit" data-c="missions" data-id="${m.id}">Modifier</button><button class="btn sm ghost" data-a="del" data-c="missions" data-id="${m.id}">Supprimer</button></div>
+    ${m.facture?`<div class="meta"><span class="pill p-info nodot">Facture ${esc(m.facture.num)}</span><span>Facturé <b>${fcfa(m.facture.ttc)}</b></span><span>Dépenses <b>${fcfa(missionCosts(m.id).total)}</b></span><span>Résultat <b class="${m.facture.ht-missionCosts(m.id).total>=0?"res-pos":"res-neg"}">${fcfa(m.facture.ht-missionCosts(m.id).total)}</b></span></div>`:""}
+    <div class="row w" style="justify-content:flex-end">${next}${m.statut==="livree"?`<button class="btn sm${m.facture?"":" primary"}" type="button" data-clo="${m.id}">${m.facture?"Facture & coûts":"Clôturer : facture & coûts"}</button>`:""}<button class="btn sm" data-a="edit" data-c="missions" data-id="${m.id}">Modifier</button><button class="btn sm ghost" data-a="del" data-c="missions" data-id="${m.id}">Supprimer</button></div>
     ${trace(m)}
   </div>`;
 }
@@ -1195,7 +1228,7 @@ document.addEventListener("click",e=>{
   }
   else if(a==="doneM"){
     const m=state.missions.find(x=>x.id===id);
-    const go=()=>store.update("missions",id,{statut:"livree"}).then(()=>toast("Mission livrée"));
+    const go=()=>store.update("missions",id,{statut:"livree"}).then(()=>{toast("Mission livrée");setTimeout(()=>openCloture(id),400)});
     if(m&&!m.poidsKg&&!m.sacs) openConfirm("Marquer livrée","Aucun poids ni nombre de sacs n'est saisi : le tonnage du mois sera faux. Vous pouvez d'abord modifier la mission.","Marquer livrée quand même",go,false);
     else{b.disabled=true;act(go()).finally(()=>b.disabled=false)}
   }
@@ -1209,6 +1242,153 @@ document.addEventListener("change",async e=>{
   }
   if(e.target.id==="dCam"){filters.dCam=e.target.value;renderDepenses()}
 });
+
+/* ---------- Clôture de mission : facture client + décompte des coûts ---------- */
+const ORG={nom:"SOCIÉTÉ COOPÉRATIVE AVEC CONSEIL D'ADMINISTRATION BENGUELEMAN DE MANKONO",sigle:"SOCOBEMA-COOP-CA",snt:"SC061082",adr:"BP 87 Mankono — Côte d'Ivoire",tel:"07 07 64 41 06"};
+const CLO_CATS=[["carburant","Carburant"],["chauffeur","Salaire chauffeur"],["route","Frais de route / péage"],["manut","Manutention (chargement / déchargement)"],["repar","Réparation"],["autre","Autre"]];
+const cloCatName=k=>(CLO_CATS.find(c=>c[0]===k)||["","Autre"])[1];
+const mdepId=(mid,k)=>"mdep_"+mid+"_"+k;
+const localFac={};
+function missionCosts(mid){
+  const D=alive("depenses").filter(d=>d.missionId===mid);
+  const by={}; D.forEach(d=>{by[d.categorie]=(by[d.categorie]||0)+(+d.montant||0)});
+  const m=state.missions.find(x=>x.id===mid)||{};
+  if(m.fraisRoute&&!D.some(d=>d.categorie==="Frais de route / péage")) by["Frais de route / péage"]=(by["Frais de route / péage"]||0)+(+m.fraisRoute);
+  const litres=D.filter(d=>d.categorie==="Carburant").reduce((s,d)=>s+(+d.litres||0),0);
+  return {by,litres,total:Object.values(by).reduce((s,v)=>s+v,0),list:D};
+}
+function nextFactureNum(){
+  const y=new Date().getFullYear(), pre="FAC-"+y+"-";
+  const max=state.missions.map(m=>m.facture&&m.facture.num).filter(n=>n&&n.startsWith(pre)).map(n=>+n.slice(pre.length)||0).reduce((a,b)=>Math.max(a,b),0);
+  return pre+String(max+1).padStart(4,"0");
+}
+function enLettres(n){
+  n=Math.round(n); if(n===0) return "zéro";
+  const U=["","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize"];
+  const D=["","dix","vingt","trente","quarante","cinquante","soixante","soixante","quatre-vingt","quatre-vingt"];
+  const cent=x=>{ // 0..999
+    let r="",c=Math.floor(x/100),d=x%100;
+    if(c) r=(c>1?U[c]+" cent":"cent")+(c>1&&d===0?"s":"");
+    if(d){ let t="";
+      if(d<17) t=U[d]; else if(d<20) t="dix-"+U[d-10];
+      else { const dz=Math.floor(d/10),u=d%10;
+        if(dz===7||dz===9){ const rest=d-dz*10+10; t=D[dz]+(rest===11&&dz===7?"-et-":"-")+(rest<17?U[rest]:"dix-"+U[rest-10]); }
+        else t=D[dz]+(u===1&&dz<8?"-et-un":u?"-"+U[u]:(dz===8?"s":"")); }
+      r+=(r?" ":"")+t; }
+    return r; };
+  const parts=[[1e9,"milliard"],[1e6,"million"],[1e3,"mille"]]; let r="",x=n;
+  for(const [v,w] of parts){const q=Math.floor(x/v); if(q){ r+=(r?" ":"")+(w==="mille"?(q===1?"mille":cent(q)+" mille"):cent(q)+" "+w+(q>1?"s":"")); x%=v; }}
+  if(x) r+=(r?" ":"")+cent(x);
+  return r.replace(/(cent|vingt)s (mille|million)/g,"$1 $2");
+}
+function openCloture(mid){
+  const m=state.missions.find(x=>x.id===mid); if(!m) return;
+  if(!canWrite){ if(m.facture) return showInvoice(mid,"facture"); toast("Lecture seule.");return }
+  const c=camById(m.camionId)||{}, f=m.facture||{}, cost=missionCosts(mid);
+  const t=(m.poidsKg||0)/1000;
+  const val=k=>{const name=cloCatName(k);return cost.by[name]||""};
+  $("#dlg-t").textContent=(m.facture?"Facture & coûts":"Clôture de la mission");
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
+    <p class="confirm" style="font-size:.9rem">${esc(m.origine)} → ${esc(m.destination)} · ${fdate(m.date)} · ${esc(m.produit||"")}${t?" · "+nb(t)+" t":""} · ${esc(platesTxt(c))}</p>
+    <h3 style="grid-column:1/-1;margin:4px 0 0">1. Transport facturé au client</h3>
+    <div class="fld full"><label for="clo-client">Client</label><input id="clo-client" maxlength="120" value="${esc(f.client||m.client||"")}" placeholder="Nom de l'acheteur ou de l'exportateur"></div>
+    <div class="fld"><label for="clo-mode">Tarif</label><select id="clo-mode"><option value="tonne"${(f.mode||"tonne")==="tonne"?" selected":""}>Par tonne</option><option value="forfait"${f.mode==="forfait"?" selected":""}>Forfait (prix global)</option></select></div>
+    <div class="fld"><label for="clo-pu" id="clo-pu-l">Prix par tonne (FCFA)</label><input id="clo-pu" type="number" inputmode="numeric" min="0" step="1" value="${f.pu||""}"></div>
+    <div class="fld"><label for="clo-tva">TVA</label><select id="clo-tva"><option value="0"${!f.tvaPct?" selected":""}>Sans TVA</option><option value="18"${f.tvaPct===18?" selected":""}>TVA 18 %</option></select></div>
+    <h3 style="grid-column:1/-1;margin:10px 0 0">2. Dépenses de la mission (FCFA)</h3>
+    <div class="clo-grid">${CLO_CATS.map(([k,l])=>`<div class="clo-row"><label for="clo-${k}">${l}</label><input id="clo-${k}" type="number" inputmode="numeric" min="0" step="1" value="${val(k)}" placeholder="0"></div>`).join("")}
+      <div class="clo-row"><label for="clo-litres">Carburant : litres</label><input id="clo-litres" type="number" inputmode="decimal" min="0" step="0.1" value="${cost.litres||""}" placeholder="0"></div></div>
+    <div class="clo-sum" id="clo-sum"></div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button>${m.facture?`<button type="button" class="btn" data-inv="${mid}" data-kind="decompte">Décompte</button><button type="button" class="btn" data-inv="${mid}" data-kind="facture">Facture</button>`:""}<button type="submit" class="btn primary" id="dlg-ok">${m.facture?"Enregistrer":"Enregistrer et créer la facture"}</button>`;
+  const calc=()=>{
+    const mode=$("#clo-mode").value, pu=+$("#clo-pu").value||0, tva=+$("#clo-tva").value||0;
+    $("#clo-pu-l").textContent=mode==="tonne"?"Prix par tonne (FCFA)":"Prix du transport (FCFA)";
+    const qte=mode==="tonne"?t:1, ht=Math.round(pu*qte), ttc=Math.round(ht*(1+tva/100));
+    const dep=CLO_CATS.reduce((s,[k])=>s+(+$("#clo-"+k).value||0),0), res=ht-dep;
+    $("#clo-sum").innerHTML=`<span>Montant facturé${tva?" HT":""}${mode==="tonne"?` (${nb(t)} t × ${fcfa(pu)})`:""}</span><b>${fcfa(ht)}</b>${tva?`<span>Total TTC</span><b>${fcfa(ttc)}</b>`:""}<span>Total des dépenses</span><b>${fcfa(dep)}</b><span><b>Résultat de la mission</b></span><b class="${res>=0?"res-pos":"res-neg"}">${fcfa(res)}${ht?` (${Math.round(res/ht*100)} %)`:""}</b>${mode==="tonne"&&!t?`<span style="grid-column:1/-1;color:var(--bad)">Le poids de la mission n'est pas saisi : modifiez la mission ou choisissez « Forfait ».</span>`:""}`;
+    return {mode,pu,tva,qte,ht,ttc,dep};
+  };
+  $("#dlg-b").addEventListener("input",calc); $("#dlg-b").addEventListener("change",calc); calc();
+  ctx={kind:"confirm",label:"Enregistrer",saving:false,fn:async()=>{
+    const r=calc(), client=$("#clo-client").value.trim();
+    if(!client){setMsgs(["Indiquez le client à facturer."],[]);throw {silent:true}}
+    if(!r.pu){setMsgs(["Indiquez le prix du transport."],[]);throw {silent:true}}
+    if(r.mode==="tonne"&&!t){setMsgs(["Poids non saisi : choisissez « Forfait » ou modifiez la mission."],[]);throw {silent:true}}
+    const W=[]; if(r.dep>r.ht) W.push("Les dépenses dépassent le montant facturé : la mission est à perte.");
+    if(!(+$("#clo-carburant").value)) W.push("Aucun carburant saisi pour cette mission.");
+    if(!(+$("#clo-chauffeur").value)) W.push("Aucune rémunération du chauffeur saisie.");
+    if(+$("#clo-carburant").value&&+$("#clo-litres").value){const pl=(+$("#clo-carburant").value)/(+$("#clo-litres").value); if(pl<500||pl>1100) W.push("Prix du carburant inhabituel : "+fcfa(pl)+" par litre.")}
+    if(W.length&&!ctx.warned){ctx.warned=true;setMsgs([],W.concat(["Appuyez de nouveau pour confirmer."]));throw {silent:true}}
+    const st=stamp(), now=new Date().toISOString(), b=fdb.batch();
+    CLO_CATS.forEach(([k,l])=>{
+      const amt=Math.round(+$("#clo-"+k).value||0), ref=fdb.collection("depenses").doc(mdepId(mid,k)), ex=state.depenses.find(d=>d.id===mdepId(mid,k));
+      if(amt>0) b.set(ref,{camionId:m.camionId,missionId:mid,date:(m.date||today()),categorie:l,montant:amt,...(k==="carburant"&&+$("#clo-litres").value?{litres:+$("#clo-litres").value}:{}),note:`Mission ${m.origine} → ${m.destination}`,supprime:false,...st,creeLe:(ex&&ex.creeLe)||now,creePar:(ex&&ex.creePar)||authUser.uid});
+      else if(ex&&!ex.supprime) b.update(ref,{supprime:true,supprimeLe:now,...st});
+    });
+    const cBy={}; CLO_CATS.forEach(([k,l])=>{const v=Math.round(+$("#clo-"+k).value||0); if(v>0) cBy[l]=v});
+    const fac={couts:{by:cBy,litres:+$("#clo-litres").value||0},num:(m.facture&&m.facture.num)||nextFactureNum(),le:(m.facture&&m.facture.le)||now,maj:now,client,mode:r.mode,pu:r.pu,qte:r.qte,ht:r.ht,tvaPct:r.tva,tva:r.ttc-r.ht,ttc:r.ttc};
+    b.update(fdb.collection("missions").doc(mid),{facture:fac,client,fraisRoute:null,...st});
+    b.set(jRef(),jEntry(m.facture?"facture modifiée":"facture créée","missions",mid,fac.num+" · "+client+" · "+r.ttc+" FCFA"));
+    await queued(b.commit());
+    /* Anti-doublon : si deux personnes ont créé une facture au même moment, la plus récente prend le numéro suivant. */
+    if(!m.facture){ await sleep(1500);
+      const twin=state.missions.find(x=>x.id!==mid&&x.facture&&x.facture.num===fac.num&&(x.facture.le||"")<=fac.le);
+      if(twin){ fac.num=nextFactureNum(); await queued(fdb.collection("missions").doc(mid).update({"facture.num":fac.num,...stamp()})); } }
+    localFac[mid]=fac; toast("Facture "+fac.num+" enregistrée");
+    for(let i=0;i<20&&!(state.missions.find(x=>x.id===mid)||{}).facture;i++) await sleep(150);
+    showInvoice(mid,"facture"); return false;
+  }};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+function invoiceHTML(mid,kind){
+  const m=state.missions.find(x=>x.id===mid); if(!m||!(m.facture||localFac[mid])) return "";
+  const f=m.facture||localFac[mid], c=camById(m.camionId)||{}, t=(m.poidsKg||0)/1000;
+  let cost=missionCosts(mid);
+  if(!cost.list.length&&f.couts){const by=f.couts.by||{};cost={by,litres:f.couts.litres||0,total:Object.values(by).reduce((a,b)=>a+b,0),list:[]}}
+  const hd=`<div class="hd"><div class="org"><h1>${kind==="facture"?"FACTURE":"DÉCOMPTE DE MISSION"}</h1><b>${ORG.sigle}</b><br>${ORG.nom}<br>Code SNT : ${ORG.snt} — ${ORG.adr}<br>Tél. : ${ORG.tel}</div>
+    <div class="org" style="text-align:right"><b>N° ${esc(f.num)}</b><br>Date : ${fdate((f.le||"").slice(0,10))}${kind==="decompte"?"<br><i>Document interne</i>":""}</div></div>`;
+  const desc=`Transport de ${esc(m.produit||"marchandise")}${m.sacs?` — ${nb(m.sacs)} sacs`:""}${t?` — ${nb(t)} t`:""}<br>Trajet : ${esc(m.origine)} → ${esc(m.destination)}, le ${fdate(m.date)}<br>Camion : ${esc(platesTxt(c))}${m.bordereau?`<br>Bordereau / connaissement : ${esc(m.bordereau)}`:""}`;
+  if(kind==="facture") return `<div class="inv">${hd}
+    <div class="box"><b>Client :</b> ${esc(f.client)}</div>
+    <table><thead><tr><th>Désignation</th><th class="r">Quantité</th><th class="r">Prix unitaire</th><th class="r">Montant</th></tr></thead><tbody>
+      <tr><td>${desc}</td><td class="r">${f.mode==="tonne"?nb(f.qte)+" t":"1 forfait"}</td><td class="r">${fcfa(f.pu)}</td><td class="r">${fcfa(f.ht)}</td></tr>
+      ${f.tvaPct?`<tr class="tot"><td colspan="3" class="r">Total HT</td><td class="r">${fcfa(f.ht)}</td></tr><tr class="tot"><td colspan="3" class="r">TVA ${f.tvaPct} %</td><td class="r">${fcfa(f.tva)}</td></tr>`:""}
+      <tr class="tot big"><td colspan="3" class="r">${f.tvaPct?"TOTAL TTC":"TOTAL À PAYER"}</td><td class="r">${fcfa(f.ttc)}</td></tr></tbody></table>
+    <p>Arrêtée la présente facture à la somme de : <b>${enLettres(f.ttc)} francs CFA</b>.</p>
+    <div class="sig"><div>Le client<br><br></div><div>Pour la SOCOBEMA,<br>le Président du Conseil d'Administration</div></div>
+    <div class="pied">${ORG.sigle} — Code SNT ${ORG.snt} — ${ORG.adr} — Tél. ${ORG.tel}</div></div>`;
+  const rows=Object.entries(cost.by).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const res=f.ht-cost.total;
+  return `<div class="inv">${hd}
+    <div class="box">${desc}<br>Client : <b>${esc(f.client)}</b> — Chauffeur : ${esc(c.chauffeur||(c.pos&&c.pos.par)||"—")}</div>
+    <table><thead><tr><th>Recettes</th><th class="r">Montant</th></tr></thead><tbody>
+      <tr><td>Transport facturé${f.tvaPct?" (HT)":""} — facture ${esc(f.num)}${f.mode==="tonne"?` : ${nb(f.qte)} t × ${fcfa(f.pu)}`:""}</td><td class="r">${fcfa(f.ht)}</td></tr></tbody></table>
+    <table><thead><tr><th>Dépenses de la mission</th><th class="r">Montant</th><th class="r">Part</th></tr></thead><tbody>
+      ${rows.length?rows.map(([k,v])=>`<tr><td>${esc(k)}${k==="Carburant"&&cost.litres?` (${nb(cost.litres)} L)`:""}</td><td class="r">${fcfa(v)}</td><td class="r">${cost.total?Math.round(v/cost.total*100):0} %</td></tr>`).join(""):`<tr><td colspan="3">Aucune dépense saisie</td></tr>`}
+      <tr class="tot"><td>Total des dépenses</td><td class="r">${fcfa(cost.total)}</td><td></td></tr></tbody></table>
+    <table><tbody><tr class="tot big"><td>RÉSULTAT DE LA MISSION</td><td class="r" style="color:${res>=0?"#1E7A45":"#B3261E"}">${fcfa(res)}${f.ht?` (${Math.round(res/f.ht*100)} %)`:""}</td></tr>
+      ${t?`<tr><td>Coût par tonne transportée</td><td class="r">${fcfa(cost.total/t)}</td></tr><tr><td>Résultat par tonne</td><td class="r">${fcfa(res/t)}</td></tr>`:""}</tbody></table>
+    <div class="sig"><div>Établi par</div><div>Visa du PCA</div></div>
+    <div class="pied">Document interne — ${ORG.sigle} — édité le ${fdt(new Date().toISOString())}</div></div>`;
+}
+function showInvoice(mid,kind){
+  const html=invoiceHTML(mid,kind); if(!html) return;
+  $("#dlg-t").textContent=kind==="facture"?"Facture":"Décompte de mission";
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="inv-prev">${html}</div>
+    <p class="trace" style="grid-column:1/-1;margin:0">« Imprimer / PDF » ouvre l'impression du téléphone : choisissez <b>Enregistrer au format PDF</b> pour l'envoyer par WhatsApp.</p>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button><button type="button" class="btn" data-inv="${mid}" data-kind="${kind==="facture"?"decompte":"facture"}">${kind==="facture"?"Voir le décompte":"Voir la facture"}</button>${canWrite?`<button type="button" class="btn" data-clo="${mid}">Modifier</button>`:""}<button type="button" class="btn primary" data-print="${mid}" data-kind="${kind}">Imprimer / PDF</button>`;
+  ctx={kind:"inv"}; if(!$("#dlg").open) $("#dlg").showModal();
+}
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-clo]"); if(c){e.stopPropagation();openCloture(c.dataset.clo);return}
+  const v=e.target.closest("[data-inv]"); if(v){e.stopPropagation();showInvoice(v.dataset.inv,v.dataset.kind);return}
+  const p=e.target.closest("[data-print]"); if(p){e.stopPropagation();
+    const m=state.missions.find(x=>x.id===p.dataset.print);
+    $("#print-zone").innerHTML=invoiceHTML(p.dataset.print,p.dataset.kind);
+    const old=document.title; document.title=(p.dataset.kind==="facture"?"Facture ":"Decompte ")+((m&&m.facture&&m.facture.num)||"");
+    $("#dlg").close(); setTimeout(()=>{try{window.print()}catch(_){toast("Impression impossible sur ce téléphone.")} document.title=old},150);
+    return}
+},true);
 
 /* ---------- Suivi GPS ---------- */
 const MANKONO=[8.06,-6.19];
