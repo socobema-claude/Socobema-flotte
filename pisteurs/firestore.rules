@@ -69,6 +69,14 @@ service cloud.firestore {
         || (peut('pis') && resource.data.role == 'pisteur' && request.resource.data.role == 'pisteur');
       allow delete: if false;
     }
+    // Identité et photos (photo, CNI) : pisteurs → ceux qui gèrent les pisteurs ; agents → propriétaire seulement.
+    match /identites_pis/{id} { allow read, write: if peut('pis'); }
+    match /photos_pis/{id} {
+      allow read: if peut('pis');
+      allow write: if peut('pis') && request.resource.data.size() <= 8;
+    }
+    match /identites_ag/{id} { allow read, write: if proprio(); }
+    match /photos_ag/{id} { allow read, write: if proprio(); }
     match /pisteurs/{id} {
       allow read: if agent() || (pisteurMoi() && id == monPid());
       allow create, update: if peut('pis') && petit();
