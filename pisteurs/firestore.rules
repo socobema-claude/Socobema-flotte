@@ -1,0 +1,115 @@
+rules_version = '2';
+// Règles de sécurité – Pisteurs Bengueleman (version indépendante, connexion par code)
+// À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminDoc() { return /databases/$(database)/documents/config/admin; }
+    function adminExiste() { return exists(adminDoc()); }
+    // Propriétaire : le compte créé à la première installation.
+    function proprio() { return connecte() && adminExiste() && get(adminDoc()).data.uid == request.auth.uid; }
+    function cptPath() { return /databases/$(database)/documents/comptes/$(request.auth.uid); }
+    function cpt() { return get(cptPath()).data; }
+    // Compte actif = fiche présente, active, ni remplacée par un nouveau code, ni retirée.
+    function compteOk() {
+      return connecte() && exists(cptPath()) && cpt().actif == true
+        && cpt().get('remplace', false) == false && cpt().get('retire', false) == false;
+    }
+    function role() { return cpt().role; }
+    function agent() { return proprio() || (compteOk() && role() != 'pisteur'); }
+    function pisteurMoi() { return compteOk() && role() == 'pisteur'; }
+    function monPid() { return cpt().pisteurId; }
+    // Droits par rôle (identiques à ceux affichés dans l'onglet « Accès des agents »).
+    function peut(a) {
+      return proprio() || (compteOk() && (
+        role() in ['pca', 'directeur']
+        || (role() == 'tresorier' && a in ['arg', 'exp'])
+        || (role() == 'secretaire' && a in ['pis', 'ach', 'liv', 'sac', 'tr'])
+        || (role() == 'magasinier' && a in ['liv', 'sac', 'tr'])));
+    }
+    // Chaque saisie porte la signature de son véritable auteur.
+    function signe() { return request.resource.data.saisiPar == request.auth.uid; }
+    function petit() { return request.resource.data.size() <= 45; }
+    function coopPath() { return /databases/$(database)/documents/config/coop; }
+    function cloture() { return exists(coopPath()) ? get(coopPath()).data.get('cloture', '') : ''; }
+    function horsCloture(d) { return cloture() == '' || (d is string && d > cloture()); }
+    function cles(l) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(l); }
+    // Annulation tracée : jamais d'effacement, seulement une marque « annulé » avec motif et auteur.
+    function annulation() {
+      return peut('ann') && cles(['annule', 'motifAnnul', 'annuleLe', 'annulePar'])
+        && request.resource.data.annule == true && request.resource.data.annulePar == request.auth.uid
+        && horsCloture(resource.data.date);
+    }
+    function lectureOp() { return agent() || (pisteurMoi() && resource.data.pisteurId == monPid()); }
+    function saisie(a) {
+      return proprio() || (peut(a) && signe() && petit() && horsCloture(request.resource.data.date));
+    }
+
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    // Nom de la coopérative, prix, magasins : visibles par tous (écran d'accueil), modifiables selon le rôle.
+    match /config/coop {
+      allow read: if true;
+      allow write: if peut('reg');
+    }
+    // Liste des personnes qui peuvent se connecter (nom, rôle, identifiant technique ; jamais de code).
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if proprio()
+        || (peut('pis') && request.resource.data.role == 'pisteur')
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'proprietaire'
+            && getAfter(adminDoc()).data.uid == request.auth.uid);
+      allow update: if proprio()
+        || (peut('pis') && resource.data.role == 'pisteur' && request.resource.data.role == 'pisteur');
+      allow delete: if false;
+    }
+    match /pisteurs/{id} {
+      allow read: if agent() || (pisteurMoi() && id == monPid());
+      allow create, update: if peut('pis') && petit();
+      allow delete: if peut('pis');
+    }
+    match /achats/{id} {
+      allow read: if lectureOp();
+      allow create: if saisie('ach')
+        || (pisteurMoi() && signe() && petit() && horsCloture(request.resource.data.date)
+            && request.resource.data.pisteurId == monPid() && request.resource.data.declarePar == 'pisteur');
+      allow update: if annulation() || (peut('arg') && cles(['paye', 'payeLe']));
+      allow delete: if false;
+    }
+    match /livraisons/{id} {
+      allow read: if lectureOp();
+      allow create: if saisie('liv');
+      allow update: if annulation();
+      allow delete: if false;
+    }
+    match /sacs/{id} {
+      allow read: if lectureOp();
+      allow create: if saisie('sac');
+      allow update: if annulation();
+      allow delete: if false;
+    }
+    match /transferts/{id} {
+      allow read: if agent();
+      allow create: if saisie('tr');
+      allow update: if annulation()
+        || (peut('tr') && cles(['poidsRecu', 'sacsRecus', 'dateRecu']) && resource.data.poidsRecu == null
+            && horsCloture(request.resource.data.dateRecu));
+      allow delete: if false;
+    }
+    match /mouvements/{id} {
+      allow read: if lectureOp();
+      allow create: if saisie('arg')
+        || (pisteurMoi() && signe() && petit() && horsCloture(request.resource.data.date)
+            && request.resource.data.pisteurId == monPid() && request.resource.data.type == 'remb'
+            && request.resource.data.statut == 'a_confirmer');
+      allow update: if annulation()
+        || (peut('arg') && resource.data.get('statut', '') == 'a_confirmer'
+            && cles(['statut', 'confirmeLe', 'confirmePar', 'refuseLe', 'refusePar']));
+      allow delete: if false;
+    }
+  }
+}
