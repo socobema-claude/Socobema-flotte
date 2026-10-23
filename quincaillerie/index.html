@@ -183,7 +183,7 @@ body.locked::before{background:var(--bg)}
   .inv{padding:0;max-width:none}
 }
 
-body.vend .own{display:none!important}
+body.nown .own,body.vend .mgr{display:none!important}
 .res-pos{color:var(--ok)}.res-neg{color:var(--bad)}
 .who{font-weight:600;color:var(--ink)}
 /* Caisse */
@@ -252,12 +252,13 @@ body.vend .own{display:none!important}
       <button class="btn sm" id="btn-tools" type="button">Outils</button>
     </div>
     <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-v="accueil" id="t-accueil">Mon espace</button>
       <button class="tab" role="tab" data-v="caisse" id="t-caisse">Caisse</button>
       <button class="tab" role="tab" data-v="ventes" id="t-ventes">Ventes</button>
       <button class="tab" role="tab" data-v="stock" id="t-stock">Stock<span id="stock-n"></span></button>
       <button class="tab" role="tab" data-v="clients" id="t-clients">Crédits clients</button>
-      <button class="tab own" role="tab" data-v="achats" id="t-achats">Achats</button>
-      <button class="tab own" role="tab" data-v="depenses" id="t-depenses">Dépenses</button>
+      <button class="tab mgr" role="tab" data-v="achats" id="t-achats">Achats</button>
+      <button class="tab mgr" role="tab" data-v="depenses" id="t-depenses">Dépenses</button>
       <button class="tab own" role="tab" data-v="rapports" id="t-rapports">Rapports</button>
     </nav>
   </div>
@@ -266,7 +267,8 @@ body.vend .own{display:none!important}
 <main class="wrap">
   <div id="banner" class="banner" hidden></div>
   <section id="v-lock"></section>
-  <section id="v-caisse"></section>
+  <section id="v-accueil"></section>
+  <section id="v-caisse" hidden></section>
   <section id="v-ventes" hidden></section>
   <section id="v-stock" hidden></section>
   <section id="v-clients" hidden></section>
@@ -323,7 +325,7 @@ const CATS_DEP=["Loyer","Électricité / eau","Salaires","Transport / livraison"
 const MOTIFS=[["inventaire","Inventaire (comptage)"],["casse","Casse / abîmé"],["perte","Perte / vol"],["retour","Retour client"],["usage","Usage interne"],["autre","Autre"]];
 
 const state={articles:[],ventes:[],clients:[],fournisseurs:[],achats:[],depenses:[],reglements:[],caisses:[],comptes:[]};
-let mode="loading", isOwner=false, gLoaded=false, pickG=null, lockSig="";
+let mode="loading", isOwner=false, isGest=false, isMgr=false, gLoaded=false, pickG=null, lockSig="";
 let lastErr=null, slowLoad=false, fdb=null, auth=null, authUser=null, adminUid=null, adminEmail=null, pendingCode=null, setupBusy=false, dataUnsubs=[];
 let shop={nom:"Quincaillerie",ville:"Mankono",tel:"",adresse:"",prixLibre:false,rcc:""};
 const DOMAIN="quincaillerie-mankono.app";
@@ -343,6 +345,8 @@ const pool=()=>[pcaDoc(),...vendeurs()].filter(Boolean);
 const curG=()=>authUser&&state.comptes.find(g=>g.id===authUser.uid&&g.actif!==false&&!g.remplace);
 const isLocked=()=>mode!=="db"||!curG();
 const myName=()=>isOwner?"Propriétaire":((curG()||{}).nom||"");
+const roleOf=g=>g.id===adminUid?"pca":(g.role==="gestionnaire"?"gestionnaire":"vendeur");
+const ROLE_L={pca:"Propriétaire",gestionnaire:"Gestionnaire",vendeur:"Vendeur"};
 const stockSt=a=>{const s=+a.stock||0,m=+a.min||0;return s<=0?"rupture":(m&&s<=m)?"bas":"ok"};
 const valStock=(k)=>alive("articles").reduce((t,a)=>t+Math.max(0,+a.stock||0)*(+a[k]||0),0);
 
@@ -390,7 +394,7 @@ function subscribeData(){
 /* Données réservées au propriétaire : chargées seulement quand le propriétaire est connecté. */
 let ownSubbed=false;
 function subscribeOwn(){
-  if(ownSubbed||!isOwner) return; ownSubbed=true;
+  if(ownSubbed||!isMgr) return; ownSubbed=true;
   const since=dayShift(today(),-HIST_DAYS);
   listen([["fournisseurs",fdb.collection("fournisseurs")],["achats",fdb.collection("achats").where("jour",">=",since)],["depenses",fdb.collection("depenses").where("jour",">=",since)]],true);
 }
@@ -438,7 +442,9 @@ async function init(){
   const update=()=>{
     if(cfgLoaded&&cLoaded){gLoaded=true;mode=adminUid?"db":"setup"}
     isOwner=!!(authUser&&adminUid&&authUser.uid===adminUid);
-    if(isOwner&&gLoaded) subscribeOwn();
+    const me=authUser&&state.comptes.find(g=>g.id===authUser.uid);
+    isGest=!isOwner&&!!(me&&me.role==="gestionnaire"); isMgr=isOwner||isGest;
+    if(isMgr&&gLoaded) subscribeOwn();
     if(authUser&&gLoaded&&mode==="db"&&!setupBusy&&!curG()){auth.signOut();toast("Ce code n'est plus valide. Demandez un nouveau code au propriétaire.")}
     render();
   };
@@ -474,7 +480,7 @@ function renderLock(){
     <button class="lk-btn" type="submit" id="lock-ok">Créer l'accès propriétaire</button></form>`;return}
   if(pickG&&!G.find(g=>g.id===pickG)) pickG=null;
   if(!pickG&&G.length===1) pickG=G[0].id;
-  const lab=g=>g.id===adminUid?"Moi, propriétaire":g.nom;
+  const lab=g=>g.id===adminUid?"Moi, propriétaire":g.nom+(g.role==="gestionnaire"?" (gestionnaire)":"");
   box.innerHTML=`<form class="lock" id="lock-form" novalidate>${lkHead()}
     <p>Choisissez votre nom et tapez votre code d'accès à 6 chiffres.</p>
     <div class="lk-f"><label for="lk-who">Qui êtes-vous ?</label>
@@ -494,7 +500,7 @@ document.addEventListener("click",async e=>{
     const mail=(pcaDoc()||{}).email||adminEmail;
     try{await auth.sendPasswordResetEmail(mail);h.textContent=`Un e-mail vient d'être envoyé à ${mail.replace(/^(.{2}).*(@.*)$/,"$1•••$2")}. Ouvrez-le et choisissez un nouveau code à 6 chiffres.`}
     catch(err){h.textContent="L'e-mail n'a pas pu être envoyé. Vérifiez la connexion internet et réessayez."}
-  } else h.textContent=pickG?`Demandez au propriétaire${shop.tel?" ("+shop.tel+")":""} de vous générer un nouveau code depuis Outils → Vendeurs.`:"Choisissez d'abord votre nom dans la liste.";
+  } else h.textContent=pickG?`Demandez au propriétaire${shop.tel?" ("+shop.tel+")":""} de vous générer un nouveau code depuis Outils → Équipe.`:"Choisissez d'abord votre nom dans la liste.";
 });
 document.addEventListener("submit",async e=>{
   if(e.target.id==="setup-form"){
@@ -597,10 +603,11 @@ function csv(rows,cols){const q=v=>{v=v==null?"":String(v);return /[;"\r\n]/.tes
 let tt;function toast(msg){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=msg;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,3400)}
 
 /* ---------- Navigation ---------- */
-const OWN_VIEWS=["achats","depenses","rapports"];
-let view="caisse"; try{view=localStorage.getItem("q-view")||"caisse"}catch(e){}
+const OWN_VIEWS=["rapports"], MGR_VIEWS=["achats","depenses"];
+const allowed=v=>!(OWN_VIEWS.includes(v)&&!isOwner)&&!(MGR_VIEWS.includes(v)&&!isMgr);
+let view="accueil"; try{view=localStorage.getItem("q-view")||"accueil"}catch(e){}
 function setView(v){
-  if(OWN_VIEWS.includes(v)&&!isOwner) v="caisse";
+  if(!allowed(v)) v="accueil";
   view=v; try{localStorage.setItem("q-view",v)}catch(e){}
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.v===v)));
   document.querySelectorAll("main>section:not(#v-lock)").forEach(s=>s.hidden=s.id!=="v-"+v);
@@ -611,17 +618,19 @@ document.querySelector(".tabs").addEventListener("click",e=>{const t=e.target.cl
 function render(){
   const L=isLocked();
   document.body.classList.toggle("locked",L);
-  document.body.classList.toggle("vend",!isOwner);
+  document.body.classList.toggle("vend",!isMgr);
+  document.body.classList.toggle("nown",!isOwner);
   if(L){renderLock();showSync();return} lockSig="";
-  if(OWN_VIEWS.includes(view)&&!isOwner){setView("caisse");return}
+  if(!allowed(view)){setView("accueil");return}
   const g=curG();
-  $("#who").textContent=isOwner?"Propriétaire":"Vendeur : "+g.nom;
-  $("#btn-lock").hidden=false; $("#btn-lock").textContent=isOwner?"Verrouiller":"Changer";
+  $("#who").textContent=isOwner?"Propriétaire":(isGest?"Gestionnaire : ":"Vendeur : ")+g.nom;
+  $("#btn-lock").hidden=false; $("#btn-lock").textContent="Verrouiller";
+  $("#t-accueil").textContent=isMgr?"Tableau de bord":"Mon espace";
   $("#shop-name").textContent=shop.nom||"Quincaillerie"; $("#shop-sub").textContent=shop.ville||"Mankono";
   document.title=(shop.nom||"Quincaillerie")+" · Gestion";
   const nAl=alive("articles").filter(a=>stockSt(a)!=="ok").length;
   $("#stock-n").innerHTML=nAl?`<span class="badge" aria-label="${nAl} article(s) en alerte">${nAl}</span>`:"";
-  const f={caisse:renderCaisse,ventes:renderVentes,stock:renderStock,clients:renderClients,achats:renderAchats,depenses:renderDepenses,rapports:renderRapports}[view];
+  const f={accueil:renderAccueil,caisse:renderCaisse,ventes:renderVentes,stock:renderStock,clients:renderClients,achats:renderAchats,depenses:renderDepenses,rapports:renderRapports}[view];
   try{f&&f()}catch(err){console.error(err);$("#v-"+view).innerHTML=`<div class="empty">Erreur d'affichage : ${esc(err.message)}. Rechargez la page.</div>`}
   showSync(); renderBanners();
 }
@@ -638,7 +647,7 @@ function renderBanners(){
 let cart=[], pay={mode:"especes",clientId:"",remise:0,recu:null};
 try{const d=JSON.parse(localStorage.getItem("q-cart")||"null"); if(d&&Array.isArray(d.cart)){cart=d.cart;pay={...pay,...d.pay}}}catch(e){}
 const saveCart=()=>{try{localStorage.setItem("q-cart",JSON.stringify({cart,pay}))}catch(e){}};
-const canPrice=()=>isOwner||!!shop.prixLibre;
+const canPrice=()=>isMgr||!!shop.prixLibre;
 let searchQ="", caisseSig="";
 function cartTotals(){
   const total=cart.reduce((t,l)=>t+Math.round((+l.qte||0)*(+l.pu||0)),0);
@@ -664,7 +673,7 @@ function renderCaisse(){
   if(!box.querySelector("#q-search")||caisseSig!==sig){
     caisseSig=sig;
     if(!alive("articles").length){
-      box.innerHTML=`<div class="empty">Aucun article dans le stock pour le moment.${isOwner?`<br><button class="btn primary" type="button" data-act="art-new">Ajouter un article</button> <button class="btn" type="button" data-act="art-bulk">Ajouter plusieurs articles d'un coup</button>`:"<br>Le propriétaire doit d'abord enregistrer les articles."}</div>`;
+      box.innerHTML=`<div class="empty">Aucun article dans le stock pour le moment.${isMgr?`<br><button class="btn primary" type="button" data-act="art-new">Ajouter un article</button> <button class="btn" type="button" data-act="art-bulk">Ajouter plusieurs articles d'un coup</button>`:"<br>Le propriétaire doit d'abord enregistrer les articles."}</div>`;
       return;
     }
     box.innerHTML=`<div class="pos">
@@ -857,16 +866,16 @@ function renderVentes(){
       <div class="kpi"><div class="l">Espèces encaissées</div><div class="v">${fnum(d.parMode.especes)}</div><div class="s">ventes + crédits remboursés</div></div>
       <div class="kpi"><div class="l">Mobile money</div><div class="v">${fnum(MOBILE.reduce((t,k)=>t+(d.parMode[k]||0),0))}</div><div class="s">${MOBILE.filter(k=>d.parMode[k]).map(k=>MODE_L[k]+" "+fnum(d.parMode[k])).join(" · ")||"—"}</div></div>
       <div class="kpi"><div class="l">Vendu à crédit</div><div class="v" style="${d.credit?"color:var(--bad)":""}">${fnum(d.credit)}</div><div class="s">à récupérer</div></div>
-      ${isOwner?`<div class="kpi"><div class="l">Marge brute</div><div class="v">${fnum(d.marge)}</div><div class="s">ventes − prix d'achat</div></div>`:""}
+      ${isMgr?`<div class="kpi"><div class="l">Marge brute</div><div class="v">${fnum(d.marge)}</div><div class="s">ventes − prix d'achat</div></div>`:""}
     </div>
     ${d.clos?`<div class="banner ${d.clos.ecart===0?"info":d.clos.ecart>0?"warn":"bad"}"><span>Caisse clôturée à ${fhm(d.clos.le)} par ${esc(d.clos.parNom||"")} : attendu ${fcfa(d.clos.attendu)}, compté ${fcfa(d.clos.compte)} → <b>${d.clos.ecart===0?"aucun écart":(d.clos.ecart>0?"excédent ":"manque ")+fcfa(Math.abs(d.clos.ecart))}</b>${d.clos.note?" · "+esc(d.clos.note):""}</span></div>`:""}
-    ${d.R.length?`<h3>Encaissements de crédits et paiements</h3><div class="panel scroll" style="margin-bottom:16px"><table><thead><tr><th>Heure</th><th>Qui</th><th>Mode</th><th class="r">Montant</th><th></th></tr></thead><tbody>${d.R.map(r=>`<tr><td>${fhm(r.le)}</td><td>${r.type==="client"?"Client : ":"Fournisseur : "}${esc(r.nom||"")}</td><td>${esc(MODE_L[r.mode]||r.mode||"")}</td><td class="r num">${r.type==="client"?"+":"−"} ${fnum(r.montant)}</td><td>${isOwner?`<button class="btn sm ghost" type="button" data-reg-annul="${r.id}">Annuler</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:""}
+    ${d.R.length?`<h3>Encaissements de crédits et paiements</h3><div class="panel scroll" style="margin-bottom:16px"><table><thead><tr><th>Heure</th><th>Qui</th><th>Mode</th><th class="r">Montant</th><th></th></tr></thead><tbody>${d.R.map(r=>`<tr><td>${fhm(r.le)}</td><td>${r.type==="client"?"Client : ":"Fournisseur : "}${esc(r.nom||"")}</td><td>${esc(MODE_L[r.mode]||r.mode||"")}</td><td class="r num">${r.type==="client"?"+":"−"} ${fnum(r.montant)}</td><td>${isMgr?`<button class="btn sm ghost" type="button" data-reg-annul="${r.id}">Annuler</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:""}
     <h3>Ventes (${d.V.length})</h3>
     ${d.V.length?`<div class="list">${d.V.map(v=>`<div class="card"${v.statut==="annulee"?' style="opacity:.6"':""}>
       <div class="row between"><b class="num">${esc(v.num)}</b><span class="num" style="font-weight:700">${fcfa(v.net)}</span></div>
       <div class="meta"><span>${fhm(v.le)}</span><span>${esc(v.vendeurNom||"")}</span><span>${esc(MODE_L[v.mode]||v.mode)}</span>${v.clientNom?`<span>Client : <b>${esc(v.clientNom)}</b></span>`:""}${v.reste?`<span class="pill p-bad nodot">reste ${fnum(v.reste)}</span>`:""}${v.statut==="annulee"?`<span class="pill p-mut nodot">Annulée${v.annulMotif?" : "+esc(v.annulMotif):""}</span>`:""}</div>
       <div class="lines">${(v.lignes||[]).map(l=>`<div><span>${esc(l.nom)} × ${nb(l.qte)}</span><span class="num">${fnum(l.qte*l.pu)}</span></div>`).join("")}</div>
-      <div class="row"><button class="btn sm" type="button" data-recu="${v.id}">Reçu</button>${isOwner&&v.statut!=="annulee"?`<button class="btn sm ghost" type="button" data-annul="${v.id}" style="color:var(--bad)">Annuler la vente</button>`:""}</div></div>`).join("")}</div>`
+      <div class="row"><button class="btn sm" type="button" data-recu="${v.id}">Reçu</button>${isMgr&&v.statut!=="annulee"?`<button class="btn sm ghost" type="button" data-annul="${v.id}" style="color:var(--bad)">Annuler la vente</button>`:""}</div></div>`).join("")}</div>`
       :`<div class="empty">Aucune vente ce jour-là.${j<dayShift(today(),-HIST_DAYS)?" (Les ventes de plus de "+HIST_DAYS+" jours se consultent dans Rapports.)":""}</div>`}`;
 }
 document.addEventListener("click",e=>{
@@ -878,7 +887,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("change",e=>{if(e.target.id==="v-day"&&e.target.value){filters.ventesJour=e.target.value>today()?today():e.target.value;render()}});
 
 function annulerVente(id){
-  const v=state.ventes.find(x=>x.id===id); if(!v||!isOwner) return;
+  const v=state.ventes.find(x=>x.id===id); if(!v||!isMgr) return;
   openForm("Annuler la vente "+v.num,[{type:"html",html:`<p class="confirm">Montant : <b>${fcfa(v.net)}</b>. Les articles seront remis dans le stock${v.reste&&v.clientId?" et la dette du client ("+fcfa(v.reste)+") sera retirée":""}. L'annulation reste visible dans l'historique.</p>`},
     {k:"motif",l:"Motif de l'annulation",req:true,full:true,ph:"Ex. erreur de saisie, client a rendu la marchandise"}],{},async(o,c)=>{
     if(!o.motif||o.motif.length<3) throw {msgs:["Indiquez le motif."]};
@@ -892,7 +901,7 @@ function annulerVente(id){
   },"Annuler la vente");
 }
 function annulerReglement(id){
-  const r=state.reglements.find(x=>x.id===id); if(!r||!isOwner) return;
+  const r=state.reglements.find(x=>x.id===id); if(!r||!isMgr) return;
   openConfirm("Annuler ce paiement",`Annuler le paiement de <b>${fcfa(r.montant)}</b> (${esc(r.nom||"")}) ? Le solde sera remis comme avant.`,"Annuler le paiement",async()=>{
     const b=fdb.batch(), s=stamp();
     b.update(fdb.collection("reglements").doc(id),{statut:"annulee",...s});
@@ -937,20 +946,20 @@ function renderStock(){
   const nR=A.filter(a=>stockSt(a)==="rupture").length, nB=A.filter(a=>stockSt(a)==="bas").length;
   const cats=[...new Set(A.map(a=>a.cat).filter(Boolean))].sort();
   const box=$("#v-stock"); const focus=document.activeElement&&document.activeElement.id==="s-q";
-  box.innerHTML=`<div class="bar"><h2>Stock</h2><div class="row">${isOwner?`<button class="btn" type="button" data-act="art-bulk">Ajout groupé</button><button class="btn" type="button" data-act="inventaire">Inventaire</button><button class="btn primary" type="button" data-act="art-new">+ Article</button>`:""}</div></div>
+  box.innerHTML=`<div class="bar"><h2>Stock</h2><div class="row">${isMgr?`<button class="btn" type="button" data-act="art-bulk">Ajout groupé</button><button class="btn" type="button" data-act="inventaire">Inventaire</button><button class="btn primary" type="button" data-act="art-new">+ Article</button>`:""}</div></div>
     <div class="kpis"><div class="kpi"><div class="l">Articles</div><div class="v">${A.length}</div></div>
       <div class="kpi"><div class="l">En rupture</div><div class="v" style="${nR?"color:var(--bad)":""}">${nR}</div></div>
       <div class="kpi"><div class="l">Stock bas</div><div class="v" style="${nB?"color:var(--warn)":""}">${nB}</div><div class="s">à commander</div></div>
-      ${isOwner?`<div class="kpi"><div class="l">Valeur du stock</div><div class="v">${fnum(valStock("pa"))}</div><div class="s">au prix d'achat · ${fnum(valStock("pv"))} au prix de vente</div></div>`:""}</div>
+      ${isMgr?`<div class="kpi"><div class="l">Valeur du stock</div><div class="v">${fnum(valStock("pa"))}</div><div class="s">au prix d'achat · ${fnum(valStock("pv"))} au prix de vente</div></div>`:""}</div>
     <div class="row" style="margin-bottom:10px"><input class="search" id="s-q" type="search" placeholder="Chercher…" value="${esc(filters.stockQ)}" style="flex:1;min-width:180px" autocomplete="off">
       <select id="s-cat" class="btn" style="min-height:50px"><option value="tous">Toutes catégories</option>${cats.map(c=>`<option${c===cat?" selected":""}>${esc(c)}</option>`).join("")}</select></div>
-    <div class="chips" style="margin-bottom:14px">${[["tous","Tous"],["alerte","À commander ("+(nR+nB)+")"],["rupture","Rupture"],["ok","Disponibles"]].map(([k,l])=>`<button type="button" class="chip" data-sf="${k}" aria-pressed="${f===k}">${l}</button>`).join("")}${isOwner&&(nR+nB)?`<button type="button" class="chip" data-act="bon-cmd">Liste à commander (WhatsApp)</button>`:""}</div>
-    ${L.length?`<div class="panel scroll"><table><thead><tr><th>Article</th><th class="r">Stock</th>${isOwner?`<th class="r">Prix achat</th>`:""}<th class="r">Prix vente</th><th></th></tr></thead><tbody>
+    <div class="chips" style="margin-bottom:14px">${[["tous","Tous"],["alerte","À commander ("+(nR+nB)+")"],["rupture","Rupture"],["ok","Disponibles"]].map(([k,l])=>`<button type="button" class="chip" data-sf="${k}" aria-pressed="${f===k}">${l}</button>`).join("")}${isMgr&&(nR+nB)?`<button type="button" class="chip" data-act="bon-cmd">Liste à commander (WhatsApp)</button>`:""}</div>
+    ${L.length?`<div class="panel scroll"><table><thead><tr><th>Article</th><th class="r">Stock</th>${isMgr?`<th class="r">Prix achat</th>`:""}<th class="r">Prix vente</th><th></th></tr></thead><tbody>
     ${L.map(a=>{const st=stockSt(a);return `<tr><td style="white-space:normal"><b>${esc(a.nom)}</b><div class="trace">${esc(a.cat||"")}${a.ref?" · "+esc(a.ref):""}${a.min?" · alerte à "+nb(a.min):""}</div></td>
       <td class="r num"><span class="pill nodot ${st==="rupture"?"p-bad":st==="bas"?"p-warn":"p-ok"}">${nb(a.stock)} ${esc(a.unite||"")}</span></td>
-      ${isOwner?`<td class="r num">${fnum(a.pa)}</td>`:""}<td class="r num"><b>${fnum(a.pv)}</b>${a.pg?`<div class="trace">gros : ${fnum(a.pg)}</div>`:""}</td>
-      <td class="r">${isOwner?`<button class="btn sm" type="button" data-adj="${a.id}">Ajuster</button> <button class="btn sm ghost" type="button" data-art="${a.id}">Modifier</button>`:`<button class="btn sm ghost" type="button" data-add-go="${a.id}">Vendre</button>`}</td></tr>`}).join("")}
-    </tbody></table></div>`:`<div class="empty">${A.length?"Aucun article ne correspond.":"Aucun article pour le moment."}${isOwner&&!A.length?`<br><button class="btn primary" type="button" data-act="art-new">Ajouter un article</button>`:""}</div>`}`;
+      ${isMgr?`<td class="r num">${fnum(a.pa)}</td>`:""}<td class="r num"><b>${fnum(a.pv)}</b>${a.pg?`<div class="trace">gros : ${fnum(a.pg)}</div>`:""}</td>
+      <td class="r">${isMgr?`<button class="btn sm" type="button" data-adj="${a.id}">Ajuster</button> <button class="btn sm ghost" type="button" data-art="${a.id}">Modifier</button>`:`<button class="btn sm ghost" type="button" data-add-go="${a.id}">Vendre</button>`}</td></tr>`}).join("")}
+    </tbody></table></div>`:`<div class="empty">${A.length?"Aucun article ne correspond.":"Aucun article pour le moment."}${isMgr&&!A.length?`<br><button class="btn primary" type="button" data-act="art-new">Ajouter un article</button>`:""}</div>`}`;
   if(focus){const s=$("#s-q");s.focus();s.setSelectionRange(s.value.length,s.value.length)}
 }
 document.addEventListener("input",e=>{if(e.target.id==="s-q"){filters.stockQ=e.target.value;renderStock()}});
@@ -1341,6 +1350,73 @@ async function csvVentes(){
   saveBlob(new Blob([csv(rows,[["date","Date"],["heure","Heure"],["num","Reçu"],["vendeur","Vendeur"],["client","Client"],["mode","Paiement"],["statut","Statut"],["article","Article"],["qte","Quantité"],["pu","Prix unitaire"],["total","Total ligne"],["pa","Prix achat"],["marge","Marge"]])],{type:"text/csv;charset=utf-8"}),`ventes_${from}_${to}.csv`);
 }
 
+/* ---------- ACCUEIL : « Mon espace » (vendeur) ou « Tableau de bord » (propriétaire, gestionnaire) ---------- */
+function encaisse(V,R){
+  const m={}; MODES.forEach(([k])=>m[k]=0);
+  V.forEach(v=>{const k=v.mode==="credit"?"especes":v.mode;m[k]+=(+v.paye||0)});
+  R.forEach(r=>{m[r.mode||"especes"]=(m[r.mode||"especes"]||0)+(+r.montant||0)});
+  return{esp:m.especes,mob:MOBILE.reduce((t,k)=>t+(m[k]||0),0)};
+}
+function joursBars(V){
+  const t=today(), D=[]; for(let i=6;i>=0;i--){const j=dayShift(t,-i);D.push([j,V.filter(v=>v.jour===j).reduce((s,v)=>s+(+v.net||0),0)])}
+  const m=Math.max(1,...D.map(d=>d[1]));
+  return D.map(([j,v])=>`<div class="cat"><span>${j===t?"Aujourd'hui":new Date(j+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"})}</span><b class="num">${fcfa(v)}</b><div class="track"><i style="width:${v/m*100}%"></i></div></div>`).join("");
+}
+function alertesStock(n){
+  const A=alive("articles").filter(a=>stockSt(a)!=="ok").sort((a,b)=>(+a.stock||0)-(+b.stock||0));
+  if(!A.length) return `<p style="margin:0;color:var(--muted)">Aucune alerte : tout le stock est suffisant.</p>`;
+  return A.slice(0,n).map(a=>`<div class="alert"><span class="pill nodot ${stockSt(a)==="rupture"?"p-bad":"p-warn"}">${stockSt(a)==="rupture"?"Rupture":"Bas"}</span><span style="flex:1">${esc(a.nom)}</span><b class="num">${nb(a.stock)} ${esc(a.unite||"")}</b></div>`).join("")+(A.length>n?`<p class="trace" style="margin:6px 0 0">… et ${A.length-n} autre(s).</p>`:"");
+}
+function renderAccueil(){
+  const box=$("#v-accueil"), t=today(), g=curG(), uid=authUser.uid;
+  const hello=`<div class="bar"><div><h2>${isMgr?"Tableau de bord":"Mon espace"}</h2><p style="margin:2px 0 0;color:var(--muted)">Bonjour ${esc(isOwner?"patron":g.nom)} · ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</p></div>
+    <div class="row"><button class="btn primary" type="button" data-go="caisse">Nouvelle vente</button><button class="btn" type="button" data-act="reg-cli">Encaisser un crédit</button>${isMgr?`<button class="btn" type="button" data-act="achat-new">Réception</button><button class="btn" type="button" data-act="dep-new">Dépense</button>`:""}</div></div>`;
+  if(!isMgr){
+    const V=state.ventes.filter(v=>v.vendeur===uid&&v.statut!=="annulee"), Vj=V.filter(v=>v.jour===t);
+    const Rj=state.reglements.filter(r=>r.type==="client"&&r.majPar===uid&&r.jour===t&&r.statut!=="annulee");
+    const e=encaisse(Vj,Rj), tot=Vj.reduce((s,v)=>s+(+v.net||0),0), cr=Vj.reduce((s,v)=>s+(+v.reste||0),0);
+    const annul=state.ventes.filter(v=>v.vendeur===uid&&v.jour===t&&v.statut==="annulee").length;
+    const clos=state.caisses.find(c=>c.jour===t&&!c.supprime);
+    box.innerHTML=hello+`<div class="kpis">
+      <div class="kpi"><div class="l">Mes ventes aujourd'hui</div><div class="v">${fnum(tot)}</div><div class="s">${Vj.length} vente(s) · FCFA${annul?` · ${annul} annulée(s)`:""}</div></div>
+      <div class="kpi"><div class="l">Espèces que j'ai reçues</div><div class="v">${fnum(e.esp)}</div><div class="s">ventes + crédits encaissés</div></div>
+      <div class="kpi"><div class="l">Mobile money reçu</div><div class="v">${fnum(e.mob)}</div></div>
+      <div class="kpi"><div class="l">Donné à crédit</div><div class="v" style="${cr?"color:var(--bad)":""}">${fnum(cr)}</div></div></div>
+    ${clos?"":`<div class="banner info"><span>En fin de journée, comptez la caisse et faites la clôture.</span><button class="btn sm" type="button" data-act="cloture">Clôturer la caisse</button></div>`}
+    <div class="grid2"><div class="panel"><h3>Mes ventes du jour</h3>${Vj.length?`<div class="lines">${Vj.slice().sort((a,b)=>b.le.localeCompare(a.le)).map(v=>`<div><span>${fhm(v.le)} · ${esc(v.num)}${v.clientNom?" · "+esc(v.clientNom):""}</span><span><b class="num">${fnum(v.net)}</b> <button class="btn sm ghost" type="button" data-recu="${v.id}">Reçu</button></span></div>`).join("")}</div>`:`<p style="margin:0;color:var(--muted)">Pas encore de vente aujourd'hui.</p>`}</div>
+      <div style="display:grid;gap:18px;align-content:start"><div class="panel"><h3>Mes 7 derniers jours</h3>${joursBars(V)}</div>
+      <div class="panel"><h3>À signaler au gestionnaire</h3>${alertesStock(8)}</div></div></div>`;
+    return;
+  }
+  const Vj=state.ventes.filter(v=>v.jour===t&&v.statut!=="annulee"), Rj=state.reglements.filter(r=>r.type==="client"&&r.jour===t&&r.statut!=="annulee");
+  const e=encaisse(Vj,Rj), tot=Vj.reduce((s,v)=>s+(+v.net||0),0), cr=Vj.reduce((s,v)=>s+(+v.reste||0),0), mg=Vj.reduce((s,v)=>s+(+v.marge||0),0);
+  const parV={}; Vj.forEach(v=>{const k=v.vendeurNom||"?";parV[k]=parV[k]||{n:0,t:0};parV[k].n++;parV[k].t+=(+v.net||0)});
+  const mx=Math.max(1,...Object.values(parV).map(x=>x.t));
+  const hier=dayShift(t,-1), hierNC=state.ventes.some(v=>v.jour===hier&&v.statut!=="annulee")&&!state.caisses.some(c=>c.jour===hier&&!c.supprime);
+  const vieux=alive("clients").filter(c=>(+c.solde||0)>0).map(c=>{const v=state.ventes.filter(x=>x.clientId===c.id&&x.statut!=="annulee"&&x.reste>0).sort((a,b)=>a.le.localeCompare(b.le))[0];return{c,age:v?Math.floor((Date.now()-new Date(v.le))/864e5):HIST_DAYS}}).filter(x=>x.age>=30).sort((a,b)=>b.c.solde-a.c.solde);
+  const creances=alive("clients").reduce((s,c)=>s+Math.max(0,+c.solde||0),0), dettes=alive("fournisseurs").reduce((s,f)=>s+Math.max(0,+f.solde||0),0);
+  const depJ=state.depenses.filter(d=>d.jour===t&&!d.supprime).reduce((s,d)=>s+(+d.montant||0),0);
+  box.innerHTML=hello+`${hierNC?`<div class="banner warn"><span>La caisse d'hier n'a pas été clôturée.</span><button class="btn sm" type="button" data-cloture-hier>Clôturer hier</button></div>`:""}
+    <div class="kpis">
+      <div class="kpi"><div class="l">Ventes aujourd'hui</div><div class="v">${fnum(tot)}</div><div class="s">${Vj.length} vente(s) · FCFA</div></div>
+      <div class="kpi"><div class="l">Espèces encaissées</div><div class="v">${fnum(e.esp)}</div><div class="s">mobile money : ${fnum(e.mob)}</div></div>
+      <div class="kpi"><div class="l">Marge du jour</div><div class="v">${fnum(mg)}</div><div class="s">dépenses du jour : ${fnum(depJ)}</div></div>
+      <div class="kpi"><div class="l">Crédit accordé</div><div class="v" style="${cr?"color:var(--bad)":""}">${fnum(cr)}</div><div class="s">aujourd'hui</div></div>
+      <div class="kpi"><div class="l">Les clients doivent</div><div class="v" style="${creances?"color:var(--bad)":""}">${fnum(creances)}</div><div class="s">au total</div></div>
+      <div class="kpi"><div class="l">Dû aux fournisseurs</div><div class="v">${fnum(dettes)}</div><div class="s">au total</div></div></div>
+    <div class="grid2">
+      <div style="display:grid;gap:18px;align-content:start">
+        <div class="panel"><h3>Vendeurs aujourd'hui</h3>${Object.entries(parV).sort((a,b)=>b[1].t-a[1].t).map(([k,x])=>`<div class="cat"><span>${esc(k)} <span class="trace">${x.n} vente(s)</span></span><b class="num">${fcfa(x.t)}</b><div class="track"><i style="width:${x.t/mx*100}%"></i></div></div>`).join("")||`<p style="margin:0;color:var(--muted)">Pas encore de vente aujourd'hui.</p>`}</div>
+        <div class="panel"><h3>Ventes des 7 derniers jours</h3>${joursBars(state.ventes.filter(v=>v.statut!=="annulee"))}</div></div>
+      <div style="display:grid;gap:18px;align-content:start">
+        <div class="panel"><div class="row between"><h3 style="margin:0">Stock à commander</h3><button class="btn sm ghost" type="button" data-go="stock">Voir le stock</button></div>${alertesStock(10)}</div>
+        <div class="panel"><h3>Crédits de plus de 30 jours</h3>${vieux.length?vieux.slice(0,8).map(x=>`<div class="alert"><span style="flex:1">${esc(x.c.nom)} <span class="trace">${x.age>=HIST_DAYS?"plus de "+HIST_DAYS:x.age} j</span></span><b class="num" style="color:var(--bad)">${fnum(x.c.solde)}</b></div>`).join(""):`<p style="margin:0;color:var(--muted)">Aucun crédit ancien.</p>`}</div></div></div>`;
+}
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-go]"); if(g){setView(g.dataset.go);return}
+  if(e.target.closest("[data-cloture-hier]")){filters.ventesJour=dayShift(today(),-1);setView("ventes");openCloture()}
+});
+
 /* ---------- OUTILS ---------- */
 function showCode(nom,code){
   $("#dlg-t").textContent="Code d'accès";
@@ -1351,14 +1427,16 @@ function showCode(nom,code){
 document.addEventListener("click",async e=>{if(e.target.id==="code-copy"){try{await navigator.clipboard.writeText(e.target.dataset.code);toast("Code copié")}catch(_){toast("Copie impossible : notez le code.")}}});
 function openTools(){
   $("#dlg-t").textContent="Outils";
-  const V=vendeurs();
+  const V=vendeurs().sort((a,b)=>(a.role==="gestionnaire"?0:1)-(b.role==="gestionnaire"?0:1)||a.nom.localeCompare(b.nom));
   $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
-    <div class="tool"><h3>Lien d'accès${isOwner?" pour les vendeurs":""}</h3>
+    <div class="tool"><h3>Lien d'accès${isMgr?" pour l'équipe":""}</h3>
       <div class="qr-wrap"><div class="qr" id="qr-box"></div><div style="display:grid;gap:8px;flex:1;min-width:180px"><input class="linkbox" readonly value="${esc(ACCESS_URL)}" aria-label="Lien d'accès"><div class="row"><button class="btn sm" type="button" data-act="copy-link">Copier le lien</button><a class="btn sm" href="${waLink("",`Accès à la plateforme de ${shop.nom} : ${ACCESS_URL}`)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div>
       <span class="trace">Sur le téléphone : ouvrez le lien puis « Ajouter à l'écran d'accueil » pour l'utiliser comme une application, même sans réseau.</span></div></div></div>
-    ${isOwner?`<div class="tool"><h3>Vendeurs</h3>
-      ${V.map(g=>`<div class="item"><span><b>${esc(g.nom)}</b><br><span class="trace">code créé le ${fdate((g.codeLe||"").slice(0,10))}</span></span><span class="row"><button class="btn sm" type="button" data-renew="${g.id}">Nouveau code</button><button class="btn sm ghost" type="button" data-deact="${g.id}" style="color:var(--bad)">Retirer l'accès</button></span></div>`).join("")||`<p class="trace" style="margin:0">Aucun vendeur pour le moment.</p>`}
-      <div class="item"><span>Ajouter un vendeur ou une vendeuse</span><button class="btn sm primary" type="button" data-act="vend-new">+ Vendeur</button></div></div>
+    ${isGest?`<div class="tool"><h3>Équipe</h3>${V.map(g=>`<div class="item"><span><b>${esc(g.nom)}</b></span><span class="pill nodot ${g.role==="gestionnaire"?"p-info":"p-mut"}">${ROLE_L[roleOf(g)]}</span></div>`).join("")}<p class="trace" style="margin:0">Seul le propriétaire crée les accès et les nouveaux codes.</p></div>`:""}
+    ${isOwner?`<div class="tool"><h3>Équipe : gestionnaires et vendeurs</h3>
+      <p class="trace" style="margin:0"><b>Gestionnaire</b> : stock, prix, réceptions, fournisseurs, dépenses, annulation de ventes. <b>Vendeur</b> : caisse, reçus, crédits clients, son espace. Les rapports de bénéfice et les accès restent à vous seul.</p>
+      ${V.map(g=>`<div class="item"><span><b>${esc(g.nom)}</b> <span class="pill nodot ${g.role==="gestionnaire"?"p-info":"p-mut"}">${ROLE_L[roleOf(g)]}</span><br><span class="trace">code créé le ${fdate((g.codeLe||"").slice(0,10))}</span></span><span class="row"><button class="btn sm" type="button" data-renew="${g.id}">Nouveau code</button><button class="btn sm" type="button" data-role="${g.id}">${g.role==="gestionnaire"?"Passer vendeur":"Passer gestionnaire"}</button><button class="btn sm ghost" type="button" data-deact="${g.id}" style="color:var(--bad)">Retirer l'accès</button></span></div>`).join("")||`<p class="trace" style="margin:0">Personne pour le moment.</p>`}
+      <div class="item"><span>Ajouter une personne</span><span class="row"><button class="btn sm" type="button" data-act="gest-new">+ Gestionnaire</button><button class="btn sm primary" type="button" data-act="vend-new">+ Vendeur</button></span></div></div>
     <div class="tool"><h3>Ma boutique</h3>
       <div class="item"><span>Nom, téléphone, adresse, message du reçu, règles de prix</span><button class="btn sm" type="button" data-act="shop">Modifier</button></div>
       <div class="item"><span>Changer mon code propriétaire</span><button class="btn sm" type="button" data-act="my-code">Changer</button></div></div>
@@ -1371,16 +1449,19 @@ function openTools(){
   try{new QRCode($("#qr-box"),{text:ACCESS_URL,width:160,height:160,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("#qr-box").innerHTML=`<p class="trace">QR indisponible hors connexion</p>`}
 }
 $("#btn-tools").addEventListener("click",openTools);
-async function createVendeur(nom,replaceOf){
+async function createVendeur(nom,replaceOf,role){
+  role=role==="gestionnaire"?"gestionnaire":"vendeur";
   const code=newCode(); const u=await newAuthUser(code); const s=stamp(), b=fdb.batch();
-  b.set(fdb.collection("comptes").doc(u.uid),{nom,role:"vendeur",actif:true,email:u.email,codeLe:s.majLe,...s});
+  b.set(fdb.collection("comptes").doc(u.uid),{nom,role,actif:true,email:u.email,codeLe:s.majLe,...s});
   if(replaceOf) b.update(fdb.collection("comptes").doc(replaceOf),{actif:false,remplace:true,...s});
-  b.set(jRef(),jEntry(replaceOf?"nouveau code":"ajout","comptes",u.uid,(replaceOf?"Nouveau code pour ":"Nouveau vendeur : ")+nom));
+  b.set(jRef(),jEntry(replaceOf?"nouveau code":"ajout","comptes",u.uid,(replaceOf?"Nouveau code pour ":"Nouveau "+ROLE_L[role].toLowerCase()+" : ")+nom));
   await b.commit(); return code;
 }
 document.addEventListener("click",e=>{
   const rn=e.target.closest("[data-renew]"); if(rn){const g=state.comptes.find(x=>x.id===rn.dataset.renew);
-    openConfirm("Nouveau code",`Générer un nouveau code pour <b>${esc(g.nom)}</b> ? L'ancien code ne fonctionnera plus.`,"Générer",async()=>{if(!navigator.onLine) throw {msgs:["Il faut une connexion internet pour créer un code."]};const code=await createVendeur(g.nom,g.id);setTimeout(()=>showCode(g.nom,code),50)},false);return}
+    openConfirm("Nouveau code",`Générer un nouveau code pour <b>${esc(g.nom)}</b> ? L'ancien code ne fonctionnera plus.`,"Générer",async()=>{if(!navigator.onLine) throw {msgs:["Il faut une connexion internet pour créer un code."]};const code=await createVendeur(g.nom,g.id,g.role);setTimeout(()=>showCode(g.nom,code),50)},false);return}
+  const ro=e.target.closest("[data-role]"); if(ro){const g=state.comptes.find(x=>x.id===ro.dataset.role); const nr=g.role==="gestionnaire"?"vendeur":"gestionnaire";
+    openConfirm("Changer le rôle",`${esc(g.nom)} devient <b>${ROLE_L[nr].toLowerCase()}</b>. Son code ne change pas.${nr==="gestionnaire"?" Il pourra gérer le stock, les prix, les réceptions, les dépenses et annuler des ventes.":""}`,"Confirmer",async()=>{const s=stamp(),b=fdb.batch();b.update(fdb.collection("comptes").doc(g.id),{role:nr,...s});b.set(jRef(),jEntry("rôle","comptes",g.id,`${g.nom} devient ${ROLE_L[nr].toLowerCase()}`));await queued(b.commit());toast("Rôle modifié");setTimeout(openTools,60)},false);return}
   const dz=e.target.closest("[data-deact]"); if(dz){const g=state.comptes.find(x=>x.id===dz.dataset.deact);
     openConfirm("Retirer l'accès",`${esc(g.nom)} ne pourra plus ouvrir la plateforme. Ses ventes passées restent dans l'historique.`,"Retirer l'accès",async()=>{const s=stamp(),b=fdb.batch();b.update(fdb.collection("comptes").doc(g.id),{actif:false,...s});b.set(jRef(),jEntry("désactivation","comptes",g.id,"Accès retiré : "+g.nom));await queued(b.commit());toast("Accès retiré")});return}
 });
@@ -1405,8 +1486,10 @@ async function showJournal(){
 }
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
-  const own=["art-new","art-bulk","inventaire","bon-cmd","four-new","four-pay","achat-new","dep-new","csv-ventes","vend-new","shop","my-code","backup","journal","csv-stock"];
+  const own=["csv-ventes","vend-new","gest-new","shop","my-code","backup","journal"];
+  const mgr=["art-new","art-bulk","inventaire","bon-cmd","four-new","four-pay","achat-new","dep-new","csv-stock"];
   if(own.includes(a)&&!isOwner){toast("Réservé au propriétaire.");return}
+  if(mgr.includes(a)&&!isMgr){toast("Réservé au gestionnaire ou au propriétaire.");return}
   try{switch(a){
     case "art-new": openArticle(); break;
     case "art-bulk": openBulk(); break;
@@ -1425,13 +1508,13 @@ document.addEventListener("click",async e=>{
     case "backup": await backup(); break;
     case "journal": await showJournal(); break;
     case "copy-link": try{await navigator.clipboard.writeText(ACCESS_URL);toast("Lien copié")}catch(_){toast("Sélectionnez le lien et copiez-le.")} break;
-    case "vend-new":
-      openForm("Nouveau vendeur",[{k:"nom",l:"Nom du vendeur",req:true,full:true,ph:"Ex. Aminata"}],{},async(o,c)=>{
+    case "vend-new": case "gest-new": { const role=a==="gest-new"?"gestionnaire":"vendeur";
+      openForm(role==="gestionnaire"?"Nouveau gestionnaire":"Nouveau vendeur",[{k:"nom",l:"Nom",req:true,full:true,ph:role==="gestionnaire"?"Ex. Bakary":"Ex. Aminata"}],{},async(o,c)=>{
         const E=[]; if(!o.nom||o.nom.length<2) E.push("Indiquez le nom.");
         if(pool().find(g=>norm(g.nom)===norm(o.nom))) E.push("Ce nom existe déjà.");
         if(!navigator.onLine) E.push("Il faut une connexion internet pour créer un accès.");
-        check(E,[],c); const code=await createVendeur(o.nom); setTimeout(()=>showCode(o.nom,code),50);
-      },"Créer l'accès"); break;
+        check(E,[],c); const code=await createVendeur(o.nom,null,role); setTimeout(()=>showCode(o.nom,code),50);
+      },"Créer l'accès"); break; }
     case "shop":
       openForm("Ma boutique",[{k:"nom",l:"Nom de la quincaillerie",req:true,full:true},{k:"tel",l:"Téléphone"},{k:"ville",l:"Ville"},{k:"adresse",l:"Adresse / quartier",full:true},
         {k:"rcc",l:"RCCM / N° contribuable (sur le reçu)",full:true},{k:"msg",l:"Message en bas du reçu",full:true,ph:"Merci de votre confiance !"},

@@ -15,6 +15,11 @@ service cloud.firestore {
       return connecte() && exists(p) && get(p).data.actif == true
         && get(p).data.get('remplace', false) == false;
     }
+    // Gestionnaire : compte actif avec le rôle « gestionnaire ». gere() = propriétaire ou gestionnaire.
+    function estGest() {
+      return compteActif() && get(/databases/$(database)/documents/comptes/$(request.auth.uid)).data.get('role', '') == 'gestionnaire';
+    }
+    function gere() { return estPca() || estGest(); }
     function signe() { return request.resource.data.majPar == request.auth.uid; }
     function taille() { return request.resource.data.size() <= 40; }
     function txt(v, mini, maxi) { return v is string && v.size() >= mini && v.size() <= maxi; }
@@ -53,10 +58,10 @@ service cloud.firestore {
     // Articles : le propriétaire gère tout ; un vendeur ne peut que faire baisser le stock en vendant.
     match /articles/{id} {
       allow read: if compteActif();
-      allow create: if estPca() && signe() && taille() && txt(request.resource.data.nom, 2, 80)
+      allow create: if gere() && signe() && taille() && txt(request.resource.data.nom, 2, 80)
         && montant(request.resource.data.pv);
       allow update: if compteActif() && signe() && taille()
-        && (estPca() || (seulStock() && request.resource.data.stock <= resource.data.stock));
+        && (gere() || (seulStock() && request.resource.data.stock <= resource.data.stock));
       allow delete: if false;
     }
 
@@ -70,7 +75,7 @@ service cloud.firestore {
         && montant(request.resource.data.reste) && jourOk(request.resource.data.jour)
         && request.resource.data.lignes is list && request.resource.data.lignes.size() > 0
         && request.resource.data.lignes.size() <= 200;
-      allow update: if estPca() && signe();
+      allow update: if gere() && signe();
       allow delete: if false;
     }
 
@@ -88,8 +93,8 @@ service cloud.firestore {
       allow read: if compteActif();
       allow create: if compteActif() && signe() && taille() && montant(request.resource.data.montant)
         && jourOk(request.resource.data.jour)
-        && (request.resource.data.type == 'client' || estPca());
-      allow update: if estPca() && signe();
+        && (request.resource.data.type == 'client' || gere());
+      allow update: if gere() && signe();
       allow delete: if false;
     }
 
@@ -97,29 +102,29 @@ service cloud.firestore {
     match /caisses/{id} {
       allow read: if compteActif();
       allow create: if compteActif() && signe() && taille() && jourOk(request.resource.data.jour);
-      allow update: if estPca();
+      allow update: if gere();
       allow delete: if false;
     }
 
-    // Réservé au propriétaire.
+    // Réservé au propriétaire et aux gestionnaires.
     match /fournisseurs/{id} {
-      allow read: if compteActif() && estPca();
-      allow create, update: if estPca() && signe() && taille();
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille();
       allow delete: if false;
     }
     match /achats/{id} {
-      allow read: if compteActif() && estPca();
-      allow create, update: if estPca() && signe() && taille();
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille();
       allow delete: if false;
     }
     match /depenses/{id} {
-      allow read: if compteActif() && estPca();
-      allow create, update: if estPca() && signe() && taille() && montant(request.resource.data.montant);
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille() && montant(request.resource.data.montant);
       allow delete: if false;
     }
     match /mouvements/{id} {
-      allow read: if compteActif() && estPca();
-      allow create: if estPca() && signe();
+      allow read: if gere();
+      allow create: if gere() && signe();
       allow update, delete: if false;
     }
 
