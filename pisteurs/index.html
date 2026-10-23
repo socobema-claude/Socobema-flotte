@@ -129,7 +129,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
     <button class="tab" role="tab" data-t="mag" aria-selected="false">Magasins</button>
     <button class="tab" role="tab" data-t="rmb" aria-selected="false">Remboursements <span id="pendBadge"></span></button>
     <button class="tab" role="tab" data-t="arg" aria-selected="false">Argent</button>
-    <button class="tab" role="tab" data-t="jr" aria-selected="false">Journal</button>
+    <button class="tab" role="tab" data-t="cpt" aria-selected="false">Comptabilité</button><button class="tab" role="tab" data-t="jr" aria-selected="false">Journal</button>
     <button class="tab" role="tab" data-t="acc" aria-selected="false">Accès des agents</button>
     <button class="tab" role="tab" data-t="reg" aria-selected="false">Produits et prix</button>
   </nav>
@@ -231,7 +231,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
     </div>
     <div class="card" id="accLocal">
       <h2 style="font-size:1.05rem">Ajouter un agent</h2>
-      <p class="note">PCA, directeur, gestionnaire, délégué, trésorier, secrétaire, magasinier… Un code à 6 chiffres est créé pour lui et affiché une seule fois. Les pisteurs, eux, reçoivent leur code depuis l'onglet « Pisteurs ».</p>
+      <p class="note">PCA, directeur, gestionnaire, comptable, délégué, trésorier, secrétaire, magasinier… Un code à 6 chiffres est créé pour lui et affiché une seule fois. Les pisteurs, eux, reçoivent leur code depuis l'onglet « Pisteurs ».</p>
       <div class="f"><div><label for="locNom">Nom et prénoms</label><input id="locNom"></div><div><label for="locRole">Rôle</label><select id="locRole"></select></div></div>
       <div><button class="btn" id="bLocAdd" type="button">Ajouter et créer son code</button></div>
     </div>
@@ -243,6 +243,12 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
     <div id="accList"></div>
     <h2>Ce que chaque rôle peut faire</h2>
     <div id="accMatrix"></div>
+  </section>
+
+  <section role="tabpanel" id="t-cpt" hidden>
+    <h2>Espace comptable</h2>
+    <p class="note">Synthèse financière sur la période choisie en haut (du … au …) : caisse, créances et dettes envers les pisteurs, achats aux producteurs. Le journal de caisse s'exporte pour le comptable.</p>
+    <div id="cptBody" style="display:flex;flex-direction:column;gap:18px"></div>
   </section>
 
   <section role="tabpanel" id="t-jr" hidden>
@@ -606,7 +612,7 @@ function renderMag(){const ks=Object.keys(CFG.prod);
   const all=mags(),kk=ks.filter(k=>all.some(m=>{const v=stock(m.id,k);return v.st||v.route}));
   $("#byMag").innerHTML=kk.length?`<div class="tablewrap"><table><thead><tr><th>Produit</th>${all.map(m=>`<th class="n">${esc(m.nom)}</th>`).join("")}<th class="n">En route</th><th class="n">Total</th></tr></thead><tbody>${kk.map(k=>{let tot=0,rt=0;const c=all.map(m=>{const v=stock(m.id,k);tot+=v.st;rt+=v.route;return`<td class="n">${KG(v.st)}</td>`}).join("");return`<tr><td><b>${esc(pName(k))}</b></td>${c}<td class="n">${KG(rt)}</td><td class="n">${KG(tot+rt)}</td></tr>`}).join("")}</tbody></table></div>`
    :`<div class="empty"><b>Aucun stock enregistré</b>Le stock de chaque magasin se remplit avec les livraisons des pisteurs et les transferts.</div>`}
-function renderAll(){if(PIS_ME()){renderReg();renderPM();applyPerms();return}renderReg();renderMag();renderJournal();renderAcc();renderBord();renderPis();renderAch();renderLiv();renderArg();renderRmb();if(ficheId&&!$("#mFiche").hidden)openFiche(ficheId);applyPerms()}
+function renderAll(){if(PIS_ME()){renderReg();renderPM();applyPerms();return}renderReg();renderMag();renderJournal();renderAcc();renderBord();renderPis();renderAch();renderLiv();renderArg();renderRmb();renderCpt();if(ficheId&&!$("#mFiche").hidden)openFiche(ficheId);applyPerms()}
 ["#dFrom","#dTo","#fProd"].forEach(s=>$(s).addEventListener("change",renderAll));
 $("#bCamp").onclick=()=>{$("#dFrom").value=CFG.camp||campStart();$("#dTo").value=today();$("#fProd").value="";renderAll()};
 
@@ -639,9 +645,9 @@ $("#bBackup").onclick=backup;
 $("#bMagReg").onclick=()=>{showTab("reg");$("#magReg").scrollIntoView({behavior:"smooth"})};
 
 /* Rôles et droits (version indépendante : connexion par code, sans compte Claude) */
-const ROLES={pca:"PCA",directeur:"Directeur",gestionnaire:"Gestionnaire",tresorier:"Trésorier",secretaire:"Secrétaire",magasinier:"Magasinier",delegue:"Délégué",consultation:"Consultation"};
+const ROLES={pca:"PCA",directeur:"Directeur",gestionnaire:"Gestionnaire",tresorier:"Trésorier",comptable:"Comptable",secretaire:"Secrétaire",magasinier:"Magasinier",delegue:"Délégué",consultation:"Consultation"};
 const ACTS={pis:"Gérer les pisteurs",ach:"Saisir les achats",liv:"Saisir les livraisons",sac:"Gérer les sacs",tr:"Transferts et réceptions",arg:"Avances, remboursements, commissions, paiement des producteurs",ann:"Annuler une opération",reg:"Prix, magasins, réglages et clôture",exp:"Exports et sauvegarde"};
-const PERMS={pca:Object.keys(ACTS),directeur:Object.keys(ACTS),tresorier:["arg","exp"],secretaire:["pis","ach","liv","sac","tr"],magasinier:["liv","sac","tr"],gestionnaire:["pis","ach","liv","sac","tr","arg","exp"],delegue:["ach","liv","sac"],consultation:[]};
+const PERMS={pca:Object.keys(ACTS),directeur:Object.keys(ACTS),tresorier:["arg","exp"],secretaire:["pis","ach","liv","sac","tr"],magasinier:["liv","sac","tr"],gestionnaire:["pis","ach","liv","sac","tr","arg","exp"],delegue:["ach","liv","sac"],comptable:["arg","exp"],consultation:[]};
 const DOMAIN="pisteurs.bengueleman.app";
 let fdb=null,auth=null,authUser=null,ADMIN_UID=null,ADMIN_EMAIL=null,COMPTES=[],SESSION=null,accReady=false,adminLoaded=false,comptesLoaded=false;
 const compteOf=id=>COMPTES.find(c=>c.id===id);
@@ -670,7 +676,7 @@ function applyPerms(){const vis=(el,ok)=>{if(el)el.hidden=!ok};
   document.querySelectorAll("[data-payprod]").forEach(b=>vis(b,can("arg")));document.querySelectorAll("[data-editpis]").forEach(b=>vis(b,can("pis")));
   document.querySelectorAll("[data-csv]").forEach(b=>vis(b,can("exp")));vis($("#bBackup"),can("exp"));vis($("#bAddPis"),can("pis"));vis($("#bMagReg"),can("reg"));
   const rb=$("#regForm button[type=submit]");rb.disabled=!can("reg");rb.textContent=can("reg")?"Enregistrer":"Lecture seule (réservé au PCA et au Directeur)";
-  vis($("#accLocal"),ADMIN());vis($("#accOwn"),ADMIN());vis($("#accImport"),ADMIN());vis($("#accLink"),!!SESSION&&!PIS_ME());
+  vis($("#accLocal"),ADMIN());vis(document.querySelector('.tab[data-t="cpt"]'),canCpt());vis($("#accOwn"),ADMIN());vis($("#accImport"),ADMIN());vis($("#accLink"),!!SESSION&&!PIS_ME());
   const r=myRole();$("#meBadge").textContent=db&&SESSION?("Connecté : "+who(ACTOR())+" · "+roleName(r)):"";$("#bLock").hidden=!SESSION;
   if(ADMIN()){const c=compteOf(ADMIN_UID);$("#ownInfo").textContent="Votre code est demandé à chaque ouverture. En cas d'oubli, « Code oublié ? » envoie un e-mail à "+(ADMIN_EMAIL||"votre adresse")+(c&&c.codeLe?". Dernier changement : "+dFr(c.codeLe.slice(0,10)):"")+"."}}
 const agentsList=()=>COMPTES.filter(c=>c.id!==ADMIN_UID&&c.role!=="pisteur"&&c.role!=="proprietaire"&&!c.remplace&&!c.retire);
@@ -1101,6 +1107,44 @@ document.addEventListener("click",e=>{const a=e.target.closest("[data-idedit]"),
 function subscribeIds(){IDP={};IDA={};if(!SESSION||PIS_ME())return;
   if(can("pis"))UNSUB.push(fdb.collection("identites_pis").onSnapshot(s=>{IDP={};s.docs.forEach(d=>IDP[d.id]=d.data());renderAll()},e=>console.error(e)));
   if(ADMIN())UNSUB.push(fdb.collection("identites_ag").onSnapshot(s=>{IDA={};s.docs.forEach(d=>IDA[d.id]=d.data());renderAll()},e=>console.error(e)))}
+
+/* Espace comptable : synthèse financière de la période, journal de caisse et export */
+const canCpt=()=>can("arg")||can("exp");
+function cptMvts(){const m=MVT.filter(x=>inP(x.date||"")).map(x=>({date:x.date,saisiLe:x.saisiLe||"",piece:code("MV",x.id),pis:(pisById(x.pisteurId)||{}).nom||"",
+  lib:TYP[x.type]+((pisById(x.pisteurId)||{}).nom?" – "+(pisById(x.pisteurId)||{}).nom:"")+(x.mode?" ("+x.mode+(x.ref?" "+x.ref:"")+")":""),
+  entree:x.type==="remb"?+x.montant||0:0,sortie:x.type!=="remb"?+x.montant||0:0,mode:x.mode||""}));
+  const p=ACH.filter(x=>inP(x.payeLe||x.date||"")&&x.paye!=="non"&&x.declarePar!=="pisteur").map(x=>({date:x.payeLe||x.date,saisiLe:x.saisiLe||"",piece:code("RA",x.id),pis:(pisById(x.pisteurId)||{}).nom||"",
+  lib:"Achat producteur – "+x.producteur+" ("+pName(x.produit)+", "+nf(x.poidsNet,1)+" kg)",entree:0,sortie:0,info:+x.montant||0,mode:""}));
+  return m.concat(p).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.saisiLe||"").localeCompare(b.saisiLe||""))}
+function renderCpt(){const el=$("#cptBody");if(!el)return;if(!canCpt()){el.innerHTML='<p class="note">Réservé au propriétaire, au PCA, au directeur, au gestionnaire, au trésorier et au comptable.</p>';return}
+  const m=MVT.filter(x=>inP(x.date||"")),sum=t=>m.filter(x=>x.type===t).reduce((s,x)=>s+(+x.montant||0),0);
+  const av=sum("avance"),rb=sum("remb"),cp=sum("com");
+  const a=ACH.filter(inF),achT=a.reduce((s,x)=>s+(+x.montant||0),0),achNP=a.filter(x=>x.paye==="non").reduce((s,x)=>s+(+x.montant||0),0);
+  const l=LIV.filter(inF),livV=l.reduce((s,x)=>s+(+x.valeur||0),0),comG=l.reduce((s,x)=>s+(+x.commission||0),0);
+  let du=0,comDue=0;PIS.forEach(p=>{const s=stats(p.id);if(s.solde>0)du+=s.solde;if(s.comDue>0)comDue+=s.comDue});
+  const byMode={};m.forEach(x=>{const k=x.mode||"Autre";const o=byMode[k]=byMode[k]||{e:0,s:0};if(x.type==="remb")o.e+=+x.montant||0;else o.s+=+x.montant||0});
+  const J=cptMvts().filter(x=>x.entree||x.sortie);let solde=0;
+  el.innerHTML=`<div class="kpis">
+   <div class="kpi"><span>Avances remises</span><b>${F(av)}</b><small>sorties de caisse</small></div>
+   <div class="kpi"><span>Remboursements reçus</span><b>${F(rb)}</b><small>entrées de caisse</small></div>
+   <div class="kpi"><span>Commissions payées</span><b>${F(cp)}</b><small>sorties de caisse</small></div>
+   <div class="kpi ${rb-av-cp<0?"ko":""}"><span>Solde de caisse (période)</span><b>${rb-av-cp<0?"− "+F(av+cp-rb):F(rb-av-cp)}</b><small>entrées − sorties</small></div></div>
+   <div class="kpis">
+   <div class="kpi"><span>Achats aux producteurs</span><b>${F(achT)}</b><small>dont ${F(achNP)} restant à payer</small></div>
+   <div class="kpi"><span>Valeur livrée au magasin</span><b>${F(livV)}</b><small>commissions générées ${F(comG)}</small></div>
+   <div class="kpi ko"><span>Créances sur les pisteurs</span><b>${F(du)}</b><small>argent à justifier (à ce jour)</small></div>
+   <div class="kpi warn"><span>Dettes envers les pisteurs</span><b>${F(comDue)}</b><small>commissions dues (à ce jour)</small></div></div>
+   <h2>Par moyen de paiement</h2>${tbl(Object.entries(byMode).map(([k,o])=>`<tr><td>${esc(k)}</td><td class="n">${F(o.e)}</td><td class="n">${F(o.s)}</td><td class="n">${F(o.e-o.s)}</td></tr>`),`<th>Mode</th><th class="n">Entrées</th><th class="n">Sorties</th><th class="n">Net</th>`,"Aucun mouvement d'argent sur la période.")}
+   <div class="toolbar"><h2>Journal de caisse</h2><button class="btn ghost" type="button" id="cptCsv">Exporter pour le comptable (CSV)</button></div>
+   ${tbl(J.map(x=>{solde+=x.entree-x.sortie;return`<tr><td>${dFr(x.date)}</td><td><small>${esc(x.piece)}</small></td><td>${esc(x.lib)}</td><td class="n">${x.entree?F(x.entree):""}</td><td class="n">${x.sortie?F(x.sortie):""}</td><td class="n" style="${solde<0?"color:var(--ko)":""}">${F(solde)}</td></tr>`}),
+     `<th>Date</th><th>Pièce</th><th>Libellé</th><th class="n">Entrée</th><th class="n">Sortie</th><th class="n">Solde</th>`,"Les avances, remboursements et commissions de la période apparaîtront ici.",
+     J.length?`<tfoot><tr><td colspan="3">Total de la période</td><td class="n">${F(rb)}</td><td class="n">${F(av+cp)}</td><td class="n">${F(rb-av-cp)}</td></tr></tfoot>`:"")}
+   <p class="note">Les achats payés comptant aux producteurs sont réglés par les pisteurs avec leurs avances : ils ne sortent pas une deuxième fois de la caisse. Le fichier exporté s'ouvre dans Excel et peut être remis au cabinet comptable ou repris dans la plateforme Comptabilité.</p>`;
+  $("#cptCsv").onclick=cptExport}
+function cptExport(){if(!can("exp"))return toast("Votre rôle ne permet pas l'export.");
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[["Date","Pièce","Libellé","Pisteur","Mode","Entrée (F)","Sortie (F)","Montant achat (F)"]].concat(cptMvts().map(x=>[x.date,x.piece,x.lib,x.pis,x.mode,x.entree||"",x.sortie||"",x.info||""]));
+  const txt="﻿"+rows.map(r=>r.map(v=>typeof v==="number"?String(v):q(v)).join(";")).join("\r\n");
+  saveBlob(new Blob([txt],{type:"text/csv"}),"journal_comptable_"+($("#dFrom").value||"")+"_"+($("#dTo").value||today())+".csv")}
 
 /* Démarrage : base Firebase de la coopérative */
 renderAll();fillReg();

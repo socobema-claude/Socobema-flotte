@@ -24,7 +24,7 @@ service cloud.firestore {
     function peut(a) {
       return proprio() || (compteOk() && (
         role() in ['pca', 'directeur']
-        || (role() == 'tresorier' && a in ['arg', 'exp'])
+        || (role() in ['tresorier', 'comptable'] && a in ['arg', 'exp'])
         || (role() == 'secretaire' && a in ['pis', 'ach', 'liv', 'sac', 'tr'])
         || (role() == 'magasinier' && a in ['liv', 'sac', 'tr'])
         || (role() == 'gestionnaire' && a in ['pis', 'ach', 'liv', 'sac', 'tr', 'arg', 'exp'])
