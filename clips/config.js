@@ -8,5 +8,5 @@ window.FIREBASE_CONFIG = {                           // configuration Firebase d
   messagingSenderId: "928366747501",
   appId: "1:928366747501:web:333e35aff6f5c51dc18464"
 };
-window.CLOUDINARY = { cloud: "COLLER_ICI", preset: "", dossier: "clips" };  // hébergement des vidéos
+window.CLOUDINARY = { cloud: "ayckscgb", preset: "koro", dossier: "clips" };  // hébergement des vidéos
 window.TARIFS = { pub7: 10000, boost7: 5000 };       // prix proposés par défaut (FCFA)
