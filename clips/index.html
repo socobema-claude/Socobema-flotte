@@ -378,7 +378,7 @@ function report(id){
 function openLogin(msg,signup){
   openDlg(`<div class="sheet"><div class="hd"><h3>${signup?"Créer un compte":"Se connecter"}</h3><button class="x" type="button" data-close>×</button></div>
   <form class="bd" id="lg-f" novalidate>${msg?`<p class="muted" style="margin:0">${esc(msg)}</p>`:""}
-    ${signup?`<label class="lab">Pseudo<input class="in" id="lg-ps" maxlength="24" autocomplete="username" placeholder="ex. kone_mankono"></label>`:""}
+    ${signup?`<label class="lab">Pseudo<input class="in" id="lg-ps" maxlength="24" autocomplete="username" placeholder="ex. traore_ibrahima"></label>`:""}
     <label class="lab">E-mail<input class="in" id="lg-m" type="email" autocomplete="email"></label>
     <label class="lab">Mot de passe<input class="in" id="lg-p" type="password" autocomplete="${signup?"new-password":"current-password"}"></label>
     ${signup?`<label class="chk"><input type="checkbox" id="lg-age"> J'ai 13 ans ou plus.</label><label class="chk"><input type="checkbox" id="lg-cgu"> J'accepte les règles : pas de violence, de nudité, d'arnaque ni de harcèlement. Les contenus signalés peuvent être retirés.</label>`:""}
@@ -391,7 +391,7 @@ function openLogin(msg,signup){
   $("#lg-f").onsubmit=async e=>{e.preventDefault();const er=$("#lg-err"),m=$("#lg-m").value.trim(),p=$("#lg-p").value,btn=e.target.querySelector("[type=submit]");er.textContent="";
     try{
       if(signup){
-        const ps=$("#lg-ps").value.trim().toLowerCase();
+        const ps=$("#lg-ps").value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\s-]+/g,"_").replace(/[^a-z0-9_.]/g,""); $("#lg-ps").value=ps;
         if(!/^[a-z0-9_.]{3,24}$/.test(ps)){er.textContent="Pseudo : 3 à 24 caractères (lettres minuscules, chiffres, _ et .).";return}
         if(!$("#lg-age").checked){er.textContent="Il faut avoir au moins 13 ans.";return}
         if(!$("#lg-cgu").checked){er.textContent="Acceptez les règles pour continuer.";return}
