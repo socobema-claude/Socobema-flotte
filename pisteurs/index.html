@@ -231,7 +231,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
     </div>
     <div class="card" id="accLocal">
       <h2 style="font-size:1.05rem">Ajouter un agent</h2>
-      <p class="note">PCA, directeur, trésorier, secrétaire, magasinier… Un code à 6 chiffres est créé pour lui et affiché une seule fois. Les pisteurs, eux, reçoivent leur code depuis l'onglet « Pisteurs ».</p>
+      <p class="note">PCA, directeur, gestionnaire, délégué, trésorier, secrétaire, magasinier… Un code à 6 chiffres est créé pour lui et affiché une seule fois. Les pisteurs, eux, reçoivent leur code depuis l'onglet « Pisteurs ».</p>
       <div class="f"><div><label for="locNom">Nom et prénoms</label><input id="locNom"></div><div><label for="locRole">Rôle</label><select id="locRole"></select></div></div>
       <div><button class="btn" id="bLocAdd" type="button">Ajouter et créer son code</button></div>
     </div>
@@ -619,9 +619,9 @@ $("#bBackup").onclick=backup;
 $("#bMagReg").onclick=()=>{showTab("reg");$("#magReg").scrollIntoView({behavior:"smooth"})};
 
 /* Rôles et droits (version indépendante : connexion par code, sans compte Claude) */
-const ROLES={pca:"PCA",directeur:"Directeur",tresorier:"Trésorier",secretaire:"Secrétaire",magasinier:"Magasinier",consultation:"Consultation"};
+const ROLES={pca:"PCA",directeur:"Directeur",gestionnaire:"Gestionnaire",tresorier:"Trésorier",secretaire:"Secrétaire",magasinier:"Magasinier",delegue:"Délégué",consultation:"Consultation"};
 const ACTS={pis:"Gérer les pisteurs",ach:"Saisir les achats",liv:"Saisir les livraisons",sac:"Gérer les sacs",tr:"Transferts et réceptions",arg:"Avances, remboursements, commissions, paiement des producteurs",ann:"Annuler une opération",reg:"Prix, magasins, réglages et clôture",exp:"Exports et sauvegarde"};
-const PERMS={pca:Object.keys(ACTS),directeur:Object.keys(ACTS),tresorier:["arg","exp"],secretaire:["pis","ach","liv","sac","tr"],magasinier:["liv","sac","tr"],consultation:[]};
+const PERMS={pca:Object.keys(ACTS),directeur:Object.keys(ACTS),tresorier:["arg","exp"],secretaire:["pis","ach","liv","sac","tr"],magasinier:["liv","sac","tr"],gestionnaire:["pis","ach","liv","sac","tr","arg","exp"],delegue:["ach","liv","sac"],consultation:[]};
 const DOMAIN="pisteurs.bengueleman.app";
 let fdb=null,auth=null,authUser=null,ADMIN_UID=null,ADMIN_EMAIL=null,COMPTES=[],SESSION=null,accReady=false,adminLoaded=false,comptesLoaded=false;
 const compteOf=id=>COMPTES.find(c=>c.id===id);
