@@ -457,6 +457,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
 <form class="modal" id="mId" hidden aria-label="Identité et photos">
   <div class="mh"><h2 id="idT">Identité et photos</h2><button type="button" class="x" data-close aria-label="Fermer">×</button></div>
   <div class="f">
+    <div class="full" id="idNomBox"><label for="idNom">Nom et prénoms</label><input id="idNom" maxlength="80"></div>
     <div><label for="idPiece">N° de la CNI (ou autre pièce)</label><input id="idPiece" placeholder="Ex. C0047200656"></div>
     <div><label for="idNaiss">Date de naissance</label><input id="idNaiss" type="date"></div>
     <div class="full"><label for="idLieu">Lieu de naissance</label><input id="idLieu"></div>
@@ -675,7 +676,7 @@ function applyPerms(){const vis=(el,ok)=>{if(el)el.hidden=!ok};
 const agentsList=()=>COMPTES.filter(c=>c.id!==ADMIN_UID&&c.role!=="pisteur"&&c.role!=="proprietaire"&&!c.remplace&&!c.retire);
 function renderAcc(){const ag=agentsList();
   $("#locRole").innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
-  $("#accList").innerHTML=ag.length?`<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Agent</th><th>Identité</th><th>Photo CNI</th><th>Rôle</th><th>Code d'accès</th><th>Depuis</th><th>État</th><th></th></tr></thead><tbody>${ag.map(a=>`<tr><td>${thumbHtml("ag",a.id)}</td><td><b>${esc(a.nom)}</b>${a.id===ACTOR()?" <small>(vous)</small>":""}${ADMIN()?`<br><button class="btn ghost sm" style="margin-top:4px" type="button" data-idedit="ag|${a.id}">Identité et photos</button>`:""}</td><td><small>${ADMIN()?idLine("ag",a.id):"—"}</small></td><td>${ADMIN()?cniBtn("ag",a.id):"—"}</td>
+  $("#accList").innerHTML=ag.length?`<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Agent</th><th>Identité</th><th>Photo CNI</th><th>Rôle</th><th>Code d'accès</th><th>Depuis</th><th>État</th><th></th></tr></thead><tbody>${ag.map(a=>`<tr><td>${thumbHtml("ag",a.id)}</td><td><b>${esc(a.nom)}</b>${a.id===ACTOR()?" <small>(vous)</small>":""}${ADMIN()?`<br><button class="btn ghost sm" style="margin-top:4px" type="button" data-idedit="ag|${a.id}">Modifier (nom, identité, photos)</button>`:""}</td><td><small>${ADMIN()?idLine("ag",a.id):"—"}</small></td><td>${ADMIN()?cniBtn("ag",a.id):"—"}</td>
    <td>${ADMIN()?`<select data-accrole="${a.id}" aria-label="Rôle">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${a.role===k?"selected":""}>${v}</option>`).join("")}</select>`:esc(ROLES[a.role]||a.role)}</td>
    <td><span class="pill p-ok">Créé le ${dFr((a.codeLe||"").slice(0,10))}</span>${ADMIN()?`<br><button class="btn ghost sm" style="margin-top:4px" data-accpin="${a.id}">Nouveau code</button>`:""}</td>
    <td>${dFr(a.depuis)}</td><td>${a.actif===false?'<span class="pill p-idle">Suspendu</span>':'<span class="pill p-ok">Actif</span>'}</td>
@@ -1077,7 +1078,7 @@ function idLine(k,id,fallbackPiece){const d=idOf(k,id),pc=d.piece||fallbackPiece
 function cniBtn(k,id){const d=idOf(k,id);return d.cniOk||d.photoOk?`<button class="btn ghost sm" type="button" data-idview="${k}|${id}">Voir ${d.cniOk?"photo et CNI":"photo"}</button>`:'<span class="pill p-warn">Pas de photo CNI</span>'}
 function compressImg(file,max,q){return new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",q))};im.onerror=()=>ko(new Error("img"));im.src=r.result};r.onerror=ko;r.readAsDataURL(file)})}
 async function openId(k,id){if(!canId(k))return;const nom=k==="ag"?(compteOf(id)||{}).nom:(pisById(id)||{}).nom;const d=idOf(k,id);idCtx={k,id};idImgs={};
-  $("#idT").textContent="Identité et photos · "+(nom||"");$("#idPiece").value=d.piece||(k==="pis"?(pisById(id)||{}).piece||"":"");$("#idNaiss").value=d.naissance||"";$("#idLieu").value=d.lieu||"";err("#idErr","");
+  $("#idT").textContent="Identité et photos · "+(nom||"");$("#idNomBox").hidden=k!=="ag";$("#idNom").value=nom||"";$("#idPiece").value=d.piece||(k==="pis"?(pisById(id)||{}).piece||"":"");$("#idNaiss").value=d.naissance||"";$("#idLieu").value=d.lieu||"";err("#idErr","");
   ["photo","cniR","cniV"].forEach(f=>{const p=$("#idPrev-"+f);p.removeAttribute("src");p.hidden=true;$("#idIn-"+f).value=""});open_("#mId");
   if(d.photoOk||d.cniOk){try{const s=await fdb.doc(phColl(k)+"/"+id).get();const v=s.exists?s.data():{};["photo","cniR","cniV"].forEach(f=>{if(v[f]){const p=$("#idPrev-"+f);p.src=v[f];p.hidden=false}})}catch(x){}}}
 ["photo","cniR","cniV"].forEach(f=>$("#idIn-"+f).addEventListener("change",async e=>{const fl=e.target.files[0];if(!fl)return;
@@ -1087,7 +1088,8 @@ $("#mId").addEventListener("submit",async e=>{e.preventDefault();if(!idCtx||!can
   const now=new Date().toISOString();const info={piece:$("#idPiece").value.trim().slice(0,40),naissance:nd||"",lieu:$("#idLieu").value.trim().slice(0,60),
     thumb:idImgs.thumb||old.thumb||"",photoOk:!!(idImgs.photo||old.photoOk),cniOk:!!(idImgs.cniR||idImgs.cniV||old.cniOk),majPar:ACTOR(),majLe:now};
   const imgs={};["photo","cniR","cniV"].forEach(f=>{if(idImgs[f])imgs[f]=idImgs[f]});
-  try{const b=fdb.batch();b.set(fdb.doc(idColl(k)+"/"+id),info);if(Object.keys(imgs).length)b.set(fdb.doc(phColl(k)+"/"+id),{...imgs,majPar:ACTOR(),majLe:now},{merge:true});
+  const nn=$("#idNom").value.trim();if(k==="ag"&&nn.length<3)return err("#idErr","Indiquez le nom de l'agent.");
+  try{const b=fdb.batch();b.set(fdb.doc(idColl(k)+"/"+id),info);if(k==="ag"&&nn!==((compteOf(id)||{}).nom||""))b.update(fdb.doc("comptes/"+id),{nom:nn.slice(0,80),majPar:ACTOR(),majLe:now});if(Object.keys(imgs).length)b.set(fdb.doc(phColl(k)+"/"+id),{...imgs,majPar:ACTOR(),majLe:now},{merge:true});
     await b.commit();close_();toast("Identité et photos enregistrées")}catch(x){err("#idErr",fbErr(x))}});
 async function viewId(k,id){if(!canId(k))return;const nom=k==="ag"?(compteOf(id)||{}).nom:(pisById(id)||{}).nom,d=idOf(k,id);
   $("#vuT").textContent=nom||"";$("#vuInfo").innerHTML=idLine(k,id,k==="pis"?(pisById(id)||{}).piece:"");$("#vuImgs").innerHTML='<p class="note">Chargement des photos…</p>';open_("#mVue");
