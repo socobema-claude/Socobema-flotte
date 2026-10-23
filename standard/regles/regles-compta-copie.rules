@@ -1,0 +1,121 @@
+rules_version = '2';
+// Règles – compta (copie autonome pour une coopérative)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminExiste() { return exists(/databases/$(database)/documents/config/admin); }
+    function estPca() {
+      return connecte() && adminExiste()
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    function compteActif() {
+      let p = /databases/$(database)/documents/comptes/$(request.auth.uid);
+      return connecte() && exists(p) && get(p).data.actif == true
+        && get(p).data.get('remplace', false) == false;
+    }
+    // Peut saisir : propriétaire ou comptable (pas les accès « consultation »).
+    function gere() {
+      return estPca() || (compteActif()
+        && get(/databases/$(database)/documents/comptes/$(request.auth.uid)).data.get('role', '') != 'lecture');
+    }
+    function signe() { return request.resource.data.majPar == request.auth.uid; }
+    function taille() { return request.resource.data.size() <= 60; }
+    function seuls(champs) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(champs); }
+
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /config/boutique {
+      allow read: if true;
+      allow create: if estPca() || (connecte() && !adminExiste());
+      allow update: if estPca();
+      allow delete: if false;
+    }
+    // Personnalisation (nom, logo, couleur) : lisible par tous, modifiable par le propriétaire.
+    match /config/marque {
+      allow read: if true;
+      allow write: if estPca() && request.resource.data.majPar == request.auth.uid;
+    }
+
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if estPca()
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca'
+          && getAfter(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid);
+      allow update: if estPca();
+      allow delete: if false;
+    }
+
+    match /dossiers/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+
+    // Écritures comptables : équilibrées, jamais modifiées ni effacées,
+    // et refusées dans une période clôturée.
+    match /ecritures/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille()
+        && request.resource.data.lignes is list
+        && request.resource.data.lignes.size() >= 2 && request.resource.data.lignes.size() <= 500
+        && request.resource.data.totalD is number
+        && request.resource.data.totalD == request.resource.data.totalC
+        && request.resource.data.jour is string && request.resource.data.jour.size() == 10
+        && request.resource.data.jour > get(/databases/$(database)/documents/dossiers/$(request.resource.data.dossierId)).data.get('verrou', '0000-00-00');
+      allow update, delete: if false;
+    }
+
+    // Numéros de facture : réservés une seule fois (aucun doublon possible, même avec plusieurs saisies en même temps).
+    match /numeros/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe();
+      allow update, delete: if false;
+    }
+    // Factures : après création, seuls l'encaissement (sans dépasser le TTC), le n° FNE
+    // et l'annulation (propriétaire) peuvent changer. Les montants sont figés.
+    match /factures/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille()
+        && exists(/databases/$(database)/documents/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num)) == false
+        && existsAfter(/databases/$(database)/documents/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num))
+        && request.resource.data.ttc is number && request.resource.data.paye <= request.resource.data.ttc;
+      allow update: if gere() && signe()
+        && seuls(['paye', 'fne', 'statut', 'annulMotif', 'majLe', 'majPar', 'par'])
+        && request.resource.data.paye <= resource.data.ttc && request.resource.data.paye >= 0
+        && (request.resource.data.statut == resource.data.statut || estPca());
+      allow delete: if false;
+    }
+    match /employes/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    // Une paie validée ne peut plus être recalculée (sauf après annulation par le propriétaire).
+    match /paies/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille();
+      allow update: if gere() && signe() && taille()
+        && (resource.data.statut == 'annulee'
+          || seuls(['payeLe', 'majLe', 'majPar', 'par'])
+          || (estPca() && seuls(['statut', 'majLe', 'majPar', 'par']) && request.resource.data.statut == 'annulee'));
+      allow delete: if false;
+    }
+    match /declarations/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille();
+      allow update: if gere() && signe() && taille()
+        && (resource.data.statut == 'annulee' || (estPca() && request.resource.data.statut == 'annulee'));
+      allow delete: if false;
+    }
+
+    match /journal/{id} {
+      allow read: if estPca();
+      allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

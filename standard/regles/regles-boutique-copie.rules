@@ -1,0 +1,144 @@
+rules_version = '2';
+// Règles – boutique (copie autonome pour une coopérative)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminExiste() { return exists(/databases/$(database)/documents/config/admin); }
+    function estPca() {
+      return connecte() && adminExiste()
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    function compteActif() {
+      let p = /databases/$(database)/documents/comptes/$(request.auth.uid);
+      return connecte() && exists(p) && get(p).data.actif == true
+        && get(p).data.get('remplace', false) == false;
+    }
+    // Gestionnaire : compte actif avec le rôle « gestionnaire ». gere() = propriétaire ou gestionnaire.
+    function estGest() {
+      return compteActif() && get(/databases/$(database)/documents/comptes/$(request.auth.uid)).data.get('role', '') == 'gestionnaire';
+    }
+    function gere() { return estPca() || estGest(); }
+    function signe() { return request.resource.data.majPar == request.auth.uid; }
+    function taille() { return request.resource.data.size() <= 40; }
+    function txt(v, mini, maxi) { return v is string && v.size() >= mini && v.size() <= maxi; }
+    function montant(v) { return v is number && v >= 0 && v < 10000000000; }
+    function jourOk(v) { return v is string && v.size() == 10; }
+    // Seuls ces champs changent quand un vendeur vend (le stock baisse) : il ne peut pas modifier les prix.
+    function seulStock() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['stock', 'vendus', 'majLe', 'majPar', 'par']);
+    }
+    function seulSolde() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['solde', 'majLe', 'majPar', 'par']);
+    }
+
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /config/boutique {
+      allow read: if true;
+      allow create: if estPca() || (connecte() && !adminExiste());
+      allow update: if estPca();
+      allow delete: if false;
+    }
+
+    // Personnalisation (nom, logo, couleur) : lisible par tous, modifiable par le propriétaire.
+    match /config/marque {
+      allow read: if true;
+      allow write: if estPca() && request.resource.data.majPar == request.auth.uid;
+    }
+
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if estPca()
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca'
+          && getAfter(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid);
+      allow update: if estPca();
+      allow delete: if false;
+    }
+
+    // Articles : le propriétaire gère tout ; un vendeur ne peut que faire baisser le stock en vendant.
+    match /articles/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille() && txt(request.resource.data.nom, 2, 80)
+        && montant(request.resource.data.pv);
+      allow update: if compteActif() && signe() && taille()
+        && (gere() || (seulStock() && request.resource.data.stock <= resource.data.stock));
+      allow delete: if false;
+    }
+
+    // Ventes : créées par le vendeur à son nom ; seul le propriétaire peut annuler ; jamais effacées.
+    match /ventes/{id} {
+      allow read: if compteActif();
+      allow create: if compteActif() && signe() && taille()
+        && request.resource.data.vendeur == request.auth.uid
+        && request.resource.data.statut == 'ok'
+        && montant(request.resource.data.net) && montant(request.resource.data.paye)
+        && montant(request.resource.data.reste) && jourOk(request.resource.data.jour)
+        && request.resource.data.lignes is list && request.resource.data.lignes.size() > 0
+        && request.resource.data.lignes.size() <= 200;
+      allow update: if gere() && signe();
+      allow delete: if false;
+    }
+
+    // Clients : créés par tous ; la dette change avec les ventes et les paiements.
+    match /clients/{id} {
+      allow read: if compteActif();
+      allow create: if compteActif() && signe() && taille() && txt(request.resource.data.nom, 2, 120)
+        && request.resource.data.solde == 0;
+      allow update: if compteActif() && signe() && taille();
+      allow delete: if false;
+    }
+
+    // Paiements : un vendeur encaisse les clients ; seul le propriétaire paie les fournisseurs ou annule.
+    match /reglements/{id} {
+      allow read: if compteActif();
+      allow create: if compteActif() && signe() && taille() && montant(request.resource.data.montant)
+        && jourOk(request.resource.data.jour)
+        && (request.resource.data.type == 'client' || gere());
+      allow update: if gere() && signe();
+      allow delete: if false;
+    }
+
+    // Clôtures de caisse : faites par tous, corrigées par le propriétaire seulement.
+    match /caisses/{id} {
+      allow read: if compteActif();
+      allow create: if compteActif() && signe() && taille() && jourOk(request.resource.data.jour);
+      allow update: if gere();
+      allow delete: if false;
+    }
+
+    // Réservé au propriétaire et aux gestionnaires.
+    match /fournisseurs/{id} {
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    match /achats/{id} {
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    match /depenses/{id} {
+      allow read: if gere();
+      allow create, update: if gere() && signe() && taille() && montant(request.resource.data.montant);
+      allow delete: if false;
+    }
+    match /mouvements/{id} {
+      allow read: if gere();
+      allow create: if gere() && signe();
+      allow update, delete: if false;
+    }
+
+    // Historique infalsifiable.
+    match /journal/{id} {
+      allow read: if estPca();
+      allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

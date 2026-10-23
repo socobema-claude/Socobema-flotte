@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#234E8C"><title>Administration de la plateforme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>:root{
+  --bg:#EEF1EE; --surface:#FFFFFF; --sunk:#E3E8E4; --ink:#17201C; --muted:#5A6862; --line:#D3DBD6;
+  --accent:#234E8C; --accent-ink:#FFFFFF; --signal:#E2A410; --signal-ink:#1E1600;
+  --ram:#234E8C; --ram-bg:#DCE7F3; --tra:#2B5B8C; --tra-bg:#DCE7F3;
+  --ok:#1E7A45; --ok-bg:#DCF1E3; --warn:#8A5A00; --warn-bg:#FBEBC6; --bad:#B3261E; --bad-bg:#F8DEDB; --info:#2B5B8C; --info-bg:#DCE7F3;
+  --f-disp:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211E; --sunk:#222C28; --ink:#E7EEEA; --muted:#97A59F; --line:#2E3A35;
+  --accent:#8DB4F0; --accent-ink:#0A1A33; --signal:#F2B630; --signal-ink:#1E1600;
+  --ram:#8DB4F0; --ram-bg:#3A2010; --tra:#7FAEE0; --tra-bg:#182A3D;
+  --ok:#6CC79A; --ok-bg:#163126; --warn:#F2C25C; --warn-bg:#3A2C0D; --bad:#F08A80; --bad-bg:#3D1916; --info:#7FAEE0; --info-bg:#182A3D;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211E; --sunk:#222C28; --ink:#E7EEEA; --muted:#97A59F; --line:#2E3A35;
+  --accent:#8DB4F0; --accent-ink:#0A1A33; --signal:#F2B630; --signal-ink:#1E1600;
+  --ram:#8DB4F0; --ram-bg:#3A2010; --tra:#7FAEE0; --tra-bg:#182A3D;
+  --ok:#6CC79A; --ok-bg:#163126; --warn:#F2C25C; --warn-bg:#3A2C0D; --bad:#F08A80; --bad-bg:#3D1916; --info:#7FAEE0; --info-bg:#182A3D;
+  color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;padding-block:12px 8px}
+.brand svg{flex:none}
+.brand .t{flex:1;min-width:0}
+.brand h1{font-family:var(--f-disp);font-weight:700;font-size:1.55rem;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:.8rem;display:flex;flex-wrap:wrap;gap:4px 10px}
+.sync{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.sync.ok{color:var(--ok)}.sync.busy{color:var(--warn)}.sync.bad{color:var(--bad)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:var(--f-disp);font-weight:600;font-size:1.02rem;letter-spacing:.04em;text-transform:uppercase;background:none;border:0;color:var(--muted);padding:8px 12px 10px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--signal)}
+.tab:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+main{padding-block:18px 60px}
+.banner{border-radius:8px;padding:10px 12px;font-size:.86rem;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.info{background:var(--info-bg);color:var(--info)}
+h2{font-family:var(--f-disp);font-weight:700;font-size:1.35rem;letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3{font-family:var(--f-disp);font-weight:600;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;margin:0 0 10px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.btn{font:inherit;font-weight:600;font-size:.9rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;min-height:40px}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.warnb{background:var(--signal);border-color:var(--signal);color:var(--signal-ink)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:.82rem}
+.btn.ghost{background:transparent}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--signal);color:var(--signal-ink);font-size:.72rem;text-align:center;margin-left:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:.82rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .l{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi .v{font-family:var(--f-disp);font-weight:700;font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.78rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:800px){.grid2{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.list{display:grid;gap:10px}
+@media (min-width:760px){.list.cols{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row.between{justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;letter-spacing:.02em;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}.p-info{background:var(--info-bg);color:var(--info)}.p-mut{background:var(--sunk);color:var(--muted)}
+.pill.nodot::before{display:none}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:.84rem}
+.meta b{color:var(--ink);font-weight:500}
+.trace{font-size:.74rem;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.empty{border:1.5px dashed var(--line);border-radius:10px;padding:22px 16px;text-align:center;color:var(--muted);font-size:.9rem}
+.empty .btn{margin-top:10px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.alert:first-child{border-top:0}
+.cat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-size:.86rem;margin-bottom:8px}
+.track{grid-column:1/-1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--signal);border-radius:4px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.r,th.r{text-align:right}
+select.status{font:inherit;font-size:.8rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:4px 6px}
+dialog{border:0;border-radius:14px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 40px);background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,16,13,.55)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dlg-b{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dlg-f{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.msgs{grid-column:1/-1;display:grid;gap:6px}
+.msgs ul{margin:0;padding:10px 12px 10px 28px;border-radius:8px;font-size:.88rem}
+.msgs ul.e{background:var(--bad-bg);color:var(--bad)}.msgs ul.w{background:var(--warn-bg);color:var(--warn)}
+.fld{display:grid;gap:4px;min-width:0}
+.fld.full{grid-column:1/-1}
+@media (max-width:480px){.fld{grid-column:1/-1}}
+.fld label{font-size:.78rem;font-weight:600;color:var(--muted)}
+.fld input,.fld select,.fld textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px 10px;width:100%;min-width:0}
+.fld [aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.fld .hint{font-size:.74rem;color:var(--muted)}
+.fld textarea{min-height:70px;resize:vertical}
+.tool{grid-column:1/-1;display:grid;gap:8px}
+.tool .item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.tool textarea{width:100%;min-height:140px;font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:20;max-width:calc(100vw - 32px)}
+.confirm{grid-column:1/-1;font-size:.95rem;margin:0}
+body.ro .w{display:none!important}
+.qr-wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.qr{background:#fff;padding:10px;border-radius:10px;border:1px solid var(--line);width:180px;height:180px;flex:none}
+.qr img,.qr canvas{width:160px!important;height:160px!important;display:block}
+.linkbox{font-family:var(--f-mono);font-size:.78rem;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+body:not(.locked) #v-lock{display:none}
+:root{--lk-field:#F3F2EC;--lk-focus:#1B3A66;--lk-btn:#234E8C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lk-field:#222C28;--lk-focus:#8DB4F0;--lk-btn:#3A6BB5}}
+:root[data-theme="dark"]{--lk-field:#222C28;--lk-focus:#8DB4F0;--lk-btn:#3A6BB5}
+body.locked main>section:not(#v-lock),body.locked .tabs,body.locked #btn-tools,body.locked #btn-lock{display:none!important}
+.lock{max-width:440px;margin:28px auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:30px 26px 26px;display:grid;gap:16px}
+.lk-eyebrow{font-family:var(--f-body);font-size:.82rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.lk-title{font-family:var(--f-body);font-weight:700;font-size:1.75rem;line-height:1.3;text-transform:none;letter-spacing:0;margin:-4px 0 0;color:var(--ink)}
+.lk-f{display:grid;gap:8px}
+.lk-f label{font-weight:700;font-size:.98rem;color:var(--ink)}
+.lk-in{font:inherit;font-size:1.05rem;width:100%;border:1px solid var(--line);border-radius:10px;background:var(--lk-field);color:var(--ink);padding:14px 16px;min-height:54px}
+.lk-in:focus{outline:none;border:2px solid var(--lk-focus);padding:13px 15px}
+.lk-pin{font-family:var(--f-mono);font-size:1.4rem;letter-spacing:.45em;min-height:64px}
+.lk-btn{font:inherit;font-weight:700;font-size:1rem;border:0;border-radius:10px;background:var(--lk-btn);color:#fff;min-height:54px;cursor:pointer}
+.lk-btn:disabled{opacity:.6}
+.lk-btn2{font:inherit;font-weight:700;font-size:.95rem;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:48px;cursor:pointer}
+.lk-help{margin:0;font-size:.9rem;color:var(--ink);background:var(--sunk);border-radius:10px;padding:12px}
+body.locked header.top{display:none}
+body.locked::before{background:var(--bg)}
+.lock p{margin:0;color:var(--muted);font-size:.9rem}
+.lock-err{color:var(--bad);font-size:.88rem;min-height:1.2em;margin:0}
+.code-big{grid-column:1/-1;font-family:var(--f-mono);font-size:2.4rem;font-weight:600;letter-spacing:.3em;text-align:center;background:var(--sunk);border-radius:10px;padding:14px 8px}
+.who{font-weight:600;color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.card:hover{border-color:var(--muted)}}
+.res-pos{color:var(--ok)}.res-neg{color:var(--bad)}
+#print-zone{display:none}
+.inv{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;color:#111;font-family:"IBM Plex Sans",Arial,sans-serif;font-size:13px;line-height:1.45;padding:28px;max-width:780px;margin:0 auto}
+.inv h1{font-family:"Barlow Condensed",Arial Narrow,Arial,sans-serif;font-size:28px;margin:0;letter-spacing:.04em;color:#234E8C}
+.inv .hd{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #234E8C;padding-bottom:12px;margin-bottom:16px;flex-wrap:wrap}
+.inv .org b{font-size:15px}.inv .org{font-size:12px;color:#333}
+.inv table{width:100%;border-collapse:collapse;margin:12px 0}
+.inv th{background:#234E8C;color:#fff;text-align:left;padding:7px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;white-space:normal}
+.inv td{border-bottom:1px solid #ddd;padding:7px;vertical-align:top;white-space:normal}
+.inv .r{text-align:right;white-space:nowrap}
+.inv .tot td{font-weight:700;border-bottom:0}
+.inv .big td{font-size:15px;background:#FBEFE7}
+.inv .box{border:1px solid #ccc;border-radius:6px;padding:10px;margin:8px 0}
+.inv .sig{display:flex;justify-content:space-between;margin-top:40px;gap:20px}
+.inv .sig div{flex:1;border-top:1px solid #999;padding-top:6px;font-size:12px;text-align:center}
+.inv .pied{margin-top:28px;font-size:10px;color:#666;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+.inv-prev{grid-column:1/-1;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.inv-prev .inv{min-width:620px}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff!important}
+  body>*:not(#print-zone){display:none!important}
+  #print-zone{display:block!important}
+  .inv{padding:0;max-width:none}
+}
+
+.tile{display:grid;gap:6px;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;min-height:110px}
+.tile b{font-family:var(--f-disp);font-size:1.4rem;text-transform:uppercase;letter-spacing:.03em}.tile span{color:var(--muted);font-size:.9rem}
+.tile:hover{border-color:var(--accent)}
+</style></head><body>
+<header class="top"><div class="wrap"><div class="brand"><svg width="40" height="30" viewBox="0 0 40 30" aria-hidden="true"><rect x="2" y="4" width="15" height="10" rx="2" fill="var(--accent)"/><rect x="21" y="4" width="15" height="10" rx="2" fill="var(--signal)"/><rect x="2" y="17" width="15" height="10" rx="2" fill="var(--signal)"/><rect x="21" y="17" width="15" height="10" rx="2" fill="var(--accent)"/></svg>
+<div class="t"><h1>Administration</h1><p><span>Coopératives, abonnements, accès</span></p></div><button class="btn sm ghost" id="btn-out" type="button" hidden>Se déconnecter</button></div></div></header>
+<main class="wrap" id="main"><div class="lock"><p>Chargement…</p></div></main>
+<dialog id="dlg"><form id="frm" method="dialog" novalidate><div class="dlg-h"><h2 id="dlg-t"></h2><button type="button" class="btn ghost sm" data-close>Fermer</button></div><div class="dlg-b" id="dlg-b"></div><div class="dlg-f" id="dlg-f"></div></form></dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../config.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sp=s=>s.replace(/ | /g," ");
+const fcfa=n=>sp((Math.round(Number(n)||0)).toLocaleString("fr-FR"))+" FCFA";
+const fnum=n=>sp((Math.round(Number(n)||0)).toLocaleString("fr-FR"));
+const nb=n=>sp((Number(n)||0).toLocaleString("fr-FR",{maximumFractionDigits:2}));
+const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const dayShift=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const fdate=d=>d?new Date(d.slice(0,10)+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const fdt=iso=>{if(!iso)return"";const d=new Date(iso);return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})};
+const fhm=iso=>iso?new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+const num=v=>{const s=String(v??"").replace(/\s/g,"").replace(",",".");return s===""?null:Number(s)};
+function errMsg(e){
+  const c=(e&&e.code)||"";
+  if(c==="permission-denied") return "Accès refusé : action réservée au propriétaire, ou code plus valide.";
+  if(c==="resource-exhausted") return "Limite gratuite du jour atteinte. Réessayez demain.";
+  if(c==="auth/requires-recent-login") return "Par sécurité, verrouillez, reconnectez-vous puis réessayez.";
+  if(c==="auth/network-request-failed"||c==="unavailable") return "Pas de connexion internet. Réessayez quand le réseau revient.";
+  if(/api-key|invalid-api|app-not-authorized/.test(c)) return "Configuration Firebase incorrecte (clé API).";
+  if(c==="auth/operation-not-allowed") return "La connexion par e-mail/mot de passe n'est pas activée dans Firebase.";
+  if(c==="auth/configuration-not-found"||c==="auth/admin-restricted-operation") return "Authentication n'est pas activée dans Firebase (Sécurité → Authentication → Commencer, puis activer « Adresse e-mail/Mot de passe »).";
+  return "L'enregistrement n'a pas abouti. Réessayez."+(c?" (code : "+c+")":"");
+}
+/* ---------- Fenêtre de dialogue ---------- */
+let ctx=null;
+function setMsgs(E,W){
+  const box=$("#dlg-msgs"); if(!box) return;
+  box.innerHTML=(E.length?`<ul class="e" role="alert">${E.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"")+(W.length?`<ul class="w">${W.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"");
+  if(E.length||W.length) box.scrollIntoView({block:"nearest"});
+}
+/* Ouvre un formulaire. fields : [{k,l,type,opts,req,full,hint,ph,step,def}] ; onSave(o) lance une erreur {msgs,warn} pour bloquer. */
+function openForm(title,fields,cur,onSave,okLabel){
+  cur=cur||{};
+  $("#dlg-t").textContent=title;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>`+fields.map(f=>{
+    if(f.type==="html") return f.html;
+    const v=cur[f.k]??f.def??""; const idf="f-"+f.k; let inp;
+    if(f.type==="select") inp=`<select id="${idf}" name="${f.k}">${f.blank?`<option value="">${esc(f.blank)}</option>`:""}${f.opts.map(o=>{const [k,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(k)}"${String(v)===String(k)?" selected":""}>${esc(l)}</option>`}).join("")}</select>`;
+    else if(f.type==="textarea") inp=`<textarea id="${idf}" name="${f.k}" maxlength="400" placeholder="${esc(f.ph||"")}">${esc(v)}</textarea>`;
+    else inp=`<input id="${idf}" name="${f.k}" type="${f.type==="number"?"text":(f.type||"text")}"${f.type==="number"?` inputmode="decimal"`:` maxlength="${f.max||120}"`}${f.list?` list="${f.list}"`:""} value="${esc(v)}" placeholder="${esc(f.ph||"")}" autocomplete="off">`;
+    return `<div class="fld${f.full?" full":""}"><label for="${idf}">${esc(f.l)}${f.req?" *":""}</label>${inp}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</div>`;
+  }).join("");
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn primary" id="dlg-ok">${esc(okLabel||"Enregistrer")}</button>`;
+  ctx={kind:"form",fields,onSave,confirmed:false,saving:false,label:okLabel||"Enregistrer"};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+function readFields(fields){
+  const o={};
+  fields.forEach(f=>{ if(f.type==="html"||!f.k) return; const el=$("#f-"+f.k); if(!el) return; const s=String(el.value).trim(); o[f.k]=f.type==="number"?num(s):s; });
+  return o;
+}
+function openConfirm(title,msg,label,fn,danger=true){
+  $("#dlg-t").textContent=title;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><p class="confirm">${msg}</p>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn ${danger?"danger":"primary"}" id="dlg-ok">${esc(label)}</button>`;
+  ctx={kind:"confirm",fn,saving:false,label};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+$("#frm").addEventListener("input",e=>{if(ctx&&ctx.onInput) try{ctx.onInput(e)}catch(_){}});
+$("#frm").addEventListener("change",e=>{if(ctx&&ctx.onInput) try{ctx.onInput(e)}catch(_){}});
+$("#frm").addEventListener("input",()=>{if(ctx&&ctx.confirmed){ctx.confirmed=false;const b=$("#dlg-ok");b.className="btn primary";b.textContent=ctx.label;setMsgs([],[])}});
+$("#frm").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!ctx||ctx.saving||!(ctx.kind==="form"||ctx.kind==="confirm")) return;
+  const ok=$("#dlg-ok");
+  ctx.saving=true; ok.disabled=true; const lbl=ok.textContent; ok.textContent="Enregistrement…";
+  try{
+    const r=ctx.kind==="form"?await ctx.onSave(readFields(ctx.fields),ctx):await ctx.fn(ctx);
+    if(r!==false&&$("#dlg").open) $("#dlg").close();
+  }catch(err){
+    ctx.saving=false; ok.disabled=false;
+    if(err&&(err.msgs||err.warn)){
+      if(err.msgs&&err.msgs.length){setMsgs(err.msgs,err.warn||[]);ok.textContent=lbl;return}
+      ctx.confirmed=true; setMsgs([],err.warn); ok.className="btn warnb"; ok.textContent="Confirmer quand même"; return;
+    }
+    setMsgs([errMsg(err)],[]); ok.textContent="Réessayer";
+  }
+  if(ctx) ctx.saving=false;
+});
+$("#dlg").addEventListener("click",e=>{if(e.target.closest("[data-close]")) $("#dlg").close()});
+$("#dlg").addEventListener("cancel",e=>{if(ctx&&ctx.saving) e.preventDefault()});
+/* Validation commune : lance {msgs,warn} ; les avertissements ne bloquent qu'une fois. */
+function check(E,W,ctx){ if(E.length) throw {msgs:E,warn:W}; if(W.length&&!ctx.confirmed) throw {warn:W}; }
+function saveBlob(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+function csv(rows,cols){const q=v=>{v=v==null?"":String(v);return /[;"\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};return "﻿"+[cols.map(c=>q(c[1])).join(";"),...rows.map(r=>cols.map(c=>q(typeof c[0]==="function"?c[0](r):r[c[0]])).join(";"))].join("\r\n")}
+let tt;function toast(msg){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=msg;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,3400)}
+
+
+/* ================= ESPACE ADMINISTRATEUR DE LA PLATEFORME ================= */
+const MODS=[["flotte","Flotte de camions"],["boutique","Boutique / quincaillerie"],["compta","Comptabilité"]];
+const MOD_LBL=Object.fromEntries(MODS);
+const BASE=location.origin+location.pathname.replace(/admin\/?(index\.html)?$/,"");
+const linkOf=(org,mod)=>BASE+(mod?mod+"/":"")+"?org="+org;
+let fdb=null, auth=null, me=null, cfg=null, orgs=[], pays=[], mode="loading", filtre="tous", q="";
+const tdy=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const addMonths=(d,n)=>{const x=new Date((d||tdy())+"T12:00:00");x.setMonth(x.getMonth()+n);return x.toISOString().slice(0,10)};
+const fd=d=>d?new Date(d+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const fc=n=>String(Math.round(+n||0)).replace(/\B(?=(\d{3})+(?!\d))/g," ")+" FCFA";
+const etat=o=>o.actif===false?"suspendu":(!o.expire||o.expire<tdy())?"expire":(o.expire<=addDays(tdy(),7)?"bientot":"actif");
+const addDays=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const ETAT_L={actif:["Actif","p-ok"],bientot:["Expire bientôt","p-warn"],expire:["Expiré","p-bad"],suspendu:["Suspendu","p-mut"]};
+const slug=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,30);
+function wa(tel,t){let x=String(tel||"").replace(/\D/g,"");if(x.length===10)x="225"+x;return "https://wa.me/"+(x.length>=11?x:"")+"?text="+encodeURIComponent(t)}
+
+async function init(){
+  const C=window.FIREBASE_CONFIG;
+  if(!window.firebase||!C||!C.apiKey||/COLLER/.test(C.apiKey)){$("#main").innerHTML=`<div class="lock"><h2 class="lk-title">Configuration manquante</h2><p>Le fichier config.js ne contient pas encore la configuration Firebase de la plateforme.</p></div>`;return}
+  if((window.PLATEFORME||{}).mode!=="multi"){$("#main").innerHTML=`<div class="lock"><h2 class="lk-title">Copie autonome</h2><p>Cette installation est une copie pour une seule coopérative : l'espace administrateur multi-coopératives n'y est pas utilisé. Ouvrez directement les modules.</p></div>`;return}
+  firebase.initializeApp(C); fdb=firebase.firestore(); auth=firebase.auth();
+  try{fdb.settings({experimentalForceLongPolling:true,merge:true})}catch(e){}
+  fdb.doc("plateforme/config").onSnapshot(s=>{cfg=s.exists?s.data():null;route()},e=>{$("#main").innerHTML=`<div class="lock"><p>Impossible de lire la configuration (${esc(e.code||"")}) : publiez les règles de la plateforme.</p></div>`});
+  auth.onAuthStateChanged(u=>{me=u;route()});
+}
+let subs=[];
+function route(){
+  if(cfg===undefined) return;
+  const isAdm=me&&cfg&&cfg.uid===me.uid;
+  $("#btn-out").hidden=!me;
+  if(!cfg){renderSetup();return}
+  if(!isAdm){subs.forEach(u=>u());subs=[];renderLogin(me?"Ce compte n'est pas l'administrateur de la plateforme.":"");return}
+  if(!subs.length){
+    subs.push(fdb.collection("orgs").onSnapshot(s=>{orgs=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+    subs.push(fdb.collectionGroup("paiements").onSnapshot(s=>{pays=s.docs.map(d=>({id:d.id,org:d.ref.parent.parent.id,...d.data()}));render()},()=>{}));
+  }
+  render();
+}
+function renderSetup(){
+  $("#main").innerHTML=`<form class="lock" id="f-setup" novalidate><div class="lk-eyebrow">Première ouverture</div><h2 class="lk-title">Administrateur de la plateforme</h2>
+    <p>Créez votre accès administrateur. Il permet de créer les coopératives, leurs abonnements et leurs codes d'activation. Cet écran n'apparaît qu'une fois.</p>
+    <div class="lk-f"><label for="s-mail">Votre adresse Gmail</label><input class="lk-in" id="s-mail" type="email" autocomplete="email"></div>
+    <div class="lk-f"><label for="s-p1">Mot de passe (8 caractères minimum)</label><input class="lk-in" id="s-p1" type="password" autocomplete="new-password"></div>
+    <div class="lk-f"><label for="s-p2">Retapez le mot de passe</label><input class="lk-in" id="s-p2" type="password" autocomplete="new-password"></div>
+    <p class="lock-err" id="s-err"></p><button class="lk-btn" type="submit">Créer l'accès administrateur</button></form>`;
+  $("#f-setup").onsubmit=async e=>{e.preventDefault();const m=$("#s-mail").value.trim(),p1=$("#s-p1").value,p2=$("#s-p2").value,er=$("#s-err");
+    if(!/^\S+@\S+\.\S+$/.test(m)){er.textContent="Adresse invalide.";return} if(p1.length<8){er.textContent="8 caractères minimum.";return} if(p1!==p2){er.textContent="Les deux mots de passe diffèrent.";return}
+    try{let cred;try{cred=await auth.createUserWithEmailAndPassword(m,p1)}catch(x){if(x.code==="auth/email-already-in-use") cred=await auth.signInWithEmailAndPassword(m,p1); else throw x}
+      await fdb.doc("plateforme/config").set({uid:cred.user.uid,email:m,creeLe:new Date().toISOString()});toast("Accès administrateur créé")}
+    catch(x){er.textContent=errMsg(x)}};
+}
+function renderLogin(msg){
+  $("#main").innerHTML=`<form class="lock" id="f-login" novalidate><div class="lk-eyebrow">Accès sécurisé</div><h2 class="lk-title">Espace administrateur</h2>
+    ${msg?`<p class="lock-err">${esc(msg)}</p>`:""}
+    <div class="lk-f"><label for="l-mail">Adresse e-mail</label><input class="lk-in" id="l-mail" type="email" autocomplete="email" value="${esc((cfg&&cfg.email)||"")}"></div>
+    <div class="lk-f"><label for="l-p">Mot de passe</label><input class="lk-in" id="l-p" type="password" autocomplete="current-password"></div>
+    <p class="lock-err" id="l-err"></p><button class="lk-btn" type="submit">Ouvrir</button><button class="lk-btn2" type="button" id="l-forgot">Mot de passe oublié ?</button></form>`;
+  $("#f-login").onsubmit=async e=>{e.preventDefault();try{await auth.signInWithEmailAndPassword($("#l-mail").value.trim(),$("#l-p").value)}catch(x){$("#l-err").textContent=/wrong|invalid|not-found/.test(x.code||"")?"Identifiants incorrects.":errMsg(x)}};
+  $("#l-forgot").onclick=async()=>{try{await auth.sendPasswordResetEmail($("#l-mail").value.trim());$("#l-err").textContent="E-mail de réinitialisation envoyé."}catch(x){$("#l-err").textContent=errMsg(x)}};
+}
+$("#btn-out").onclick=()=>auth&&auth.signOut();
+
+function render(){
+  if(!(me&&cfg&&cfg.uid===me.uid)) return;
+  const L=orgs.slice().sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+  const nb=k=>L.filter(o=>etat(o)===k).length, m=tdy().slice(0,7);
+  const revM=pays.filter(p=>(p.jour||"").startsWith(m)).reduce((s,p)=>s+(+p.montant||0),0), revY=pays.filter(p=>(p.jour||"").startsWith(m.slice(0,4))).reduce((s,p)=>s+(+p.montant||0),0);
+  const mrr=L.filter(o=>etat(o)==="actif"||etat(o)==="bientot").reduce((s,o)=>s+(+o.prix||0),0);
+  const F=L.filter(o=>(filtre==="tous"||etat(o)===filtre)&&(!q||(o.nom+" "+(o.sigle||"")+" "+o.id+" "+(o.ville||"")).toLowerCase().includes(q.toLowerCase())));
+  $("#main").innerHTML=`<div class="bar"><h2>Coopératives clientes</h2><button class="btn primary" type="button" id="b-new">+ Nouvelle coopérative</button></div>
+    <div class="kpis"><div class="kpi"><div class="l">Coopératives</div><div class="v">${L.length}</div><div class="s">${nb("actif")} active(s)</div></div>
+      <div class="kpi"><div class="l">Expirent sous 7 jours</div><div class="v" style="${nb("bientot")?"color:var(--warn)":""}">${nb("bientot")}</div></div>
+      <div class="kpi"><div class="l">Expirées / suspendues</div><div class="v" style="${nb("expire")+nb("suspendu")?"color:var(--bad)":""}">${nb("expire")+nb("suspendu")}</div></div>
+      <div class="kpi"><div class="l">Encaissé ce mois</div><div class="v">${fc(revM).replace(" FCFA","")}</div><div class="s">${fc(revY)} cette année</div></div>
+      <div class="kpi"><div class="l">Revenu mensuel attendu</div><div class="v">${fc(mrr).replace(" FCFA","")}</div><div class="s">abonnements actifs</div></div></div>
+    <div class="row" style="margin-bottom:12px"><input class="btn" id="q" type="search" placeholder="Chercher une coopérative…" value="${esc(q)}" style="flex:1;min-width:180px;text-align:left"></div>
+    <div class="chips" style="margin-bottom:14px">${[["tous","Toutes"],["actif","Actives"],["bientot","Expirent bientôt"],["expire","Expirées"],["suspendu","Suspendues"]].map(([k,l])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${filtre===k}">${l}</button>`).join("")}</div>
+    ${F.length?`<div class="list cols">${F.map(o=>{const e=etat(o);return `<div class="card"><div class="row between"><span class="row" style="flex-wrap:nowrap;gap:10px">${o.logo?`<img src="${esc(o.logo)}" alt="" style="height:34px;width:auto;max-width:70px;object-fit:contain">`:`<span style="width:12px;height:34px;border-radius:4px;background:${esc(o.couleur||"#888")}"></span>`}<b>${esc(o.sigle||o.nom)}</b></span><span class="pill ${ETAT_L[e][1]}">${ETAT_L[e][0]}</span></div>
+      <div class="meta"><span>${esc(o.nom)}</span><span>${esc(o.ville||"")}</span><span>Jusqu'au <b>${fd(o.expire)}</b></span><span>${fc(o.prix)}/mois</span></div>
+      <div class="meta">${(o.modules||[]).map(m=>`<span class="pill p-info nodot">${MOD_LBL[m]}</span>`).join(" ")}</div>
+      <div class="row"><button class="btn sm primary" type="button" data-pay="${o.id}">Paiement / prolonger</button><button class="btn sm" type="button" data-links="${o.id}">Liens & code</button><button class="btn sm" type="button" data-edit="${o.id}">Modifier</button>
+        <button class="btn sm ghost" type="button" data-sus="${o.id}">${o.actif===false?"Réactiver":"Suspendre"}</button>${o.tel?`<a class="btn sm ghost" href="${wa(o.tel,`Bonjour ${o.sigle||o.nom}, votre abonnement à la plateforme de gestion ${e==="expire"?"a expiré le":"arrive à échéance le"} ${fd(o.expire)}. Montant mensuel : ${fc(o.prix)}. Merci de procéder au renouvellement.`)}" target="_blank" rel="noopener">Relancer</a>`:""}</div></div>`}).join("")}</div>`
+      :`<div class="empty">${L.length?"Aucune coopérative dans ce filtre.":"Aucune coopérative. Créez la première."}</div>`}`;
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,a"); if(!t) return;
+  if(t.id==="b-new") return openOrg();
+  if(t.dataset.f){filtre=t.dataset.f;render();return}
+  if(t.dataset.edit) return openOrg(t.dataset.edit);
+  if(t.dataset.pay) return openPay(t.dataset.pay);
+  if(t.dataset.links) return showLinks(t.dataset.links);
+  if(t.dataset.sus) return toggleSus(t.dataset.sus);
+  if(t.dataset.newact) return newActivation(t.dataset.newact);
+  if(t.dataset.copy){navigator.clipboard.writeText(t.dataset.copy).then(()=>toast("Copié"),()=>toast("Copie impossible"));return}
+});
+document.addEventListener("input",e=>{if(e.target.id==="q"){q=e.target.value;const p=e.target.selectionStart;render();const x=$("#q");x.focus();x.setSelectionRange(p,p)}});
+
+function compressLogo(file){return new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,256/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/png"))};im.onerror=ko;im.src=r.result};r.onerror=ko;r.readAsDataURL(file)})}
+function openOrg(id){
+  const o=id?orgs.find(x=>x.id===id):null; let logo=(o&&o.logo)||"";
+  openForm(o?"Modifier · "+(o.sigle||o.nom):"Nouvelle coopérative",[
+    {k:"nom",l:"Nom complet",req:true,full:true,ph:"Ex. Société coopérative … de Séguéla"},{k:"sigle",l:"Sigle",req:true,ph:"Ex. COOPSEG"},
+    ...(o?[]:[{k:"ident",l:"Identifiant du lien",hint:"Lettres et chiffres ; apparaît dans le lien (?org=…)",ph:"auto"}]),
+    {k:"snt",l:"Code SNT / agrément / RCCM"},{k:"tel",l:"Téléphone du responsable",type:"tel"},{k:"adresse",l:"Adresse",ph:"BP …"},{k:"ville",l:"Ville"},
+    {k:"signataire",l:"Signataire des documents",full:true,def:"Le Président du Conseil d'Administration"},
+    {k:"couleur",l:"Couleur principale",type:"color",def:"#1E6A49"},
+    {type:"html",html:`<div class="fld"><label for="o-logo">Logo</label><input id="o-logo" type="file" accept="image/*"><img id="o-prev" alt="" src="${esc(logo)}" style="max-height:50px;max-width:140px;object-fit:contain;${logo?"":"display:none"}"></div>
+      <div class="fld full"><label>Modules inclus</label><div class="row">${MODS.map(([k,l])=>`<label style="display:flex;gap:6px;align-items:center;font-weight:500;color:var(--ink)"><input type="checkbox" class="o-mod" value="${k}"${!o||(o.modules||[]).includes(k)?" checked":""} style="width:auto"> ${l}</label>`).join("")}</div></div>`},
+    {k:"prix",l:"Prix de l'abonnement (FCFA / mois)",type:"number",def:25000},
+    ...(o?[]:[{k:"expire",l:"Accès valable jusqu'au",type:"date",def:addDays(tdy(),30),hint:"Par défaut : 30 jours d'essai"}])],o||{},async(v,c)=>{
+    const E=[]; const mods=[...document.querySelectorAll(".o-mod:checked")].map(x=>x.value);
+    if(!v.nom||v.nom.length<3) E.push("Indiquez le nom."); if(!v.sigle) E.push("Indiquez le sigle."); if(!mods.length) E.push("Choisissez au moins un module.");
+    const ident=o?o.id:slug(v.ident||v.sigle||v.nom);
+    if(!o&&(!ident||ident.length<3)) E.push("Identifiant du lien trop court.");
+    if(!o&&orgs.some(x=>x.id===ident)) E.push(`L'identifiant « ${ident} » existe déjà : choisissez-en un autre.`);
+    check(E,[],c);
+    const data={nom:v.nom,sigle:v.sigle,snt:v.snt||"",tel:v.tel||"",adresse:v.adresse||"",ville:v.ville||"",signataire:v.signataire||"",couleur:v.couleur||"",logo,modules:mods,prix:Math.round(v.prix||0),majLe:new Date().toISOString()};
+    if(o){await fdb.doc("orgs/"+o.id).update(data);toast("Coopérative modifiée");return}
+    const code=String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000);
+    const b=fdb.batch(); b.set(fdb.doc("orgs/"+ident),{...data,actif:true,expire:v.expire,expireTs:new Date(v.expire+"T23:59:59"),creeLe:new Date().toISOString()});
+    b.set(fdb.doc(`orgs/${ident}/prive/activation`),{code,le:new Date().toISOString()});
+    await b.commit(); toast("Coopérative créée"); setTimeout(()=>showLinks(ident,code),80);
+  },o?"Enregistrer":"Créer la coopérative");
+  $("#o-logo").addEventListener("change",async e=>{const f=e.target.files[0];if(!f) return;try{logo=await compressLogo(f);const p=$("#o-prev");p.src=logo;p.style.display=""}catch(_){toast("Image illisible")}});
+}
+async function showLinks(id,code){
+  const o=orgs.find(x=>x.id===id)||{id,modules:[]};
+  if(!code){try{const s=await fdb.doc(`orgs/${id}/prive/activation`).get();code=s.exists?s.data().code:""}catch(_){}}
+  const L=[["",`Portail de ${o.sigle||o.nom||id}`],...MODS.filter(([k])=>(o.modules||[]).includes(k))];
+  $("#dlg-t").textContent="Liens · "+(o.sigle||o.nom||id);
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
+    <div class="tool"><h3>Code d'activation</h3><div class="code-big">${esc(code||"—")}</div><p class="trace" style="margin:0">À donner au PCA de la coopérative : il le saisit une seule fois par module, à la création de son accès propriétaire.</p><div class="row"><button class="btn sm" type="button" data-newact="${id}">Générer un nouveau code</button></div></div>
+    <div class="tool"><h3>Liens</h3>${L.map(([k,l])=>`<div class="item"><span><b>${esc(l)}</b><br><span class="trace" style="word-break:break-all">${esc(linkOf(id,k))}</span></span><button class="btn sm" type="button" data-copy="${esc(linkOf(id,k))}">Copier</button></div>`).join("")}
+      <div class="qr-wrap"><div class="qr" id="qr-p"></div><span class="trace">QR du portail de la coopérative (tous ses modules).</span></div></div>`;
+  $("#dlg-f").innerHTML=`${o.tel?`<a class="btn" href="${wa(o.tel,`Bienvenue sur la plateforme de gestion de ${o.sigle||o.nom}.\nLien : ${linkOf(id,"")}\nCode d'activation : ${code}\n(à saisir une seule fois, à la création de votre accès propriétaire)`)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a>`:""}<button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"info"}; if(!$("#dlg").open) $("#dlg").showModal();
+  try{new QRCode($("#qr-p"),{text:linkOf(id,""),width:160,height:160,correctLevel:QRCode.CorrectLevel.M})}catch(_){}
+}
+function newActivation(id){
+  openConfirm("Nouveau code d'activation","L'ancien code ne fonctionnera plus. Les accès déjà créés ne changent pas.","Générer",async()=>{
+    const code=String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000);
+    await fdb.doc(`orgs/${id}/prive/activation`).set({code,le:new Date().toISOString()}); setTimeout(()=>showLinks(id,code),80)},false);
+}
+function openPay(id){
+  const o=orgs.find(x=>x.id===id); const start=o.expire&&o.expire>tdy()?o.expire:tdy();
+  const P=pays.filter(p=>p.org===id).sort((a,b)=>(b.jour||"").localeCompare(a.jour||""));
+  openForm("Paiement · "+(o.sigle||o.nom),[
+    {type:"html",html:`<p class="confirm">Abonnement actuel : jusqu'au <b>${fd(o.expire)}</b> · ${fc(o.prix)}/mois</p>`},
+    {k:"mois",l:"Durée payée",type:"select",opts:[["1","1 mois"],["3","3 mois"],["6","6 mois"],["12","12 mois"]],def:"1"},
+    {k:"montant",l:"Montant reçu (FCFA)",type:"number",def:o.prix||0},
+    {k:"mode",l:"Payé par",type:"select",opts:["Orange Money","MTN MoMo","Moov Money","Wave","Espèces","Virement","Chèque"]},
+    {k:"ref",l:"Référence de la transaction"},{k:"jour",l:"Date du paiement",type:"date",def:tdy()},
+    {type:"html",html:`<p class="confirm" id="p-new"></p>${P.length?`<div class="full scroll" style="grid-column:1/-1"><table><thead><tr><th>Date</th><th>Durée</th><th class="r">Montant</th><th>Mode</th></tr></thead><tbody>${P.slice(0,12).map(p=>`<tr><td>${fd(p.jour)}</td><td>${p.mois} mois</td><td class="r">${fc(p.montant)}</td><td>${esc(p.mode||"")}</td></tr>`).join("")}</tbody></table></div>`:""}`}],{},async(v,c)=>{
+    const E=[]; if(!(v.montant>0)) E.push("Indiquez le montant reçu.");
+    check(E,v.montant<(o.prix||0)*(+v.mois)?[`Le montant est inférieur au prix (${fc((o.prix||0)*(+v.mois))}).`]:[],c);
+    const exp=addMonths(start,+v.mois), b=fdb.batch();
+    b.set(fdb.collection(`orgs/${id}/paiements`).doc(),{montant:Math.round(v.montant),mois:+v.mois,mode:v.mode,ref:v.ref||"",jour:v.jour,ancienneFin:o.expire||"",nouvelleFin:exp,le:new Date().toISOString()});
+    b.update(fdb.doc("orgs/"+id),{expire:exp,expireTs:new Date(exp+"T23:59:59"),actif:true,majLe:new Date().toISOString()});
+    await b.commit(); toast("Abonnement prolongé jusqu'au "+fd(exp));
+    if(o.tel) setTimeout(()=>{openConfirm("Envoyer un reçu ?",`Envoyer à ${esc(o.sigle||o.nom)} la confirmation par WhatsApp ?`,"Envoyer",async()=>{window.open(wa(o.tel,`Reçu : ${fc(v.montant)} reçus le ${fd(v.jour)} (${v.mode}${v.ref?", réf. "+v.ref:""}). Abonnement de ${o.sigle||o.nom} prolongé jusqu'au ${fd(exp)}. Merci !`),"_blank","noopener")},false)},300);
+  },"Enregistrer le paiement");
+  ctx.onInput=()=>{const n=+($("#f-mois")||{}).value||1;$("#p-new").innerHTML=`Nouvelle date de fin : <b>${fd(addMonths(start,n))}</b>`}; ctx.onInput();
+}
+function toggleSus(id){
+  const o=orgs.find(x=>x.id===id), on=o.actif===false;
+  openConfirm(on?"Réactiver":"Suspendre",on?`Réactiver l'accès de ${esc(o.sigle||o.nom)} ?`:`Suspendre l'accès de ${esc(o.sigle||o.nom)} ? Ses utilisateurs ne pourront plus ouvrir la plateforme. Les données sont conservées.`,on?"Réactiver":"Suspendre",async()=>{
+    await fdb.doc("orgs/"+id).update({actif:on,majLe:new Date().toISOString()}); toast(on?"Accès réactivé":"Accès suspendu")},!on);
+}
+init();
+})();
+</script>
+</body>
+</html>

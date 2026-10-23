@@ -1,0 +1,391 @@
+rules_version = '2';
+// Règles – Plateforme standard multi-coopératives (flotte, boutique, comptabilité)
+// À coller dans Firebase (projet de la plateforme) > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function superAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/plateforme/config)
+        && get(/databases/$(database)/documents/plateforme/config).data.uid == request.auth.uid;
+    }
+    // Administrateur de la plateforme : réservé une seule fois, à la première ouverture de l'espace administrateur.
+    match /plateforme/config {
+      allow read: if true;
+      allow create: if request.auth != null && !exists(/databases/$(database)/documents/plateforme/config)
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if superAdmin() && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
+    }
+    // Fiche publique de chaque coopérative (nom, logo, couleur, abonnement) : modifiée par l'administrateur seul.
+    match /orgs/{org} {
+      allow read: if true;
+      allow write: if superAdmin();
+      match /prive/{d} { allow read, write: if superAdmin(); }
+      match /paiements/{p} { allow read, write: if superAdmin(); }
+    }
+    match /{chemin=**}/paiements/{p} { allow read: if superAdmin(); }
+
+    // ===================== Module flotte =====================
+    match /orgs/{org}/modules/flotte {
+          function abonne() {
+            let o = get(/databases/$(database)/documents/orgs/$(org)).data;
+            return o.actif == true && o.expireTs > request.time && 'flotte' in o.modules;
+          }
+
+          function connecte() { return request.auth != null; }
+          function adminExiste() { return exists(/databases/$(database)/documents/orgs/$(org)/modules/flotte/config/admin); }
+          function estPca() {
+            return connecte() && adminExiste()
+              && get(/databases/$(database)/documents/orgs/$(org)/modules/flotte/config/admin).data.uid == request.auth.uid;
+          }
+          // Compte actif = fiche dans « comptes », active et non remplacée par un nouveau code.
+          function compteActif() {
+            let p = /databases/$(database)/documents/orgs/$(org)/modules/flotte/comptes/$(request.auth.uid);
+            return abonne() && connecte() && exists(p)
+              && get(p).data.actif == true
+              && get(p).data.get('remplace', false) == false;
+          }
+          // Toute écriture doit être signée par son véritable auteur (impossible d'écrire au nom d'un autre).
+          function signe() { return request.resource.data.majPar == request.auth.uid; }
+          function taille() { return request.resource.data.size() <= 60; }
+          function txt(v, mini, maxi) { return v is string && v.size() >= mini && v.size() <= maxi; }
+          function nombreOuVide(v) { return v == null || (v is number && v >= 0); }
+
+          function camionOk() {
+            let d = request.resource.data;
+            return txt(d.immat, 2, 30) && d.type in ['ramassage', 'transport']
+              && nombreOuVide(d.get('capaciteT', null)) && nombreOuVide(d.get('km', null));
+          }
+          function missionOk() {
+            let d = request.resource.data;
+            return txt(d.camionId, 1, 64) && txt(d.date, 10, 10)
+              && d.statut in ['planifiee', 'en_cours', 'livree', 'annulee']
+              && nombreOuVide(d.get('sacs', null)) && nombreOuVide(d.get('poidsKg', null))
+              && nombreOuVide(d.get('fraisRoute', null));
+          }
+          function depenseOk() {
+            let d = request.resource.data;
+            return txt(d.camionId, 1, 64) && txt(d.date, 10, 10)
+              && d.montant is number && d.montant > 0 && d.montant < 1000000000
+              && nombreOuVide(d.get('litres', null));
+          }
+
+          // Propriétaire : créé une seule fois, à la première installation, puis verrouillé.
+          match /config/admin {
+            allow read: if true;
+            allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid
+              && abonne() && request.resource.data.activation == get(/databases/$(database)/documents/orgs/$(org)/prive/activation).data.code;
+            allow update, delete: if false;
+          }
+          // Date de la dernière sauvegarde complète.
+          match /config/sauvegarde {
+            allow read: if compteActif();
+            allow write: if estPca();
+          }
+
+          // Liste des personnes qui peuvent se connecter (nom + identifiant technique, jamais de code).
+          match /comptes/{uid} {
+            allow read: if true;
+            allow create: if estPca()
+              || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca'
+                && getAfter(/databases/$(database)/documents/orgs/$(org)/modules/flotte/config/admin).data.uid == request.auth.uid);
+            allow update: if estPca();
+            allow delete: if false;
+          }
+
+          // Données de la flotte : lecture et saisie réservées aux comptes actifs ;
+          // suppression définitive réservée au PCA.
+          match /camions/{id} {
+            allow read: if compteActif();
+            allow create, update: if compteActif() && signe() && taille() && camionOk();
+            allow delete: if compteActif() && estPca();
+          }
+          match /missions/{id} {
+            allow read: if compteActif();
+            allow create, update: if compteActif() && signe() && taille() && missionOk();
+            allow delete: if compteActif() && estPca();
+          }
+          match /depenses/{id} {
+            allow read: if compteActif();
+            allow create, update: if compteActif() && signe() && taille() && depenseOk();
+            allow delete: if compteActif() && estPca();
+          }
+
+          // Pièces jointes (photo ou PDF d'un document de camion), moins de 1 Mo chacune ;
+          // suppression réservée au PCA.
+          match /pieces/{id} {
+            allow read: if compteActif();
+            allow create, update: if compteActif() && signe()
+              && request.resource.data.data is string && request.resource.data.data.size() < 1000000
+              && request.resource.data.type in ['image', 'pdf'];
+            allow delete: if compteActif() && estPca();
+          }
+
+          // Historique : chacun ajoute ses propres lignes ; personne ne peut les modifier ni les effacer.
+          match /journal/{id} {
+            allow read: if compteActif() && estPca();
+            allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+            allow update, delete: if false;
+          }
+          }
+
+    // ===================== Module boutique =====================
+    match /orgs/{org}/modules/boutique {
+          function abonne() {
+            let o = get(/databases/$(database)/documents/orgs/$(org)).data;
+            return o.actif == true && o.expireTs > request.time && 'boutique' in o.modules;
+          }
+
+          function connecte() { return request.auth != null; }
+          function adminExiste() { return exists(/databases/$(database)/documents/orgs/$(org)/modules/boutique/config/admin); }
+          function estPca() {
+            return connecte() && adminExiste()
+              && get(/databases/$(database)/documents/orgs/$(org)/modules/boutique/config/admin).data.uid == request.auth.uid;
+          }
+          function compteActif() {
+            let p = /databases/$(database)/documents/orgs/$(org)/modules/boutique/comptes/$(request.auth.uid);
+            return abonne() && connecte() && exists(p) && get(p).data.actif == true
+              && get(p).data.get('remplace', false) == false;
+          }
+          // Gestionnaire : compte actif avec le rôle « gestionnaire ». gere() = propriétaire ou gestionnaire.
+          function estGest() {
+            return compteActif() && get(/databases/$(database)/documents/orgs/$(org)/modules/boutique/comptes/$(request.auth.uid)).data.get('role', '') == 'gestionnaire';
+          }
+          function gere() { return estPca() || estGest(); }
+          function signe() { return request.resource.data.majPar == request.auth.uid; }
+          function taille() { return request.resource.data.size() <= 40; }
+          function txt(v, mini, maxi) { return v is string && v.size() >= mini && v.size() <= maxi; }
+          function montant(v) { return v is number && v >= 0 && v < 10000000000; }
+          function jourOk(v) { return v is string && v.size() == 10; }
+          // Seuls ces champs changent quand un vendeur vend (le stock baisse) : il ne peut pas modifier les prix.
+          function seulStock() {
+            return request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['stock', 'vendus', 'majLe', 'majPar', 'par']);
+          }
+          function seulSolde() {
+            return request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['solde', 'majLe', 'majPar', 'par']);
+          }
+
+          match /config/admin {
+            allow read: if true;
+            allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid
+              && abonne() && request.resource.data.activation == get(/databases/$(database)/documents/orgs/$(org)/prive/activation).data.code;
+            allow update, delete: if false;
+          }
+          match /config/boutique {
+            allow read: if true;
+            allow create: if estPca() || (connecte() && !adminExiste());
+            allow update: if estPca();
+            allow delete: if false;
+          }
+
+          match /comptes/{uid} {
+            allow read: if true;
+            allow create: if estPca()
+              || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca'
+                && getAfter(/databases/$(database)/documents/orgs/$(org)/modules/boutique/config/admin).data.uid == request.auth.uid);
+            allow update: if estPca();
+            allow delete: if false;
+          }
+
+          // Articles : le propriétaire gère tout ; un vendeur ne peut que faire baisser le stock en vendant.
+          match /articles/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe() && taille() && txt(request.resource.data.nom, 2, 80)
+              && montant(request.resource.data.pv);
+            allow update: if compteActif() && signe() && taille()
+              && (gere() || (seulStock() && request.resource.data.stock <= resource.data.stock));
+            allow delete: if false;
+          }
+
+          // Ventes : créées par le vendeur à son nom ; seul le propriétaire peut annuler ; jamais effacées.
+          match /ventes/{id} {
+            allow read: if compteActif();
+            allow create: if compteActif() && signe() && taille()
+              && request.resource.data.vendeur == request.auth.uid
+              && request.resource.data.statut == 'ok'
+              && montant(request.resource.data.net) && montant(request.resource.data.paye)
+              && montant(request.resource.data.reste) && jourOk(request.resource.data.jour)
+              && request.resource.data.lignes is list && request.resource.data.lignes.size() > 0
+              && request.resource.data.lignes.size() <= 200;
+            allow update: if gere() && signe();
+            allow delete: if false;
+          }
+
+          // Clients : créés par tous ; la dette change avec les ventes et les paiements.
+          match /clients/{id} {
+            allow read: if compteActif();
+            allow create: if compteActif() && signe() && taille() && txt(request.resource.data.nom, 2, 120)
+              && request.resource.data.solde == 0;
+            allow update: if compteActif() && signe() && taille();
+            allow delete: if false;
+          }
+
+          // Paiements : un vendeur encaisse les clients ; seul le propriétaire paie les fournisseurs ou annule.
+          match /reglements/{id} {
+            allow read: if compteActif();
+            allow create: if compteActif() && signe() && taille() && montant(request.resource.data.montant)
+              && jourOk(request.resource.data.jour)
+              && (request.resource.data.type == 'client' || gere());
+            allow update: if gere() && signe();
+            allow delete: if false;
+          }
+
+          // Clôtures de caisse : faites par tous, corrigées par le propriétaire seulement.
+          match /caisses/{id} {
+            allow read: if compteActif();
+            allow create: if compteActif() && signe() && taille() && jourOk(request.resource.data.jour);
+            allow update: if gere();
+            allow delete: if false;
+          }
+
+          // Réservé au propriétaire et aux gestionnaires.
+          match /fournisseurs/{id} {
+            allow read: if gere();
+            allow create, update: if gere() && signe() && taille();
+            allow delete: if false;
+          }
+          match /achats/{id} {
+            allow read: if gere();
+            allow create, update: if gere() && signe() && taille();
+            allow delete: if false;
+          }
+          match /depenses/{id} {
+            allow read: if gere();
+            allow create, update: if gere() && signe() && taille() && montant(request.resource.data.montant);
+            allow delete: if false;
+          }
+          match /mouvements/{id} {
+            allow read: if gere();
+            allow create: if gere() && signe();
+            allow update, delete: if false;
+          }
+
+          // Historique infalsifiable.
+          match /journal/{id} {
+            allow read: if estPca();
+            allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+            allow update, delete: if false;
+          }
+          }
+
+    // ===================== Module compta =====================
+    match /orgs/{org}/modules/compta {
+          function abonne() {
+            let o = get(/databases/$(database)/documents/orgs/$(org)).data;
+            return o.actif == true && o.expireTs > request.time && 'compta' in o.modules;
+          }
+
+          function connecte() { return request.auth != null; }
+          function adminExiste() { return exists(/databases/$(database)/documents/orgs/$(org)/modules/compta/config/admin); }
+          function estPca() {
+            return connecte() && adminExiste()
+              && get(/databases/$(database)/documents/orgs/$(org)/modules/compta/config/admin).data.uid == request.auth.uid;
+          }
+          function compteActif() {
+            let p = /databases/$(database)/documents/orgs/$(org)/modules/compta/comptes/$(request.auth.uid);
+            return abonne() && connecte() && exists(p) && get(p).data.actif == true
+              && get(p).data.get('remplace', false) == false;
+          }
+          // Peut saisir : propriétaire ou comptable (pas les accès « consultation »).
+          function gere() {
+            return estPca() || (compteActif()
+              && get(/databases/$(database)/documents/orgs/$(org)/modules/compta/comptes/$(request.auth.uid)).data.get('role', '') != 'lecture');
+          }
+          function signe() { return request.resource.data.majPar == request.auth.uid; }
+          function taille() { return request.resource.data.size() <= 60; }
+          function seuls(champs) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(champs); }
+
+          match /config/admin {
+            allow read: if true;
+            allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid
+              && abonne() && request.resource.data.activation == get(/databases/$(database)/documents/orgs/$(org)/prive/activation).data.code;
+            allow update, delete: if false;
+          }
+          match /config/boutique {
+            allow read: if true;
+            allow create: if estPca() || (connecte() && !adminExiste());
+            allow update: if estPca();
+            allow delete: if false;
+          }
+          match /comptes/{uid} {
+            allow read: if true;
+            allow create: if estPca()
+              || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca'
+                && getAfter(/databases/$(database)/documents/orgs/$(org)/modules/compta/config/admin).data.uid == request.auth.uid);
+            allow update: if estPca();
+            allow delete: if false;
+          }
+
+          match /dossiers/{id} {
+            allow read: if compteActif();
+            allow create, update: if gere() && signe() && taille();
+            allow delete: if false;
+          }
+
+          // Écritures comptables : équilibrées, jamais modifiées ni effacées,
+          // et refusées dans une période clôturée.
+          match /ecritures/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe() && taille()
+              && request.resource.data.lignes is list
+              && request.resource.data.lignes.size() >= 2 && request.resource.data.lignes.size() <= 500
+              && request.resource.data.totalD is number
+              && request.resource.data.totalD == request.resource.data.totalC
+              && request.resource.data.jour is string && request.resource.data.jour.size() == 10
+              && request.resource.data.jour > get(/databases/$(database)/documents/orgs/$(org)/modules/compta/dossiers/$(request.resource.data.dossierId)).data.get('verrou', '0000-00-00');
+            allow update, delete: if false;
+          }
+
+          // Numéros de facture : réservés une seule fois (aucun doublon possible, même avec plusieurs saisies en même temps).
+          match /numeros/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe();
+            allow update, delete: if false;
+          }
+          // Factures : après création, seuls l'encaissement (sans dépasser le TTC), le n° FNE
+          // et l'annulation (propriétaire) peuvent changer. Les montants sont figés.
+          match /factures/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe() && taille()
+              && exists(/databases/$(database)/documents/orgs/$(org)/modules/compta/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num)) == false
+              && existsAfter(/databases/$(database)/documents/orgs/$(org)/modules/compta/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num))
+              && request.resource.data.ttc is number && request.resource.data.paye <= request.resource.data.ttc;
+            allow update: if gere() && signe()
+              && seuls(['paye', 'fne', 'statut', 'annulMotif', 'majLe', 'majPar', 'par'])
+              && request.resource.data.paye <= resource.data.ttc && request.resource.data.paye >= 0
+              && (request.resource.data.statut == resource.data.statut || estPca());
+            allow delete: if false;
+          }
+          match /employes/{id} {
+            allow read: if compteActif();
+            allow create, update: if gere() && signe() && taille();
+            allow delete: if false;
+          }
+          // Une paie validée ne peut plus être recalculée (sauf après annulation par le propriétaire).
+          match /paies/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe() && taille();
+            allow update: if gere() && signe() && taille()
+              && (resource.data.statut == 'annulee'
+                || seuls(['payeLe', 'majLe', 'majPar', 'par'])
+                || (estPca() && seuls(['statut', 'majLe', 'majPar', 'par']) && request.resource.data.statut == 'annulee'));
+            allow delete: if false;
+          }
+          match /declarations/{id} {
+            allow read: if compteActif();
+            allow create: if gere() && signe() && taille();
+            allow update: if gere() && signe() && taille()
+              && (resource.data.statut == 'annulee' || (estPca() && request.resource.data.statut == 'annulee'));
+            allow delete: if false;
+          }
+
+          match /journal/{id} {
+            allow read: if estPca();
+            allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+            allow update, delete: if false;
+          }
+          }
+  }
+}
