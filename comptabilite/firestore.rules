@@ -1,0 +1,92 @@
+rules_version = '2';
+// Règles de sécurité – Comptabilité (SOCOBEMA)
+// À coller dans Firebase (projet de la comptabilité) > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminExiste() { return exists(/databases/$(database)/documents/config/admin); }
+    function estPca() {
+      return connecte() && adminExiste()
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    function compteActif() {
+      let p = /databases/$(database)/documents/comptes/$(request.auth.uid);
+      return connecte() && exists(p) && get(p).data.actif == true
+        && get(p).data.get('remplace', false) == false;
+    }
+    // Peut saisir : propriétaire ou comptable (pas les accès « consultation »).
+    function gere() {
+      return estPca() || (compteActif()
+        && get(/databases/$(database)/documents/comptes/$(request.auth.uid)).data.get('role', '') != 'lecture');
+    }
+    function signe() { return request.resource.data.majPar == request.auth.uid; }
+    function taille() { return request.resource.data.size() <= 60; }
+
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /config/boutique {
+      allow read: if true;
+      allow create: if estPca() || (connecte() && !adminExiste());
+      allow update: if estPca();
+      allow delete: if false;
+    }
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if estPca()
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca');
+      allow update: if estPca();
+      allow delete: if false;
+    }
+
+    match /dossiers/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+
+    // Écritures comptables : équilibrées, jamais modifiées ni effacées,
+    // et refusées dans une période clôturée.
+    match /ecritures/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe() && taille()
+        && request.resource.data.lignes is list
+        && request.resource.data.lignes.size() >= 2 && request.resource.data.lignes.size() <= 200
+        && request.resource.data.totalD is number
+        && request.resource.data.totalD == request.resource.data.totalC
+        && request.resource.data.jour is string && request.resource.data.jour.size() == 10
+        && request.resource.data.jour > get(/databases/$(database)/documents/dossiers/$(request.resource.data.dossierId)).data.get('verrou', '0000-00-00');
+      allow update, delete: if false;
+    }
+
+    match /factures/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    match /employes/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    match /paies/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+    match /declarations/{id} {
+      allow read: if compteActif();
+      allow create, update: if gere() && signe() && taille();
+      allow delete: if false;
+    }
+
+    match /journal/{id} {
+      allow read: if estPca();
+      allow create: if compteActif() && request.resource.data.par == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

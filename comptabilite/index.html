@@ -1,0 +1,1554 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#234E8C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Comptabilité SOCOBEMA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout : en-tête collant + sélecteur d'entreprise + onglets ; tableaux défilants sur téléphone. Ton : registre comptable sobre. */
+:root{
+  --bg:#EEF1EE; --surface:#FFFFFF; --sunk:#E3E8E4; --ink:#17201C; --muted:#5A6862; --line:#D3DBD6;
+  --accent:#234E8C; --accent-ink:#FFFFFF; --signal:#E2A410; --signal-ink:#1E1600;
+  --ram:#234E8C; --ram-bg:#DCE7F3; --tra:#2B5B8C; --tra-bg:#DCE7F3;
+  --ok:#1E7A45; --ok-bg:#DCF1E3; --warn:#8A5A00; --warn-bg:#FBEBC6; --bad:#B3261E; --bad-bg:#F8DEDB; --info:#2B5B8C; --info-bg:#DCE7F3;
+  --f-disp:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211E; --sunk:#222C28; --ink:#E7EEEA; --muted:#97A59F; --line:#2E3A35;
+  --accent:#8DB4F0; --accent-ink:#0A1A33; --signal:#F2B630; --signal-ink:#1E1600;
+  --ram:#8DB4F0; --ram-bg:#3A2010; --tra:#7FAEE0; --tra-bg:#182A3D;
+  --ok:#6CC79A; --ok-bg:#163126; --warn:#F2C25C; --warn-bg:#3A2C0D; --bad:#F08A80; --bad-bg:#3D1916; --info:#7FAEE0; --info-bg:#182A3D;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211E; --sunk:#222C28; --ink:#E7EEEA; --muted:#97A59F; --line:#2E3A35;
+  --accent:#8DB4F0; --accent-ink:#0A1A33; --signal:#F2B630; --signal-ink:#1E1600;
+  --ram:#8DB4F0; --ram-bg:#3A2010; --tra:#7FAEE0; --tra-bg:#182A3D;
+  --ok:#6CC79A; --ok-bg:#163126; --warn:#F2C25C; --warn-bg:#3A2C0D; --bad:#F08A80; --bad-bg:#3D1916; --info:#7FAEE0; --info-bg:#182A3D;
+  color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;padding-block:12px 8px}
+.brand svg{flex:none}
+.brand .t{flex:1;min-width:0}
+.brand h1{font-family:var(--f-disp);font-weight:700;font-size:1.55rem;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:.8rem;display:flex;flex-wrap:wrap;gap:4px 10px}
+.sync{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.sync.ok{color:var(--ok)}.sync.busy{color:var(--warn)}.sync.bad{color:var(--bad)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:var(--f-disp);font-weight:600;font-size:1.02rem;letter-spacing:.04em;text-transform:uppercase;background:none;border:0;color:var(--muted);padding:8px 12px 10px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--signal)}
+.tab:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+main{padding-block:18px 60px}
+.banner{border-radius:8px;padding:10px 12px;font-size:.86rem;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.info{background:var(--info-bg);color:var(--info)}
+h2{font-family:var(--f-disp);font-weight:700;font-size:1.35rem;letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3{font-family:var(--f-disp);font-weight:600;font-size:1.05rem;letter-spacing:.05em;text-transform:uppercase;margin:0 0 10px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.btn{font:inherit;font-weight:600;font-size:.9rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;min-height:40px}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.warnb{background:var(--signal);border-color:var(--signal);color:var(--signal-ink)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:.82rem}
+.btn.ghost{background:transparent}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--signal);color:var(--signal-ink);font-size:.72rem;text-align:center;margin-left:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:.82rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .l{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi .v{font-family:var(--f-disp);font-weight:700;font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.78rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:800px){.grid2{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.list{display:grid;gap:10px}
+@media (min-width:760px){.list.cols{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row.between{justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;letter-spacing:.02em;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-bg);color:var(--ok)}.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}.p-info{background:var(--info-bg);color:var(--info)}.p-mut{background:var(--sunk);color:var(--muted)}
+.pill.nodot::before{display:none}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:.84rem}
+.meta b{color:var(--ink);font-weight:500}
+.trace{font-size:.74rem;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.empty{border:1.5px dashed var(--line);border-radius:10px;padding:22px 16px;text-align:center;color:var(--muted);font-size:.9rem}
+.empty .btn{margin-top:10px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.alert:first-child{border-top:0}
+.cat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-size:.86rem;margin-bottom:8px}
+.track{grid-column:1/-1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--signal);border-radius:4px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.r,th.r{text-align:right}
+select.status{font:inherit;font-size:.8rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:4px 6px}
+dialog{border:0;border-radius:14px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 40px);background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,16,13,.55)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dlg-b{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dlg-f{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.msgs{grid-column:1/-1;display:grid;gap:6px}
+.msgs ul{margin:0;padding:10px 12px 10px 28px;border-radius:8px;font-size:.88rem}
+.msgs ul.e{background:var(--bad-bg);color:var(--bad)}.msgs ul.w{background:var(--warn-bg);color:var(--warn)}
+.fld{display:grid;gap:4px;min-width:0}
+.fld.full{grid-column:1/-1}
+@media (max-width:480px){.fld{grid-column:1/-1}}
+.fld label{font-size:.78rem;font-weight:600;color:var(--muted)}
+.fld input,.fld select,.fld textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px 10px;width:100%;min-width:0}
+.fld [aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.fld .hint{font-size:.74rem;color:var(--muted)}
+.fld textarea{min-height:70px;resize:vertical}
+.tool{grid-column:1/-1;display:grid;gap:8px}
+.tool .item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.88rem}
+.tool textarea{width:100%;min-height:140px;font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:20;max-width:calc(100vw - 32px)}
+.confirm{grid-column:1/-1;font-size:.95rem;margin:0}
+body.ro .w{display:none!important}
+.qr-wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.qr{background:#fff;padding:10px;border-radius:10px;border:1px solid var(--line);width:180px;height:180px;flex:none}
+.qr img,.qr canvas{width:160px!important;height:160px!important;display:block}
+.linkbox{font-family:var(--f-mono);font-size:.78rem;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+body:not(.locked) #v-lock{display:none}
+:root{--lk-field:#F3F2EC;--lk-focus:#1B3A66;--lk-btn:#234E8C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--lk-field:#222C28;--lk-focus:#8DB4F0;--lk-btn:#3A6BB5}}
+:root[data-theme="dark"]{--lk-field:#222C28;--lk-focus:#8DB4F0;--lk-btn:#3A6BB5}
+body.locked main>section:not(#v-lock),body.locked .tabs,body.locked #btn-tools,body.locked #btn-lock{display:none!important}
+.lock{max-width:440px;margin:28px auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:30px 26px 26px;display:grid;gap:16px}
+.lk-eyebrow{font-family:var(--f-body);font-size:.82rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.lk-title{font-family:var(--f-body);font-weight:700;font-size:1.75rem;line-height:1.3;text-transform:none;letter-spacing:0;margin:-4px 0 0;color:var(--ink)}
+.lk-f{display:grid;gap:8px}
+.lk-f label{font-weight:700;font-size:.98rem;color:var(--ink)}
+.lk-in{font:inherit;font-size:1.05rem;width:100%;border:1px solid var(--line);border-radius:10px;background:var(--lk-field);color:var(--ink);padding:14px 16px;min-height:54px}
+.lk-in:focus{outline:none;border:2px solid var(--lk-focus);padding:13px 15px}
+.lk-pin{font-family:var(--f-mono);font-size:1.4rem;letter-spacing:.45em;min-height:64px}
+.lk-btn{font:inherit;font-weight:700;font-size:1rem;border:0;border-radius:10px;background:var(--lk-btn);color:#fff;min-height:54px;cursor:pointer}
+.lk-btn:disabled{opacity:.6}
+.lk-btn2{font:inherit;font-weight:700;font-size:.95rem;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:48px;cursor:pointer}
+.lk-help{margin:0;font-size:.9rem;color:var(--ink);background:var(--sunk);border-radius:10px;padding:12px}
+body.locked header.top{display:none}
+body.locked::before{background:var(--bg)}
+.lock p{margin:0;color:var(--muted);font-size:.9rem}
+.lock-err{color:var(--bad);font-size:.88rem;min-height:1.2em;margin:0}
+.code-big{grid-column:1/-1;font-family:var(--f-mono);font-size:2.4rem;font-weight:600;letter-spacing:.3em;text-align:center;background:var(--sunk);border-radius:10px;padding:14px 8px}
+.who{font-weight:600;color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.card:hover{border-color:var(--muted)}}
+.res-pos{color:var(--ok)}.res-neg{color:var(--bad)}
+#print-zone{display:none}
+.inv{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;color:#111;font-family:"IBM Plex Sans",Arial,sans-serif;font-size:13px;line-height:1.45;padding:28px;max-width:780px;margin:0 auto}
+.inv h1{font-family:"Barlow Condensed",Arial Narrow,Arial,sans-serif;font-size:28px;margin:0;letter-spacing:.04em;color:#234E8C}
+.inv .hd{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #234E8C;padding-bottom:12px;margin-bottom:16px;flex-wrap:wrap}
+.inv .org b{font-size:15px}.inv .org{font-size:12px;color:#333}
+.inv table{width:100%;border-collapse:collapse;margin:12px 0}
+.inv th{background:#234E8C;color:#fff;text-align:left;padding:7px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;white-space:normal}
+.inv td{border-bottom:1px solid #ddd;padding:7px;vertical-align:top;white-space:normal}
+.inv .r{text-align:right;white-space:nowrap}
+.inv .tot td{font-weight:700;border-bottom:0}
+.inv .big td{font-size:15px;background:#FBEFE7}
+.inv .box{border:1px solid #ccc;border-radius:6px;padding:10px;margin:8px 0}
+.inv .sig{display:flex;justify-content:space-between;margin-top:40px;gap:20px}
+.inv .sig div{flex:1;border-top:1px solid #999;padding-top:6px;font-size:12px;text-align:center}
+.inv .pied{margin-top:28px;font-size:10px;color:#666;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+.inv-prev{grid-column:1/-1;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.inv-prev .inv{min-width:620px}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff!important}
+  body>*:not(#print-zone){display:none!important}
+  #print-zone{display:block!important}
+  .inv{padding:0;max-width:none}
+}
+
+body.nown .own{display:none!important}
+.res-pos{color:var(--ok)}.res-neg{color:var(--bad)}
+.who{font-weight:600;color:var(--ink)}
+.dossier{font:inherit;font-weight:600;font-size:.9rem;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink);padding:6px 8px;max-width:220px}
+.lines{display:grid;gap:4px;font-size:.86rem}
+.lines div{display:flex;justify-content:space-between;gap:10px}
+.lines .tot{font-weight:700;border-top:1px solid var(--line);padding-top:4px}
+.decl{display:grid;gap:10px}
+.decl .head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.big{font-family:var(--f-disp);font-size:1.8rem;font-weight:700;font-variant-numeric:tabular-nums}
+.el{display:grid;gap:6px}
+.el .ln{display:grid;grid-template-columns:minmax(0,2fr) 90px 90px 28px;gap:6px;align-items:end}
+.el .ln.fac{grid-template-columns:minmax(0,2fr) 64px 96px 84px 28px}
+@media (max-width:480px){.el .ln.fac{grid-template-columns:minmax(0,1fr) 56px 84px;}.el .ln.fac .tv{grid-column:1/3}}
+.el input,.el select{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:7px 8px;width:100%;min-width:0}
+.el label{font-size:.72rem;font-weight:600;color:var(--muted)}
+.x{font:inherit;border:0;background:transparent;color:var(--bad);cursor:pointer;font-weight:700;padding:8px 4px}
+.tag{font-family:var(--f-mono);font-size:.74rem;font-weight:600;border:1.5px solid currentColor;border-radius:4px;padding:0 5px;white-space:nowrap}
+td.c,th.c{text-align:center}
+tr.sub td{font-weight:700;background:var(--sunk)}
+tr.grand td{font-weight:700;font-size:.95rem;border-top:2px solid var(--ink)}
+.acc{font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+/* Documents imprimables (facture A4, bulletin, états) */
+#print-zone{display:none}
+.doc{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff;color:#111;font-family:"IBM Plex Sans",Arial,sans-serif;font-size:12px;line-height:1.4;padding:18px;max-width:800px;margin:0 auto}
+.doc h1{font-size:20px;margin:0 0 4px}.doc h2{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:#111}
+.doc table{width:100%;border-collapse:collapse;font-size:12px}
+.doc th,.doc td{border:1px solid #bbb;padding:5px 6px;white-space:normal;color:#111}
+.doc th{background:#E8EEF7;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.doc .r{text-align:right}.doc .muted{color:#555}
+.doc .hdr{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #234E8C;padding-bottom:10px;margin-bottom:12px}
+.doc .box{border:1px solid #bbb;padding:8px;border-radius:4px}
+.doc .stamp{display:inline-block;border:2px solid #234E8C;color:#234E8C;font-weight:700;padding:4px 8px;border-radius:4px}
+.doc-prev{grid-column:1/-1;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:60vh}
+@media print{
+  @page{margin:10mm}
+  body{background:#fff!important}
+  body>*:not(#print-zone){display:none!important}
+  #print-zone{display:block!important}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="40" height="30" viewBox="0 0 40 30" aria-hidden="true"><rect x="3" y="3" width="24" height="25" rx="2" fill="none" stroke="var(--ink)" stroke-width="2.4"/><path d="M8 10h14M8 15h14M8 20h8" stroke="var(--accent)" stroke-width="2.4"/><circle cx="31" cy="21" r="7" fill="var(--signal)"/><path d="M28 21h6M31 18v6" stroke="var(--signal-ink)" stroke-width="2"/></svg>
+      <div class="t"><h1 id="shop-name">Comptabilité</h1><p><select id="dossier" class="dossier" aria-label="Entreprise" hidden></select><span id="sync" class="sync busy" role="status">Connexion…</span><span id="who" class="who"></span></p></div>
+      <button class="btn sm ghost" id="btn-lock" type="button" hidden>Verrouiller</button>
+      <button class="btn sm" id="btn-tools" type="button">Outils</button>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-v="accueil" id="t-accueil">Tableau de bord</button>
+      <button class="tab" role="tab" data-v="factures" id="t-factures">Factures<span id="fac-n"></span></button>
+      <button class="tab" role="tab" data-v="operations" id="t-operations">Recettes & dépenses</button>
+      <button class="tab" role="tab" data-v="paie" id="t-paie">Paie</button>
+      <button class="tab" role="tab" data-v="declarations" id="t-declarations">Déclarations<span id="decl-n"></span></button>
+      <button class="tab" role="tab" data-v="etats" id="t-etats">Bilan & états</button>
+    </nav>
+  </div>
+</header>
+<div id="print-zone"></div>
+<main class="wrap">
+  <div id="banner" class="banner" hidden></div>
+  <section id="v-lock"></section>
+  <section id="v-accueil"></section>
+  <section id="v-factures" hidden></section>
+  <section id="v-operations" hidden></section>
+  <section id="v-paie" hidden></section>
+  <section id="v-declarations" hidden></section>
+  <section id="v-etats" hidden></section>
+</main>
+
+<dialog id="dlg"><form id="frm" method="dialog" novalidate>
+  <div class="dlg-h"><h2 id="dlg-t"></h2><button type="button" class="btn ghost sm" data-close>Fermer</button></div>
+  <div class="dlg-b" id="dlg-b"></div>
+  <div class="dlg-f" id="dlg-f"></div>
+</form></dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ======== Configuration Firebase du projet de comptabilité (à remplacer) ======== */
+window.FIREBASE_CONFIG = {
+  apiKey: "COLLER_ICI",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+/* ================================================================================= */
+</script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sp=s=>s.replace(/ | /g," ");
+const fcfa=n=>sp((Math.round(Number(n)||0)).toLocaleString("fr-FR"))+" FCFA";
+const fnum=n=>sp((Math.round(Number(n)||0)).toLocaleString("fr-FR"));
+const nb=n=>sp((Number(n)||0).toLocaleString("fr-FR",{maximumFractionDigits:2}));
+const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const dayShift=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+const fdate=d=>d?new Date(d.slice(0,10)+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const fdt=iso=>{if(!iso)return"";const d=new Date(iso);return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})};
+const fhm=iso=>iso?new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+const num=v=>{const s=String(v??"").replace(/\s/g,"").replace(",",".");return s===""?null:Number(s)};
+
+const state={dossiers:[],ecritures:[],factures:[],employes:[],paies:[],declarations:[],comptes:[]};
+let mode="loading", isOwner=false, isGest=false, isMgr=false, gLoaded=false, pickG=null, lockSig="";
+let lastErr=null, slowLoad=false, fdb=null, auth=null, authUser=null, adminUid=null, adminEmail=null, pendingCode=null, setupBusy=false, dataUnsubs=[];
+let shop={nom:"Comptabilité",ville:"Mankono",tel:""};
+const DOMAIN="compta-socobema.app";
+const ACCESS_URL=location.origin+location.pathname;
+const sync={cache:{},pending:{},error:false,offline:!navigator.onLine};
+const filters={mois:null,facF:"tous",opQ:"",annee:null,etat:"resultat",compte:null};
+const SINCE_YEARS=1; // écritures de l'année en cours et de l'année précédente chargées en direct
+
+/* ---------- Données dérivées ---------- */
+const alive=c=>state[c].filter(x=>!x.supprime);
+const pcaDoc=()=>state.comptes.find(g=>g.id===adminUid);
+const vendeurs=()=>state.comptes.filter(g=>g.actif!==false&&g.role!=="pca"&&!g.remplace).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+const pool=()=>[pcaDoc(),...vendeurs()].filter(Boolean);
+const curG=()=>authUser&&state.comptes.find(g=>g.id===authUser.uid&&g.actif!==false&&!g.remplace);
+const isLocked=()=>mode!=="db"||!curG();
+const myName=()=>isOwner?"Propriétaire":((curG()||{}).nom||"");
+const roleOf=g=>g.id===adminUid?"pca":(g.role==="lecture"?"lecture":"comptable");
+const ROLE_L={pca:"Propriétaire",comptable:"Comptable",lecture:"Consultation"};
+
+/* ---------- Stockage (Firebase) ---------- */
+const inc=n=>firebase.firestore.FieldValue.increment(n);
+const stamp=()=>({majLe:new Date().toISOString(),majPar:authUser?authUser.uid:null,par:myName()});
+/* Hors connexion, Firestore garde l'écriture et l'envoie au retour du réseau : on n'attend pas le serveur indéfiniment. */
+function queued(p){p.catch(e=>toast(errMsg(e)));return Promise.race([p,sleep(1500)])}
+function errMsg(e){
+  const c=(e&&e.code)||"";
+  if(c==="permission-denied") return "Accès refusé : action réservée au propriétaire, ou code plus valide.";
+  if(c==="resource-exhausted") return "Limite gratuite du jour atteinte. Réessayez demain.";
+  if(c==="auth/requires-recent-login") return "Par sécurité, verrouillez, reconnectez-vous puis réessayez.";
+  if(c==="auth/network-request-failed"||c==="unavailable") return "Pas de connexion internet. Réessayez quand le réseau revient.";
+  if(/api-key|invalid-api|app-not-authorized/.test(c)) return "Configuration Firebase incorrecte (clé API).";
+  if(c==="auth/operation-not-allowed") return "La connexion par e-mail/mot de passe n'est pas activée dans Firebase.";
+  return "L'enregistrement n'a pas abouti. Réessayez.";
+}
+function newCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0]%900000+100000)}
+function rid(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(x=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x%32]).join("")}
+function newSalt(){const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,"0")).join("")}
+/* Numéro de reçu unique même hors connexion et avec plusieurs vendeurs : date + heure + 3 caractères aléatoires. */
+function newNum(prefix){const d=new Date(),p=n=>String(n).padStart(2,"0");return `${prefix}-${String(d.getFullYear()).slice(2)}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}-${rid(3)}`}
+async function newAuthUser(code){
+  const app=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(window.FIREBASE_CONFIG,"sec");
+  const a=app.auth(); const email=`v-${newSalt()}@${DOMAIN}`;
+  const cred=await a.createUserWithEmailAndPassword(email,code); await a.signOut();
+  return{uid:cred.user.uid,email};
+}
+function jEntry(action,coll,id,resume,avant){return{le:new Date().toISOString(),majPar:authUser.uid,par:authUser.uid,nom:myName(),action,coll,docId:id,resume:String(resume||"").slice(0,200),avant:avant||null}}
+const jRef=()=>fdb.collection("journal").doc();
+const clean=x=>{if(!x)return null;const r={...x};delete r.id;return r};
+
+function subscribeData(){
+  dataUnsubs.forEach(u=>u()); dataUnsubs=[];
+  if(!authUser){for(const k of ["dossiers","ecritures","factures","employes","paies","declarations"]) state[k]=[];sync.cache={};return}
+  const since=(new Date().getFullYear()-SINCE_YEARS)+"-01-01";
+  listen([["dossiers",fdb.collection("dossiers")],["employes",fdb.collection("employes")],
+    ["ecritures",fdb.collection("ecritures").where("jour",">=",since)],["factures",fdb.collection("factures").where("jour",">=",since)],
+    ["paies",fdb.collection("paies").where("mois",">=",since.slice(0,7))],["declarations",fdb.collection("declarations")]]);
+  dataUnsubs.push(fdb.doc("config/boutique").onSnapshot(s=>{if(s.exists) shop={...shop,...s.data()}; render()},()=>{}));
+}
+function subscribeOwn(){}
+function listen(subs,own){
+  for(const [c,q] of subs){
+    sync.cache[c]=true;
+    dataUnsubs.push(q.onSnapshot({includeMetadataChanges:true},snap=>{
+      state[c]=snap.docs.map(d=>({id:d.id,...d.data()}));
+      sync.cache[c]=snap.metadata.fromCache; sync.pending[c]=snap.metadata.hasPendingWrites; sync.error=false;
+      render();
+    },e=>{ if(e&&e.code==="permission-denied"){sync.cache[c]=false;if(authUser&&!own) auth.signOut(); return} sync.error=true; showSync(); }));
+  }
+}
+function showBanner(kind,html){const b=$("#banner");b.className="banner "+kind;b.innerHTML=html;b.hidden=false}
+function showSync(){
+  const el=$("#sync"); let k="ok",t="À jour";
+  if(sync.offline){k="bad";t="Hors connexion · enregistré sur le téléphone"}
+  else if(sync.error){k="bad";t="Connexion interrompue"}
+  else if(Object.values(sync.pending).some(Boolean)){k="busy";t="Envoi en cours…"}
+  else if(mode==="loading"||Object.values(sync.cache).some(Boolean)){k="busy";t="Synchronisation…"}
+  el.className="sync "+k; el.textContent=t;
+}
+addEventListener("online",()=>{sync.offline=false;showSync()});
+addEventListener("offline",()=>{sync.offline=true;showSync()});
+
+/* Verrouillage automatique après 30 min sans activité (seulement avec réseau). */
+const IDLE_MIN=30; let lastAct=Date.now();
+try{const v=+localStorage.getItem("c-act"); if(v) lastAct=v}catch(e){}
+["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,()=>{lastAct=Date.now();try{localStorage.setItem("c-act",String(lastAct))}catch(e){}},{passive:true}));
+setInterval(()=>{if(authUser&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();toast("Verrouillé après 30 minutes sans activité.")}},30000);
+
+addEventListener("error",e=>{lastErr={code:(e.message||"erreur script")};if(mode==="loading"){lockSig="";slowLoad=true;render()}});
+addEventListener("unhandledrejection",e=>{const r=e.reason||{};lastErr={code:r.code||r.message||String(r)};if(mode==="loading"){lockSig="";slowLoad=true;render()}});
+async function init(){
+  setTimeout(()=>{if(mode==="loading"){lockSig="";slowLoad=true;render()}},12000);
+  render();
+  const C=window.FIREBASE_CONFIG;
+  if(!window.firebase||!C||!C.apiKey||/COLLER/.test(C.apiKey)){mode="nocfg";render();return}
+  try{
+    firebase.initializeApp(C); fdb=firebase.firestore(); auth=firebase.auth();
+    try{fdb.settings({experimentalForceLongPolling:true,merge:true})}catch(e){}
+    try{fdb.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
+  }catch(e){mode="nocfg";render();return}
+  let cfgLoaded=false, cLoaded=false;
+  const update=()=>{
+    if(cfgLoaded&&cLoaded){gLoaded=true;mode=adminUid?"db":"setup"}
+    isOwner=!!(authUser&&adminUid&&authUser.uid===adminUid);
+    const me=authUser&&state.comptes.find(g=>g.id===authUser.uid);
+    isGest=!isOwner&&!!(me&&me.role!=="lecture"); isMgr=isOwner||isGest;
+    if(authUser&&gLoaded&&mode==="db"&&!setupBusy&&!curG()){auth.signOut();toast("Ce code n'est plus valide. Demandez un nouveau code au propriétaire.")}
+    render();
+  };
+  const applyAdmin=s=>{adminUid=s.exists?s.data().uid:null; adminEmail=s.exists?s.data().email:null; cfgLoaded=true; update()};
+  (async()=>{for(let i=0;i<8&&!cfgLoaded;i++){try{applyAdmin(await fdb.doc("config/admin").get({source:"server"}));return}catch(e){lastErr=e;await sleep(2500)}}})();
+  fdb.doc("config/admin").onSnapshot({includeMetadataChanges:true},s=>{ if(s.metadata.fromCache&&!s.exists) return; applyAdmin(s) },
+    e=>showBanner("bad","Impossible de lire la configuration ("+esc((e&&e.code)||"erreur")+"). Vérifiez les règles Firestore."));
+  fdb.doc("config/boutique").get().then(s=>{if(s.exists){shop={...shop,...s.data()};render()}}).catch(()=>{});
+  fdb.collection("comptes").onSnapshot(s=>{state.comptes=s.docs.map(d=>({id:d.id,...d.data()}));cLoaded=true;update()},
+    ()=>showBanner("bad","Impossible de lire la liste des accès. Vérifiez les règles Firestore."));
+  auth.onAuthStateChanged(u=>{
+    if(u&&navigator.onLine&&Date.now()-lastAct>IDLE_MIN*6e4){auth.signOut();return}
+    const changed=(u&&u.uid)!==(authUser&&authUser.uid);authUser=u;if(changed) subscribeData(); update()});
+}
+
+/* ---------- Écran d'accès ---------- */
+const lkHead=()=>`<div class="lk-eyebrow">Accès sécurisé</div><h2 class="lk-title">${esc(shop.nom||"Comptabilité")}</h2>`;
+function renderLock(){
+  const G=pool();
+  const sig=mode+"|"+gLoaded+"|"+slowLoad+"|"+shop.nom+"|"+G.map(g=>g.id+":"+g.nom).join(",");
+  if(sig===lockSig) return; lockSig=sig;
+  const box=$("#v-lock");
+  if(mode==="nocfg"){box.innerHTML=`<div class="lock">${lkHead()}<p>La plateforme n'est pas encore reliée à sa base de données Firebase. Suivez le guide d'installation pour coller la configuration.</p></div>`;return}
+  if(mode==="loading"){box.innerHTML=`<div class="lock">${lkHead()}<p>${slowLoad?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet, puis réessayez."+(lastErr?" (détail : "+esc(lastErr.code||lastErr.message||"inconnu")+")":""):"Chargement… La première ouverture demande une connexion internet."}</p>${slowLoad?`<button class="lk-btn" type="button" data-reload>Réessayer</button>`:""}</div>`;return}
+  if(mode==="setup"){box.innerHTML=`<form class="lock" id="setup-form" novalidate><div class="lk-eyebrow">Première installation</div><h2 class="lk-title">Votre comptabilité</h2>
+    <p>Créez l'accès du propriétaire. Cet écran n'apparaît qu'une seule fois.</p>
+    <div class="lk-f"><label for="su-nom">Nom de votre première entreprise</label><input class="lk-in" id="su-nom" maxlength="60" placeholder="Ex. SOCOBEMA-COOP-CA"></div>
+    <div class="lk-f"><label for="su-tel">Téléphone</label><input class="lk-in" id="su-tel" type="tel" maxlength="30" placeholder="07 07 64 41 06"></div>
+    <div class="lk-f"><label for="su-mail">Votre adresse Gmail</label><input class="lk-in" id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com"><span style="font-size:.8rem;color:var(--muted)">Elle sert seulement si vous oubliez votre code.</span></div>
+    <div class="lk-f"><label for="su-pin">Choisissez votre code à 6 chiffres</label><input class="lk-in lk-pin" id="su-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></div>
+    <div class="lk-f"><label for="su-pin2">Retapez le code</label><input class="lk-in lk-pin" id="su-pin2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></div>
+    <p class="lock-err" id="lock-err" role="alert"></p>
+    <button class="lk-btn" type="submit" id="lock-ok">Créer l'accès propriétaire</button></form>`;return}
+  if(pickG&&!G.find(g=>g.id===pickG)) pickG=null;
+  if(!pickG&&G.length===1) pickG=G[0].id;
+  const lab=g=>g.id===adminUid?"Moi, propriétaire":g.nom+(g.role==="gestionnaire"?" (gestionnaire)":"");
+  box.innerHTML=`<form class="lock" id="lock-form" novalidate>${lkHead()}
+    <p>Choisissez votre nom et tapez votre code d'accès à 6 chiffres.</p>
+    <div class="lk-f"><label for="lk-who">Qui êtes-vous ?</label>
+      <select id="lk-who" class="lk-in">${G.length!==1?`<option value="">Choisir votre nom…</option>`:""}${G.map(g=>`<option value="${g.id}"${pickG===g.id?" selected":""}>${esc(lab(g))}</option>`).join("")}</select></div>
+    <div class="lk-f"><label for="pin">Code d'accès</label><input class="lk-in lk-pin" id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></div>
+    <p class="lock-err" id="lock-err" role="alert"></p>
+    <button class="lk-btn" type="submit" id="lock-ok">Ouvrir</button>
+    <button class="lk-btn2" type="button" id="lk-forgot">Code oublié ?</button>
+    <p class="lk-help" id="lk-help" hidden></p></form>`;
+}
+document.addEventListener("change",e=>{if(e.target.id==="lk-who"){pickG=e.target.value||null;$("#lock-err").textContent="";$("#pin").focus()}});
+document.addEventListener("click",async e=>{
+  if(e.target.closest("[data-reload]")){location.reload();return}
+  if(e.target.id!=="lk-forgot") return;
+  const h=$("#lk-help"); h.hidden=false;
+  if(pickG&&pickG===adminUid){
+    const mail=(pcaDoc()||{}).email||adminEmail;
+    try{await auth.sendPasswordResetEmail(mail);h.textContent=`Un e-mail vient d'être envoyé à ${mail.replace(/^(.{2}).*(@.*)$/,"$1•••$2")}. Ouvrez-le et choisissez un nouveau code à 6 chiffres.`}
+    catch(err){h.textContent="L'e-mail n'a pas pu être envoyé. Vérifiez la connexion internet et réessayez."}
+  } else h.textContent=pickG?`Demandez au propriétaire${shop.tel?" ("+shop.tel+")":""} de vous générer un nouveau code depuis Outils → Équipe.`:"Choisissez d'abord votre nom dans la liste.";
+});
+document.addEventListener("submit",async e=>{
+  if(e.target.id==="setup-form"){
+    e.preventDefault(); const err=$("#lock-err"), ok=$("#lock-ok");
+    const nom=$("#su-nom").value.trim(), tel=$("#su-tel").value.trim(), mail=$("#su-mail").value.trim(), p1=$("#su-pin").value.trim(), p2=$("#su-pin2").value.trim();
+    if(nom.length<3){err.textContent="Indiquez le nom de l\'entreprise.";return}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){err.textContent="Adresse e-mail invalide.";return}
+    if(!/^\d{6}$/.test(p1)){err.textContent="Le code doit contenir exactement 6 chiffres.";return}
+    if(p1!==p2){err.textContent="Les deux codes ne sont pas identiques.";return}
+    ok.disabled=true; ok.textContent="Création…"; setupBusy=true;
+    try{
+      const cred=await auth.createUserWithEmailAndPassword(mail,p1);
+      const now=new Date().toISOString(), uid=cred.user.uid, b=fdb.batch();
+      b.set(fdb.collection("comptes").doc(uid),{nom:"Propriétaire",role:"pca",actif:true,email:mail,codeLe:now,majLe:now,majPar:uid,par:"Propriétaire"});
+      b.set(fdb.doc("config/admin"),{uid,email:mail,creeLe:now});
+      b.set(fdb.doc("config/boutique"),{nom:"Comptabilité",tel,ville:"Mankono",majLe:now,majPar:uid});
+      await b.commit();
+      try{await fdb.collection("dossiers").add({nom,tel,ville:"Mankono",regime:"RSI",tva:true,params:{},creeLe:now,majLe:now,majPar:uid,par:"Propriétaire"})}catch(_){} setupBusy=false; toast("Accès propriétaire créé");
+    }catch(x){
+      setupBusy=false; ok.disabled=false; ok.textContent="Créer l'accès propriétaire";
+      err.textContent=x&&x.code==="auth/email-already-in-use"?"Cette adresse a déjà un accès. Utilisez une autre adresse Gmail.":x&&x.code==="permission-denied"?"Refusé : un propriétaire existe déjà, ou les règles Firestore ne sont pas publiées.":errMsg(x);
+      if(auth.currentUser&&!adminUid) try{await auth.currentUser.delete()}catch(_){}
+    }
+    return;
+  }
+  if(e.target.id!=="lock-form") return; e.preventDefault();
+  const errEl=$("#lock-err"), pin=$("#pin"), ok=$("#lock-ok");
+  if(!pickG){errEl.textContent="Choisissez d'abord votre nom dans la liste.";return}
+  const code=pin.value.replace(/\D/g,"");
+  if(code.length!==6){errEl.textContent="Le code doit contenir 6 chiffres.";return}
+  const g=pool().find(x=>x.id===pickG); if(!g) return;
+  ok.disabled=true; ok.textContent="Vérification…";
+  try{ await auth.signInWithEmailAndPassword(g.email,code); lastAct=Date.now(); toast("Bienvenue, "+(g.id===adminUid?"patron":g.nom)); }
+  catch(x){
+    const c=x&&x.code||"";
+    errEl.textContent=/wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)?"Code incorrect.":c==="auth/too-many-requests"?"Trop d'essais. Attendez quelques minutes avant de réessayer.":c==="auth/user-disabled"?"Cet accès a été désactivé.":errMsg(x);
+    pin.value=""; pin.focus();
+  }finally{ok.disabled=false;ok.textContent="Ouvrir"}
+});
+$("#btn-lock").addEventListener("click",()=>{pickG=null;lockSig="";auth&&auth.signOut()});
+
+/* ---------- Fenêtre de dialogue ---------- */
+let ctx=null;
+function setMsgs(E,W){
+  const box=$("#dlg-msgs"); if(!box) return;
+  box.innerHTML=(E.length?`<ul class="e" role="alert">${E.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"")+(W.length?`<ul class="w">${W.map(m=>`<li>${esc(m)}</li>`).join("")}</ul>`:"");
+  if(E.length||W.length) box.scrollIntoView({block:"nearest"});
+}
+/* Ouvre un formulaire. fields : [{k,l,type,opts,req,full,hint,ph,step,def}] ; onSave(o) lance une erreur {msgs,warn} pour bloquer. */
+function openForm(title,fields,cur,onSave,okLabel){
+  cur=cur||{};
+  $("#dlg-t").textContent=title;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>`+fields.map(f=>{
+    if(f.type==="html") return f.html;
+    const v=cur[f.k]??f.def??""; const idf="f-"+f.k; let inp;
+    if(f.type==="select") inp=`<select id="${idf}" name="${f.k}">${f.blank?`<option value="">${esc(f.blank)}</option>`:""}${f.opts.map(o=>{const [k,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(k)}"${String(v)===String(k)?" selected":""}>${esc(l)}</option>`}).join("")}</select>`;
+    else if(f.type==="textarea") inp=`<textarea id="${idf}" name="${f.k}" maxlength="400" placeholder="${esc(f.ph||"")}">${esc(v)}</textarea>`;
+    else inp=`<input id="${idf}" name="${f.k}" type="${f.type==="number"?"text":(f.type||"text")}"${f.type==="number"?` inputmode="decimal"`:` maxlength="${f.max||120}"`}${f.list?` list="${f.list}"`:""} value="${esc(v)}" placeholder="${esc(f.ph||"")}" autocomplete="off">`;
+    return `<div class="fld${f.full?" full":""}"><label for="${idf}">${esc(f.l)}${f.req?" *":""}</label>${inp}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</div>`;
+  }).join("");
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn primary" id="dlg-ok">${esc(okLabel||"Enregistrer")}</button>`;
+  ctx={kind:"form",fields,onSave,confirmed:false,saving:false,label:okLabel||"Enregistrer"};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+function readFields(fields){
+  const o={};
+  fields.forEach(f=>{ if(f.type==="html"||!f.k) return; const el=$("#f-"+f.k); if(!el) return; const s=String(el.value).trim(); o[f.k]=f.type==="number"?num(s):s; });
+  return o;
+}
+function openConfirm(title,msg,label,fn,danger=true){
+  $("#dlg-t").textContent=title;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><p class="confirm">${msg}</p>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn ${danger?"danger":"primary"}" id="dlg-ok">${esc(label)}</button>`;
+  ctx={kind:"confirm",fn,saving:false,label};
+  if(!$("#dlg").open) $("#dlg").showModal();
+}
+$("#frm").addEventListener("input",e=>{if(ctx&&ctx.onInput) try{ctx.onInput(e)}catch(_){}});
+$("#frm").addEventListener("change",e=>{if(ctx&&ctx.onInput) try{ctx.onInput(e)}catch(_){}});
+$("#frm").addEventListener("input",()=>{if(ctx&&ctx.confirmed){ctx.confirmed=false;const b=$("#dlg-ok");b.className="btn primary";b.textContent=ctx.label;setMsgs([],[])}});
+$("#frm").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!ctx||ctx.saving||!(ctx.kind==="form"||ctx.kind==="confirm")) return;
+  const ok=$("#dlg-ok");
+  ctx.saving=true; ok.disabled=true; const lbl=ok.textContent; ok.textContent="Enregistrement…";
+  try{
+    const r=ctx.kind==="form"?await ctx.onSave(readFields(ctx.fields),ctx):await ctx.fn(ctx);
+    if(r!==false&&$("#dlg").open) $("#dlg").close();
+  }catch(err){
+    ctx.saving=false; ok.disabled=false;
+    if(err&&(err.msgs||err.warn)){
+      if(err.msgs&&err.msgs.length){setMsgs(err.msgs,err.warn||[]);ok.textContent=lbl;return}
+      ctx.confirmed=true; setMsgs([],err.warn); ok.className="btn warnb"; ok.textContent="Confirmer quand même"; return;
+    }
+    setMsgs([errMsg(err)],[]); ok.textContent="Réessayer";
+  }
+  if(ctx) ctx.saving=false;
+});
+$("#dlg").addEventListener("click",e=>{if(e.target.closest("[data-close]")) $("#dlg").close()});
+$("#dlg").addEventListener("cancel",e=>{if(ctx&&ctx.saving) e.preventDefault()});
+/* Validation commune : lance {msgs,warn} ; les avertissements ne bloquent qu'une fois. */
+function check(E,W,ctx){ if(E.length) throw {msgs:E,warn:W}; if(W.length&&!ctx.confirmed) throw {warn:W}; }
+function saveBlob(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+function csv(rows,cols){const q=v=>{v=v==null?"":String(v);return /[;"\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};return "﻿"+[cols.map(c=>q(c[1])).join(";"),...rows.map(r=>cols.map(c=>q(typeof c[0]==="function"?c[0](r):r[c[0]])).join(";"))].join("\r\n")}
+let tt;function toast(msg){let el=$(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=msg;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,3400)}
+
+/* ================= PLAN COMPTABLE (SYSCOHADA révisé, comptes utilisés) ================= */
+const PLAN={
+  "101":"Capital social","11":"Réserves","121":"Report à nouveau","131":"Résultat net : bénéfice","139":"Résultat net : perte",
+  "162":"Emprunts auprès des banques","21":"Immobilisations incorporelles","22":"Terrains","231":"Bâtiments",
+  "241":"Matériel et outillage","244":"Matériel et mobilier de bureau","245":"Matériel de transport","28":"Amortissements",
+  "31":"Stocks de marchandises","401":"Fournisseurs","411":"Clients","421":"Personnel, avances et acomptes","422":"Personnel, rémunérations dues",
+  "431":"CNPS (sécurité sociale)","441":"État, impôt sur les bénéfices","442":"État, impôts sur salaires (part employeur)","447":"État, ITS retenu à la source",
+  "4431":"TVA facturée sur ventes","4441":"État, TVA due","4449":"État, crédit de TVA à reporter","4452":"TVA récupérable sur achats","471":"Compte d'attente",
+  "521":"Banque","552":"Mobile money","571":"Caisse",
+  "601":"Achats de marchandises","6031":"Variation des stocks de marchandises","604":"Fournitures et matières consommables","6051":"Eau","6052":"Électricité","6053":"Carburant et lubrifiants",
+  "618":"Transports et déplacements","622":"Loyers","624":"Entretien et réparations","625":"Assurances","628":"Téléphone et internet",
+  "631":"Frais bancaires","632":"Honoraires et conseils","638":"Autres charges externes","641":"Impôts et taxes (patente, mairie…)","6413":"Taxes sur salaires (employeur)",
+  "658":"Charges diverses","661":"Salaires bruts","664":"Charges sociales (CNPS employeur)","671":"Intérêts des emprunts","681":"Dotations aux amortissements","891":"Impôt sur le résultat (BIC)",
+  "701":"Ventes de marchandises","702":"Ventes de produits (café, cacao, anacarde…)","706":"Prestations de services (transport…)","707":"Produits accessoires",
+  "711":"Subventions d'exploitation","758":"Produits divers","771":"Revenus financiers"
+};
+const accName=c=>PLAN[c]||PLAN[String(c).slice(0,3)]||PLAN[String(c).slice(0,2)]||("Compte "+c);
+const TRESO=[["571","Caisse"],["521","Banque"],["552","Mobile money"]];
+const TVA_CODES=[["TVA","TVA 18 %",18],["TVAB","TVA réduite 9 %",9],["TVAC","Exonéré (convention) 0 %",0],["TVAD","Exonéré (loi) 0 %",0]];
+const TVA_RATE=Object.fromEntries(TVA_CODES.map(t=>[t[0],t[2]]));
+const TVA_L=Object.fromEntries(TVA_CODES.map(t=>[t[0],t[1]]));
+const CAT_DEP=[["601","Achats de marchandises / produits à revendre",true],["604","Fournitures, sacs, emballages",true],["6053","Carburant",true],["6051","Eau",true],["6052","Électricité",true],
+  ["618","Transport, déplacements, missions",false],["622","Loyer",false],["624","Entretien, réparations",true],["625","Assurance",false],["628","Téléphone, internet",true],
+  ["631","Frais bancaires",false],["632","Honoraires, conseils",true],["641","Patente, impôts et taxes",false],["671","Intérêts d'emprunt",false],["638","Autres charges",false]];
+const CAT_REC=[["701","Vente de marchandises"],["702","Vente de produits (café, cacao, anacarde…)"],["706","Prestations de services (transport…)"],["707","Autres produits"],["711","Subvention reçue"],["758","Produits divers"]];
+const MODES_FNE=[["cash","Espèces"],["mobile-money","Mobile money"],["transfer","Virement"],["check","Chèque"],["card","Carte"],["deferred","À crédit"]];
+const MODE_TRESO={cash:"571","mobile-money":"552",transfer:"521",check:"521",card:"521"};
+const JOURNAUX={VT:"Ventes",AC:"Achats",TR:"Trésorerie",PA:"Paie",OD:"Opérations diverses",AN:"À-nouveaux"};
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const moisL=m=>{const [y,mm]=m.split("-");return MOIS[+mm-1]+" "+y};
+const curMonth=()=>today().slice(0,7);
+const prevMonth=m=>{let [y,mm]=m.split("-").map(Number);mm--;if(!mm){mm=12;y--}return y+"-"+String(mm).padStart(2,"0")};
+const nextMonth=m=>{let [y,mm]=m.split("-").map(Number);mm++;if(mm>12){mm=1;y++}return y+"-"+String(mm).padStart(2,"0")};
+
+/* ---------- Paramètres fiscaux et sociaux (modifiables par entreprise dans Outils → Entreprises) ----------
+   Valeurs par défaut : barème ITS en vigueur depuis le 1er janvier 2024, cotisations CNPS usuelles.
+   Elles doivent être vérifiées avec votre comptable / la DGI / la CNPS, car elles évoluent. */
+const DEF_PARAMS={
+  itsTranches:[[75000,0],[240000,16],[800000,21],[2400000,24],[8000000,28],[Infinity,32]],
+  ricf:{1:0,1.5:5500,2:11000,2.5:16500,3:22000,3.5:27500,4:33000,4.5:38500,5:44000},
+  retSal:6.3, retPat:7.7, plafRet:3375000, pf:5, mat:0.75, at:2, plafPF:70000, cmuSal:500, cmuPat:500,
+  contribLocal:1.2, contribExpat:10.4, ta:0.4, fpc:1.2, transportExo:30000,
+  jourTVA:15, jourSal:15, jourCNPS:15, cnpsTrim:false, is:25
+};
+const P=d=>({...DEF_PARAMS,...((d&&d.params)||{})});
+
+/* ---------- Entreprise (dossier) courante ---------- */
+let curD=null; try{curD=localStorage.getItem("c-dossier")}catch(e){}
+const dossiers=()=>alive("dossiers").sort((a,b)=>a.nom.localeCompare(b.nom));
+const D=()=>{const L=dossiers();let d=L.find(x=>x.id===curD);if(!d&&L.length){d=L[0];curD=d.id}return d||null};
+const E=()=>{const d=D();return d?state.ecritures.filter(e=>e.dossierId===d.id):[]};
+const F=()=>{const d=D();return d?state.factures.filter(f=>f.dossierId===d.id&&!f.supprime):[]};
+const EMP=()=>{const d=D();return d?state.employes.filter(e=>e.dossierId===d.id&&!e.supprime):[]};
+const PAIES=()=>{const d=D();return d?state.paies.filter(p=>p.dossierId===d.id&&p.statut!=="annulee"):[]};
+const DECL=(type,per)=>{const d=D();return d&&state.declarations.find(x=>x.id===`${d.id}_${type}_${per}`)};
+$("#dossier").addEventListener("change",e=>{curD=e.target.value;try{localStorage.setItem("c-dossier",curD)}catch(_){}render()});
+
+/* ================= MOTEUR D'ÉCRITURES ================= */
+/* Une écriture = { jour, journal, piece, libelle, lignes:[{c:compte, d:débit, k:crédit, t:tiers, tva:code}] }.
+   Toujours équilibrée (débit = crédit), jamais modifiée ni effacée : une erreur se corrige par une écriture d'annulation (contre-passation). */
+const R=n=>Math.round(+n||0);
+function mkLines(L){return L.filter(l=>R(l.d)||R(l.k)).map(l=>{const o={c:String(l.c),d:R(l.d),k:R(l.k)};if(l.t) o.t=String(l.t).slice(0,80);if(l.tva) o.tva=l.tva;return o})}
+function checkEcr(e){
+  const E=[];
+  if(!e.lignes.length) E.push("L'écriture n'a aucune ligne.");
+  const td=e.lignes.reduce((s,l)=>s+l.d,0), tk=e.lignes.reduce((s,l)=>s+l.k,0);
+  if(td!==tk) E.push(`Écriture déséquilibrée : débit ${fnum(td)} ≠ crédit ${fnum(tk)}.`);
+  if(e.lignes.some(l=>l.d<0||l.k<0)) E.push("Montants négatifs interdits.");
+  const d=D(); if(d&&d.verrou&&e.jour<=d.verrou) E.push(`La période jusqu'au ${fdate(d.verrou)} est clôturée : choisissez une date après.`);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(e.jour||"")) E.push("Date invalide.");
+  return E;
+}
+/* Prépare l'écriture dans un lot Firestore (batch). Renvoie sa référence. */
+function addEcr(b,e){
+  const d=D(); const ref=fdb.collection("ecritures").doc();
+  const lignes=mkLines(e.lignes); const tot=lignes.reduce((s,l)=>s+l.d,0);
+  const doc={dossierId:d.id,jour:e.jour,journal:e.journal||"OD",piece:e.piece||"",libelle:String(e.libelle||"").slice(0,140),lignes,totalD:tot,totalC:lignes.reduce((s,l)=>s+l.k,0),
+    source:e.source||"manuel",srcId:e.srcId||null,annule:e.annule||null,le:new Date().toISOString(),...stamp()};
+  const er=checkEcr(doc); if(er.length) throw {msgs:er};
+  b.set(ref,doc); return ref;
+}
+function reverseOf(e,jour,lib){return{jour,journal:e.journal,piece:e.piece,libelle:lib||("Annulation : "+e.libelle),lignes:e.lignes.map(l=>({...l,d:l.k,k:l.d})),source:"annulation",annule:e.id}}
+const annulees=()=>new Set(state.ecritures.filter(e=>e.annule).map(e=>e.annule));
+
+/* Soldes : mvt(compte prefix, de, à) → {d,k,s=d−k} */
+function mvt(prefixes,from,to,ecr){
+  const P=[].concat(prefixes); let d=0,k=0;
+  for(const e of (ecr||E())){ if(from&&e.jour<from) continue; if(to&&e.jour>to) continue;
+    for(const l of e.lignes) if(P.some(p=>l.c.startsWith(p))){d+=l.d;k+=l.k} }
+  return{d,k,s:d-k};
+}
+function balance(from,to,ecr){
+  const m={};
+  for(const e of (ecr||E())){ if(from&&e.jour<from) continue; if(to&&e.jour>to) continue;
+    for(const l of e.lignes){const x=m[l.c]||(m[l.c]={c:l.c,d:0,k:0});x.d+=l.d;x.k+=l.k} }
+  return Object.values(m).sort((a,b)=>a.c.localeCompare(b.c));
+}
+const tresoSolde=(c,to)=>mvt(c,null,to).s;
+const exo=(y)=>[y+"-01-01",y+"-12-31"];
+function resultat(from,to){const p=mvt("7",from,to), c=mvt("6",from,to), h=mvt(["8"],from,to);return (p.k-p.d)-(c.d-c.k)-(h.d-h.k)}
+
+/* ---------- Montant en lettres (factures) ---------- */
+function enLettres(n){
+  n=Math.round(Math.abs(n));
+  const u=["zéro","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize","dix-sept","dix-huit","dix-neuf"];
+  const dz=["","dix","vingt","trente","quarante","cinquante","soixante","soixante","quatre-vingt","quatre-vingt"];
+  const cent=x=>{let s="";const c=Math.floor(x/100),r=x%100;
+    if(c) s=(c>1?u[c]+" cent":"cent")+(c>1&&!r?"s":"");
+    if(r){if(s)s+=" ";
+      if(r<20)s+=u[r];else{const d=Math.floor(r/10);let rr=r%10;if(d===7||d===9)rr+=10;
+        s+=dz[d];if(d===8&&!rr)s+="s";else if(rr===1&&d<8)s+="-et-un";else if(rr===11&&d===7)s+="-et-onze";else if(rr)s+="-"+u[rr]}}
+    return s};
+  if(n===0) return "zéro";
+  const parts=[];const mi=Math.floor(n/1e9),m=Math.floor(n%1e9/1e6),k=Math.floor(n%1e6/1000),r=n%1000;
+  if(mi) parts.push(cent(mi)+" milliard"+(mi>1?"s":""));
+  if(m) parts.push(cent(m)+" million"+(m>1?"s":""));
+  if(k) parts.push(k===1?"mille":cent(k).replace(/s$/,"")+" mille");
+  if(r) parts.push(cent(r));
+  return parts.join(" ");
+}
+
+/* ================= NAVIGATION ================= */
+const VIEWS=["accueil","factures","operations","paie","declarations","etats"];
+let view="accueil"; try{view=localStorage.getItem("c-view")||"accueil"}catch(e){}
+function setView(v){
+  if(!VIEWS.includes(v)) v="accueil";
+  view=v; try{localStorage.setItem("c-view",v)}catch(e){}
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.v===v)));
+  document.querySelectorAll("main>section:not(#v-lock)").forEach(s=>s.hidden=s.id!=="v-"+v);
+  render(); scrollTo(0,0);
+}
+document.querySelector(".tabs").addEventListener("click",e=>{const t=e.target.closest(".tab");if(t) setView(t.dataset.v)});
+const ro=()=>!isMgr; // consultation seule
+function render(){
+  const L=isLocked();
+  document.body.classList.toggle("locked",L);
+  document.body.classList.toggle("nown",!isOwner);
+  document.body.classList.toggle("ro",ro());
+  if(L){renderLock();showSync();return} lockSig="";
+  const g=curG();
+  $("#who").textContent=isOwner?"Propriétaire":(ROLE_L[roleOf(g)]+" : "+g.nom);
+  $("#btn-lock").hidden=false;
+  const Ds=dossiers(), sel=$("#dossier");
+  sel.hidden=!Ds.length;
+  const sig=Ds.map(d=>d.id+d.nom).join("|")+curD;
+  if(sel.dataset.sig!==sig){sel.dataset.sig=sig;const d=D();sel.innerHTML=Ds.map(x=>`<option value="${x.id}"${d&&x.id===d.id?" selected":""}>${esc(x.nom)}</option>`).join("")}
+  $("#shop-name").textContent=D()?D().nom:"Comptabilité";
+  if(!D()){
+    document.querySelectorAll("main>section:not(#v-lock)").forEach(s=>s.hidden=s.id!=="v-accueil");
+    $("#v-accueil").innerHTML=`<div class="empty">Aucune entreprise enregistrée.${isOwner?`<br><button class="btn primary" type="button" data-act="dos-new">Ajouter une entreprise</button>`:""}</div>`;
+    showSync(); return;
+  }
+  document.querySelectorAll("main>section:not(#v-lock)").forEach(s=>s.hidden=s.id!=="v-"+view);
+  const nf=F().filter(f=>f.statut!=="annulee"&&(!f.fne||!f.fne.ref)).length;
+  $("#fac-n").innerHTML=nf?`<span class="badge" title="Factures à certifier FNE">${nf}</span>`:"";
+  const nd=echeances().filter(x=>x.etat==="retard"||x.etat==="bientot").length;
+  $("#decl-n").innerHTML=nd?`<span class="badge">${nd}</span>`:"";
+  const f={accueil:renderAccueil,factures:renderFactures,operations:renderOperations,paie:renderPaie,declarations:renderDeclarations,etats:renderEtats}[view];
+  try{f&&f()}catch(err){console.error(err);$("#v-"+view).innerHTML=`<div class="empty">Erreur d'affichage : ${esc(err.message)}. Rechargez la page.</div>`}
+  showSync(); renderBanners();
+}
+function renderBanners(){
+  const b=$("#banner");
+  if(!isOwner){b.hidden=true;return}
+  let last=null; try{last=localStorage.getItem("c-bak")}catch(e){}
+  const old=!last||(Date.now()-new Date(last).getTime())>7*864e5;
+  if(old&&state.ecritures.length>30) showBanner("info",`<span>Pensez à télécharger une sauvegarde de la comptabilité (une fois par semaine).</span><button class="btn sm" type="button" data-act="backup">Sauvegarder</button>`);
+  else b.hidden=true;
+}
+
+/* ================= ÉCHÉANCES ================= */
+function echeances(){
+  const d=D(); if(!d) return [];
+  const p=P(d), out=[], cm=curMonth(), t=today();
+  const add=(type,per,label,date,lien)=>{const x=DECL(type,per);const etat=x&&x.statut==="deposee"?"fait":(date<t?"retard":(dayShift(t,7)>=date?"bientot":"avenir"));out.push({type,per,label,date,etat,lien,doc:x})};
+  const ex=E().filter(e=>e.journal!=="AN").map(e=>e.jour.slice(0,7)).sort()[0];
+  const start=ex||(d.creeLe||today()).slice(0,7);
+  for(const m of [prevMonth(prevMonth(cm)),prevMonth(cm),cm].filter(x=>x>=start)){
+    const due=j=>nextMonth(m)+"-"+String(j).padStart(2,"0");
+    if(d.tva!==false) add("tva",m,"TVA de "+moisL(m),due(p.jourTVA),"e-impots");
+    if(EMP().length||PAIES().some(x=>x.mois===m)){
+      add("its",m,"Impôts sur salaires (ITS) de "+moisL(m),due(p.jourSal),"e-impots");
+      if(!p.cnpsTrim) add("cnps",m,"Cotisations CNPS de "+moisL(m),due(p.jourCNPS),"e-cnps");
+      else if(+m.slice(5)%3===0){const q=Math.ceil(+m.slice(5)/3);add("cnps",m.slice(0,4)+"-T"+q,"CNPS "+q+"e trimestre "+m.slice(0,4),due(p.jourCNPS),"e-cnps")}
+    }
+  }
+  return out.sort((a,b)=>a.date.localeCompare(b.date));
+}
+const LIENS={"e-impots":"https://www.e-impots.gouv.ci","e-cnps":"https://e.cnps.ci","fne":"https://www.fne.dgi.gouv.ci"};
+const etatPill=e=>({fait:`<span class="pill p-ok">Déposée</span>`,retard:`<span class="pill p-bad">En retard</span>`,bientot:`<span class="pill p-warn">Bientôt</span>`,avenir:`<span class="pill p-mut">À venir</span>`}[e]);
+
+/* ================= TABLEAU DE BORD ================= */
+function renderAccueil(){
+  const d=D(), y=new Date().getFullYear(), [a0,a1]=exo(y), m=curMonth(), m0=m+"-01", m1=m+"-31";
+  const ca=mvt("7",m0,m1), ch=mvt("6",m0,m1), res=resultat(a0,a1);
+  const tvaM=tvaCalc(m);
+  const Fn=F().filter(f=>f.statut!=="annulee"), impay=Fn.filter(f=>(f.ttc-(f.paye||0))>0), sansFne=Fn.filter(f=>!f.fne||!f.fne.ref);
+  const ech=echeances().filter(x=>x.etat!=="fait");
+  $("#v-accueil").innerHTML=`<div class="bar"><div><h2>${esc(d.nom)}</h2><p style="margin:2px 0 0;color:var(--muted)">${esc(REGIMES[d.regime]||d.regime||"")}${d.ncc?" · NCC "+esc(d.ncc):""}${d.tva===false?" · non assujetti à la TVA":""}</p></div>
+    <div class="row w"><button class="btn primary" type="button" data-act="fac-new">Nouvelle facture</button><button class="btn" type="button" data-act="rec-new">+ Recette</button><button class="btn" type="button" data-act="dep-new">+ Dépense</button></div></div>
+    <div class="kpis">${TRESO.map(([c,l])=>{const s=tresoSolde(c);return `<div class="kpi"><div class="l">${l}</div><div class="v ${s<0?"res-neg":""}">${fnum(s)}</div><div class="s">solde FCFA</div></div>`}).join("")}
+      <div class="kpi"><div class="l">Résultat ${y}</div><div class="v ${res>=0?"res-pos":"res-neg"}">${fnum(res)}</div><div class="s">${res>=0?"bénéfice":"perte"} depuis le 1er janvier</div></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Produits de ${MOIS[+m.slice(5)-1]}</div><div class="v">${fnum(ca.k-ca.d)}</div><div class="s">HT</div></div>
+      <div class="kpi"><div class="l">Charges de ${MOIS[+m.slice(5)-1]}</div><div class="v">${fnum(ch.d-ch.k)}</div><div class="s">HT</div></div>
+      ${d.tva!==false?`<div class="kpi"><div class="l">TVA du mois (estimée)</div><div class="v">${fnum(Math.max(0,tvaM.due))}</div><div class="s">${tvaM.due<0?"crédit de "+fnum(-tvaM.due):"à payer le "+P(d).jourTVA+" du mois prochain"}</div></div>`:""}
+      <div class="kpi"><div class="l">Clients à encaisser</div><div class="v" style="${impay.length?"color:var(--bad)":""}">${fnum(impay.reduce((s,f)=>s+f.ttc-(f.paye||0),0))}</div><div class="s">${impay.length} facture(s)</div></div></div>
+    <div class="grid2">
+      <div class="panel"><h3>Échéances fiscales et sociales</h3>${ech.length?ech.map(x=>`<div class="alert"><span style="flex:1"><b>${esc(x.label)}</b><br><span class="trace">avant le ${fdate(x.date)}</span></span>${etatPill(x.etat)}<button class="btn sm" type="button" data-go-decl="${x.type}|${x.per}">Préparer</button></div>`).join(""):`<p style="margin:0;color:var(--muted)">Tout est à jour.</p>`}</div>
+      <div class="panel"><h3>À faire</h3>
+        ${sansFne.length?`<div class="alert"><span style="flex:1">${sansFne.length} facture(s) à certifier sur la plateforme FNE</span><button class="btn sm" type="button" data-go="factures">Voir</button></div>`:""}
+        ${impay.length?`<div class="alert"><span style="flex:1">${impay.length} facture(s) non encaissée(s)</span><button class="btn sm" type="button" data-go="factures">Voir</button></div>`:""}
+        ${!E().length?`<div class="alert"><span style="flex:1">Saisissez les soldes de départ (caisse, banque, capital…)</span><button class="btn sm" type="button" data-act="ouverture">Commencer</button></div>`:""}
+        ${!sansFne.length&&!impay.length&&E().length?`<p style="margin:0;color:var(--muted)">Rien d'urgent.</p>`:""}</div></div>`;
+}
+const REGIMES={RSI:"Réel simplifié (RSI)",RNI:"Réel normal (RNI)",RME:"Microentreprise (RME)",ENT:"Entreprenant",COOP:"Coopérative (réel)"};
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-go]"); if(g){setView(g.dataset.go);return}
+  const dc=e.target.closest("[data-go-decl]"); if(dc){const [t,p]=dc.dataset.goDecl.split("|");declSel={type:t,per:p};setView("declarations")}
+});
+
+/* ================= FACTURES ================= */
+CAT_DEP.push(["241","Achat de matériel (immobilisation)",true],["245","Achat de véhicule (immobilisation)",true],["231","Construction, bâtiment (immobilisation)",true]);
+CAT_REC.push(["101","Apport en capital (membres, associés)"],["162","Emprunt reçu de la banque"]);
+const facReste=f=>Math.max(0,R(f.ttc)-R(f.paye));
+function nextFacNum(){
+  const y=new Date().getFullYear(), pre=`FAC-${y}-`;
+  const mx=F().filter(f=>(f.num||"").startsWith(pre)).reduce((m,f)=>Math.max(m,+f.num.slice(pre.length)||0),0);
+  return pre+String(mx+1).padStart(4,"0");
+}
+function renderFactures(){
+  const k=filters.facF, all=F().sort((a,b)=>(b.jour+b.num).localeCompare(a.jour+a.num));
+  const L=all.filter(f=>k==="tous"?true:k==="impaye"?(f.statut!=="annulee"&&facReste(f)>0):k==="fne"?(f.statut!=="annulee"&&!(f.fne&&f.fne.ref)):k==="annulee"?f.statut==="annulee":true);
+  const ok=all.filter(f=>f.statut!=="annulee");
+  $("#v-factures").innerHTML=`<div class="bar"><h2>Factures de vente</h2><div class="row w"><button class="btn primary" type="button" data-act="fac-new">+ Nouvelle facture</button></div></div>
+    <div class="kpis"><div class="kpi"><div class="l">Facturé cette année</div><div class="v">${fnum(ok.filter(f=>f.jour.startsWith(String(new Date().getFullYear()))).reduce((s,f)=>s+R(f.ttc),0))}</div><div class="s">TTC · FCFA</div></div>
+      <div class="kpi"><div class="l">Reste à encaisser</div><div class="v">${fnum(ok.reduce((s,f)=>s+facReste(f),0))}</div></div>
+      <div class="kpi"><div class="l">À certifier FNE</div><div class="v" style="${ok.some(f=>!(f.fne&&f.fne.ref))?"color:var(--bad)":""}">${ok.filter(f=>!(f.fne&&f.fne.ref)).length}</div><div class="s">sur la plateforme de la DGI</div></div></div>
+    <div class="banner info"><span><b>FNE :</b> la facture valable devant les impôts est celle certifiée sur la plateforme FNE de la DGI (avec QR code). Saisissez ici votre facture, certifiez-la sur FNE, puis notez son numéro FNE.</span><a class="btn sm" href="${LIENS.fne}" target="_blank" rel="noopener">Ouvrir FNE</a></div>
+    <div class="chips" style="margin-bottom:14px">${[["tous","Toutes"],["impaye","À encaisser"],["fne","À certifier FNE"],["annulee","Annulées"]].map(([x,l])=>`<button type="button" class="chip" data-ff="${x}" aria-pressed="${k===x}">${l}</button>`).join("")}</div>
+    ${L.length?`<div class="list cols">${L.map(f=>{const r=facReste(f);return `<div class="card"${f.statut==="annulee"?' style="opacity:.6"':""}>
+      <div class="row between"><b class="num">${esc(f.num)}</b><b class="num">${fcfa(f.ttc)}</b></div>
+      <div class="meta"><span>${fdate(f.jour)}</span><span><b>${esc(f.client.nom)}</b></span><span>${esc(f.template)}</span>
+        ${f.statut==="annulee"?`<span class="pill p-mut nodot">Annulée</span>`:r>0?`<span class="pill p-bad nodot">reste ${fnum(r)}</span>`:`<span class="pill p-ok nodot">payée</span>`}
+        ${f.fne&&f.fne.ref?`<span class="pill p-info nodot">FNE ${esc(f.fne.ref)}</span>`:f.statut!=="annulee"?`<span class="pill p-warn nodot">non certifiée FNE</span>`:""}</div>
+      <div class="row"><button class="btn sm" type="button" data-fv="${f.id}">Voir / imprimer</button>
+        ${f.statut!=="annulee"&&r>0?`<button class="btn sm primary w" type="button" data-fenc="${f.id}">Encaisser</button>`:""}
+        ${f.statut!=="annulee"?`<button class="btn sm w" type="button" data-ffne="${f.id}">${f.fne&&f.fne.ref?"Modifier n° FNE":"Saisir n° FNE"}</button>`:""}
+        ${isOwner&&f.statut!=="annulee"?`<button class="btn sm ghost" type="button" data-fann="${f.id}" style="color:var(--bad)">Annuler</button>`:""}</div></div>`}).join("")}</div>`
+      :`<div class="empty">Aucune facture${k!=="tous"?" dans ce filtre":""}.</div>`}`;
+}
+document.addEventListener("click",e=>{
+  const x=e.target.closest("[data-ff]"); if(x){filters.facF=x.dataset.ff;renderFactures();return}
+  const v=e.target.closest("[data-fv]"); if(v){showFacture(v.dataset.fv);return}
+  const n=e.target.closest("[data-fenc]"); if(n){openEncaisser(n.dataset.fenc);return}
+  const f=e.target.closest("[data-ffne]"); if(f){openFNE(f.dataset.ffne);return}
+  const a=e.target.closest("[data-fann]"); if(a){annulerFacture(a.dataset.fann);return}
+  const rm=e.target.closest("[data-ln-rm]"); if(rm){const w=rm.closest(".el");if(w.querySelectorAll(".ln").length>1) rm.closest(".ln").remove();w.dispatchEvent(new Event("input",{bubbles:true}));return}
+  const ad=e.target.closest("[data-ln-add]"); if(ad){const w=$("#"+ad.dataset.lnAdd);w.insertAdjacentHTML("beforeend",w.dataset.tpl==="fac"?facLine():ecrLine());return}
+});
+const assuj=()=>D()&&D().tva!==false;
+const facLine=()=>`<div class="ln fac"><div><label>Désignation</label><input class="l-d" maxlength="120" placeholder="Ex. Transport de 30 t de cacao"></div><div><label>Qté</label><input class="l-q" inputmode="decimal" value="1"></div><div><label>Prix unit. HT</label><input class="l-p" inputmode="numeric"></div>
+  <div class="tv"><label>TVA</label><select class="l-t"${assuj()?"":" disabled"}>${assuj()?TVA_CODES.map(t=>`<option value="${t[0]}">${t[0]==="TVA"?"18 %":t[0]==="TVAB"?"9 %":t[0]==="TVAC"?"0 % conv.":"0 % loi"}</option>`).join(""):`<option value="">sans TVA</option>`}</select></div><button type="button" class="x" data-ln-rm aria-label="Retirer">✕</button></div>`;
+function readFacLines(){
+  return [...document.querySelectorAll("#fl .ln")].map(r=>({desc:r.querySelector(".l-d").value.trim(),qte:num(r.querySelector(".l-q").value),pu:num(r.querySelector(".l-p").value),tva:assuj()?r.querySelector(".l-t").value:""})).filter(l=>l.desc||l.pu);
+}
+function facTotals(L){
+  let ht=0,tva=0; const parT={};
+  L.forEach(l=>{const h=R((l.qte||0)*(l.pu||0)), t=R(h*(TVA_RATE[l.tva]||0)/100); ht+=h; tva+=t; parT[l.tva||""]=(parT[l.tva||""]||0)+h});
+  return{ht,tva,ttc:ht+tva,parT};
+}
+function openFacture(){
+  if(ro()) return;
+  openForm("Nouvelle facture · "+D().nom,[
+    {k:"cnom",l:"Client",req:true,full:true,ph:"Nom de l'entreprise ou de la personne"},
+    {k:"template",l:"Type de client (FNE)",type:"select",opts:[["B2C","Particulier (B2C)"],["B2B","Entreprise (B2B)"],["B2G","État / administration (B2G)"],["B2F","Client étranger (B2F)"]]},
+    {k:"cncc",l:"NCC du client",hint:"Obligatoire pour une entreprise (B2B)",ph:"8 caractères"},
+    {k:"ctel",l:"Téléphone du client",type:"tel"},{k:"cmail",l:"E-mail du client",type:"email"},
+    {k:"jour",l:"Date",type:"date",def:today()},
+    {k:"compte",l:"Nature de la vente",type:"select",opts:CAT_REC.filter(c=>c[0].startsWith("7")),def:"706"},
+    {type:"html",html:`<div class="el full" id="fl" data-tpl="fac" style="grid-column:1/-1">${facLine()}</div><div class="row between full" style="grid-column:1/-1"><button type="button" class="btn sm" data-ln-add="fl">+ Ligne</button><span id="fl-tot" class="num"></span></div>`},
+    {k:"mode",l:"Paiement",type:"select",opts:MODES_FNE,def:"deferred",hint:"« À crédit » si le client paiera plus tard"},
+    {k:"note",l:"Mention (facultatif)",full:true,ph:"Ex. Bon de commande n°…"}],{},async(o,c)=>{
+    const L=readFacLines(), E=[],W=[]; const T=facTotals(L);
+    if(!o.cnom||o.cnom.length<2) E.push("Indiquez le client.");
+    if(!L.length) E.push("Ajoutez au moins une ligne.");
+    L.forEach((l,i)=>{if(!l.desc) E.push(`Ligne ${i+1} : désignation manquante.`);if(!(l.qte>0)) E.push(`Ligne ${i+1} : quantité invalide.`);if(!(l.pu>0)) E.push(`Ligne ${i+1} : prix manquant.`)});
+    if(o.template==="B2B"&&!/^[0-9A-Za-z]{7,9}$/.test((o.cncc||"").replace(/\s/g,""))) E.push("Pour une entreprise (B2B), le NCC du client est obligatoire (8 caractères).");
+    if(o.template==="B2B"&&(!o.ctel||!o.cmail)) W.push("Pour la FNE, le téléphone et l'e-mail du client sont demandés en B2B.");
+    if(o.jour>today()) E.push("La date ne peut pas être dans le futur.");
+    const facNum=nextFacNum();
+    check(E,W,c);
+    const b=fdb.batch(), ref=fdb.collection("factures").doc(), d=D(), lib=`Facture ${facNum} · ${o.cnom}`;
+    const lignes=[{c:"411",d:T.ttc,t:o.cnom}];
+    for(const [tv,h] of Object.entries(T.parT)) lignes.push({c:o.compte,k:h,tva:tv||null});
+    if(T.tva) lignes.push({c:"4431",k:T.tva});
+    const er=addEcr(b,{jour:o.jour,journal:"VT",piece:facNum,libelle:lib,lignes,source:"facture",srcId:ref.id});
+    let paye=0;
+    if(o.mode!=="deferred"){paye=T.ttc;addEcr(b,{jour:o.jour,journal:"TR",piece:facNum,libelle:"Encaissement "+lib,lignes:[{c:MODE_TRESO[o.mode],d:T.ttc},{c:"411",k:T.ttc,t:o.cnom}],source:"encaissement",srcId:ref.id})}
+    b.set(ref,{dossierId:d.id,num:facNum,jour:o.jour,client:{nom:o.cnom,ncc:(o.cncc||"").replace(/\s/g,"").toUpperCase(),tel:o.ctel||"",email:o.cmail||""},template:o.template,compte:o.compte,
+      lignes:L.map(l=>({desc:l.desc,qte:l.qte,pu:R(l.pu),tva:l.tva||""})),ht:T.ht,tva:T.tva,ttc:T.ttc,mode:o.mode,paye,note:o.note||"",statut:"ok",fne:null,ecrId:er.id,...stamp()});
+    b.set(jRef(),jEntry("facture","factures",ref.id,`${lib} : ${fcfa(T.ttc)}`));
+    await queued(b.commit()); toast("Facture "+facNum+" enregistrée");
+    setTimeout(()=>showFacture(ref.id,true),80);
+  },"Enregistrer la facture");
+  const upd=()=>{const T=facTotals(readFacLines());$("#fl-tot").innerHTML=`HT ${fnum(T.ht)} · TVA ${fnum(T.tva)} · <b>TTC ${fcfa(T.ttc)}</b>`};
+  $("#fl").addEventListener("input",upd); $("#fl").addEventListener("change",upd); upd();
+}
+function facHTML(f){
+  const d=state.dossiers.find(x=>x.id===f.dossierId)||D(); const T=facTotals(f.lignes);
+  return `<div class="doc"><div class="hdr"><div><h1>${esc(d.nom)}</h1><div class="muted">${esc([d.adresse,d.ville].filter(Boolean).join(" · "))}${d.tel?"<br>Tél. "+esc(d.tel):""}</div>
+      <div class="muted">${d.ncc?"NCC : "+esc(d.ncc):""}${d.rccm?" · RCCM : "+esc(d.rccm):""}${d.regime?" · "+esc(REGIMES[d.regime]||d.regime):""}${d.centre?" · "+esc(d.centre):""}</div></div>
+      <div style="text-align:right"><div style="font-size:18px;font-weight:700">FACTURE</div><div>N° <b>${esc(f.num)}</b></div><div>du ${fdate(f.jour)}</div>
+      ${f.fne&&f.fne.ref?`<div class="stamp" style="margin-top:6px">FNE N° ${esc(f.fne.ref)}</div>`:`<div class="muted" style="margin-top:6px">À certifier sur la plateforme FNE</div>`}</div></div>
+    ${f.statut==="annulee"?`<p style="font-weight:700;color:#B3261E">FACTURE ANNULÉE</p>`:""}
+    <div class="box" style="margin-bottom:12px"><b>Client :</b> ${esc(f.client.nom)}${f.client.ncc?" · NCC "+esc(f.client.ncc):""}${f.client.tel?" · "+esc(f.client.tel):""}${f.client.email?" · "+esc(f.client.email):""}<br><span class="muted">Type : ${esc(f.template)} · Paiement : ${esc((MODES_FNE.find(m=>m[0]===f.mode)||[])[1]||f.mode)}</span></div>
+    <table><thead><tr><th>Désignation</th><th class="r">Qté</th><th class="r">Prix unit. HT</th><th class="r">TVA</th><th class="r">Montant HT</th></tr></thead><tbody>
+    ${f.lignes.map(l=>`<tr><td>${esc(l.desc)}</td><td class="r">${nb(l.qte)}</td><td class="r">${fnum(l.pu)}</td><td class="r">${l.tva?TVA_RATE[l.tva]+" %":"—"}</td><td class="r">${fnum(l.qte*l.pu)}</td></tr>`).join("")}</tbody></table>
+    <table style="width:auto;margin:10px 0 0 auto"><tr><td>Total HT</td><td class="r">${fnum(T.ht)}</td></tr><tr><td>TVA</td><td class="r">${fnum(T.tva)}</td></tr><tr><td><b>Total TTC</b></td><td class="r"><b>${fcfa(T.ttc)}</b></td></tr>
+    ${f.paye?`<tr><td>Déjà payé</td><td class="r">${fnum(f.paye)}</td></tr><tr><td><b>Reste à payer</b></td><td class="r"><b>${fnum(facReste(f))}</b></td></tr>`:""}</table>
+    <p>Arrêtée la présente facture à la somme de <b>${enLettres(T.ttc)} francs CFA</b> TTC.</p>${f.note?`<p class="muted">${esc(f.note)}</p>`:""}
+    <p class="muted" style="margin-top:24px;font-size:10px">Document de gestion interne. Seule la facture certifiée par la plateforme FNE de la DGI (avec QR code) a valeur fiscale.</p></div>`;
+}
+function fneText(f){
+  return `Client : ${f.client.nom}${f.client.ncc?" (NCC "+f.client.ncc+")":""} · Type ${f.template}\n`+f.lignes.map(l=>`${l.desc} | Qté ${nb(l.qte)} | PU HT ${fnum(l.pu)} | ${l.tva||"sans TVA"}`).join("\n")+`\nTotal HT ${fnum(f.ht)} · TVA ${fnum(f.tva)} · TTC ${fnum(f.ttc)}`;
+}
+function printHTML(h){$("#print-zone").innerHTML=h;setTimeout(()=>window.print(),80)}
+function showFacture(id,fresh){
+  const f=state.factures.find(x=>x.id===id); if(!f){toast("Facture enregistrée (affichage dès la synchronisation).");return}
+  $("#dlg-t").textContent=(fresh?"Facture enregistrée · ":"")+f.num;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="doc-prev">${facHTML(f)}</div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-fne-copy="${f.id}">Copier pour FNE</button><a class="btn" href="${LIENS.fne}" target="_blank" rel="noopener">Ouvrir FNE</a><button type="button" class="btn" data-print-fac="${f.id}">Imprimer / PDF</button><button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"info"}; if(!$("#dlg").open) $("#dlg").showModal();
+}
+document.addEventListener("click",async e=>{
+  const p=e.target.closest("[data-print-fac]"); if(p){printHTML(facHTML(state.factures.find(x=>x.id===p.dataset.printFac)));return}
+  const c=e.target.closest("[data-fne-copy]"); if(c){const f=state.factures.find(x=>x.id===c.dataset.fneCopy);try{await navigator.clipboard.writeText(fneText(f));toast("Détails copiés : collez-les sur la plateforme FNE.")}catch(_){toast("Copie impossible sur ce téléphone.")}}
+});
+function openEncaisser(id){
+  const f=state.factures.find(x=>x.id===id); if(!f||ro()) return;
+  openForm("Encaisser · "+f.num,[{type:"html",html:`<p class="confirm">${esc(f.client.nom)} · reste à payer <b>${fcfa(facReste(f))}</b></p>`},
+    {k:"montant",l:"Montant reçu",type:"number",def:facReste(f),req:true},{k:"mode",l:"Reçu par",type:"select",opts:MODES_FNE.filter(m=>m[0]!=="deferred"),def:"cash"},{k:"jour",l:"Date",type:"date",def:today()}],{},async(o,c)=>{
+    const E=[]; if(!(o.montant>0)) E.push("Indiquez le montant.");
+    if(o.montant>facReste(f)) E.push("Le montant dépasse le reste à payer.");
+    if(o.jour<f.jour) E.push("La date est avant la facture.");
+    check(E,[],c);
+    const b=fdb.batch();
+    addEcr(b,{jour:o.jour,journal:"TR",piece:f.num,libelle:`Encaissement ${f.num} · ${f.client.nom}`,lignes:[{c:MODE_TRESO[o.mode],d:o.montant},{c:"411",k:o.montant,t:f.client.nom}],source:"encaissement",srcId:f.id});
+    b.update(fdb.collection("factures").doc(f.id),{paye:inc(R(o.montant)),...stamp()});
+    b.set(jRef(),jEntry("encaissement","factures",f.id,`Encaissement ${f.num} : ${fcfa(o.montant)}`));
+    await queued(b.commit()); toast("Encaissement enregistré");
+  },"Encaisser");
+}
+function openFNE(id){
+  const f=state.factures.find(x=>x.id===id); if(!f||ro()) return;
+  openForm("Numéro FNE · "+f.num,[{type:"html",html:`<p class="confirm">1. Touchez « Copier pour FNE » dans la facture, ouvrez la plateforme FNE et certifiez la facture.<br>2. Recopiez ici le <b>numéro de facture FNE</b> qu'elle vous donne.</p>`},
+    {k:"ref",l:"N° de la facture FNE",req:true,full:true},{k:"date",l:"Date de certification",type:"date",def:today()}],f.fne||{},async(o,c)=>{
+    if(!o.ref||o.ref.length<4) throw {msgs:["Indiquez le numéro FNE."]};
+    if(F().some(x=>x.id!==f.id&&x.fne&&x.fne.ref===o.ref)) throw {msgs:["Ce numéro FNE est déjà utilisé par une autre facture."]};
+    const b=fdb.batch(); b.update(fdb.collection("factures").doc(f.id),{fne:{ref:o.ref,date:o.date},...stamp()});
+    b.set(jRef(),jEntry("fne","factures",f.id,`${f.num} certifiée FNE n° ${o.ref}`)); await queued(b.commit()); toast("Numéro FNE enregistré");
+  });
+}
+function annulerFacture(id){
+  const f=state.factures.find(x=>x.id===id); if(!f||!isOwner) return;
+  openForm("Annuler la facture "+f.num,[{type:"html",html:`<p class="confirm">Une écriture d'annulation sera passée (la facture reste visible, barrée).${f.paye?` <b>${fcfa(f.paye)}</b> déjà encaissés resteront au crédit du client (avance à rembourser ou à imputer).`:""}${f.fne&&f.fne.ref?" <b>Faites aussi une facture d'avoir sur la plateforme FNE.</b>":""}</p>`},
+    {k:"motif",l:"Motif",req:true,full:true}],{},async(o,c)=>{
+    if(!o.motif||o.motif.length<3) throw {msgs:["Indiquez le motif."]};
+    const e=state.ecritures.find(x=>x.id===f.ecrId)||state.ecritures.find(x=>x.srcId===f.id&&x.source==="facture");
+    if(!e) throw {msgs:["Écriture de la facture introuvable (année ancienne ?)."]};
+    const b=fdb.batch();
+    addEcr(b,reverseOf(e,today()<e.jour?e.jour:today(),`Annulation facture ${f.num} : ${o.motif}`));
+    b.update(fdb.collection("factures").doc(f.id),{statut:"annulee",annulMotif:o.motif,...stamp()});
+    b.set(jRef(),jEntry("annulation","factures",f.id,`Annulation ${f.num} : ${o.motif}`,clean(f)));
+    await queued(b.commit()); toast("Facture annulée");
+  },"Annuler la facture");
+}
+
+/* ================= RECETTES, DÉPENSES, ÉCRITURES ================= */
+function renderOperations(){
+  const m=filters.mois||curMonth(), A=annulees();
+  const L=E().filter(e=>e.jour.startsWith(m)).sort((a,b)=>(b.jour+b.le).localeCompare(a.jour+a.le));
+  const q=norm(filters.opQ); const LL=q?L.filter(e=>norm(e.libelle+" "+e.piece+" "+e.lignes.map(l=>l.c+" "+(l.t||"")).join(" ")).includes(q)):L;
+  $("#v-operations").innerHTML=`<div class="bar"><h2>Recettes & dépenses</h2><div class="row w"><button class="btn primary" type="button" data-act="rec-new">+ Recette</button><button class="btn primary" type="button" data-act="dep-new">+ Dépense</button><button class="btn" type="button" data-act="vir-new">Paiement / virement</button><button class="btn" type="button" data-act="od-new">Écriture libre</button><button class="btn" type="button" data-act="ouverture">Soldes de départ</button></div></div>
+    <div class="row" style="margin-bottom:12px"><button class="btn sm" type="button" data-mo="-1">◀</button><input type="month" id="op-m" value="${m}" class="btn sm"><button class="btn sm" type="button" data-mo="1">▶</button>
+      <input class="btn" id="op-q" type="search" placeholder="Chercher (libellé, tiers, compte)…" value="${esc(filters.opQ)}" style="flex:1;min-width:160px;text-align:left" autocomplete="off"></div>
+    <div class="kpis"><div class="kpi"><div class="l">Recettes du mois</div><div class="v">${fnum(mvt("7",m+"-01",m+"-31").k-mvt("7",m+"-01",m+"-31").d)}</div><div class="s">HT</div></div><div class="kpi"><div class="l">Dépenses du mois</div><div class="v">${fnum(mvt("6",m+"-01",m+"-31").d-mvt("6",m+"-01",m+"-31").k)}</div><div class="s">HT</div></div></div>
+    ${LL.length?`<div class="panel scroll"><table><thead><tr><th>Date</th><th>Journal</th><th>Libellé</th><th class="r">Montant</th><th></th></tr></thead><tbody>
+    ${LL.map(e=>`<tr${A.has(e.id)||e.annule?' style="opacity:.55"':""}><td>${fdate(e.jour)}</td><td><span class="tag">${e.journal}</span></td><td style="white-space:normal">${esc(e.libelle)}${e.piece?` <span class="trace">${esc(e.piece)}</span>`:""}${A.has(e.id)?` <span class="pill p-mut nodot">annulée</span>`:""}</td><td class="r num">${fnum(e.totalD)}</td><td><button class="btn sm ghost" type="button" data-ecr="${e.id}">Détail</button></td></tr>`).join("")}</tbody></table></div>`
+      :`<div class="empty">Aucune écriture en ${moisL(m)}.</div>`}`;
+  const s=$("#op-q"); if(document.activeElement&&document.activeElement.id==="op-q"){}
+}
+document.addEventListener("click",e=>{
+  const mo=e.target.closest("[data-mo]"); if(mo){const m=filters.mois||curMonth();filters.mois=+mo.dataset.mo>0?nextMonth(m):prevMonth(m);render();return}
+  const ec=e.target.closest("[data-ecr]"); if(ec){showEcr(ec.dataset.ecr);return}
+});
+document.addEventListener("change",e=>{if(e.target.id==="op-m"&&e.target.value){filters.mois=e.target.value;render()}});
+document.addEventListener("input",e=>{if(e.target.id==="op-q"){filters.opQ=e.target.value;const p=e.target.selectionStart;renderOperations();const s=$("#op-q");s.focus();s.setSelectionRange(p,p)}});
+function showEcr(id){
+  const e=state.ecritures.find(x=>x.id===id); if(!e) return; const A=annulees();
+  $("#dlg-t").textContent="Écriture · "+(JOURNAUX[e.journal]||e.journal);
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><p class="confirm"><b>${esc(e.libelle)}</b><br><span class="trace">${fdate(e.jour)} · pièce ${esc(e.piece||"—")} · saisie par ${esc(e.par||"")} le ${fdt(e.le)}</span></p>
+    <div class="scroll full" style="grid-column:1/-1"><table><thead><tr><th>Compte</th><th>Intitulé</th><th class="r">Débit</th><th class="r">Crédit</th></tr></thead><tbody>
+    ${e.lignes.map(l=>`<tr><td class="acc">${esc(l.c)}</td><td style="white-space:normal">${esc(accName(l.c))}${l.t?` <span class="trace">${esc(l.t)}</span>`:""}</td><td class="r num">${l.d?fnum(l.d):""}</td><td class="r num">${l.k?fnum(l.k):""}</td></tr>`).join("")}
+    <tr class="sub"><td colspan="2">Total</td><td class="r num">${fnum(e.totalD)}</td><td class="r num">${fnum(e.totalC)}</td></tr></tbody></table></div>
+    ${A.has(e.id)?`<p class="confirm" style="color:var(--bad)">Cette écriture a été annulée par une contre-passation.</p>`:""}${e.annule?`<p class="confirm trace">Écriture d'annulation.</p>`:""}`;
+  const can=isMgr&&!A.has(e.id)&&!e.annule&&e.source!=="facture"&&e.source!=="paie";
+  $("#dlg-f").innerHTML=`${can?`<button type="button" class="btn ghost" data-ecr-ann="${e.id}" style="color:var(--bad);margin-right:auto">Annuler (contre-passer)</button>`:""}<button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"info"}; if(!$("#dlg").open) $("#dlg").showModal();
+}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-ecr-ann]");if(!a) return;const x=state.ecritures.find(y=>y.id===a.dataset.ecrAnn);
+  openConfirm("Annuler l'écriture",`Une écriture inverse sera passée aujourd'hui pour annuler « ${esc(x.libelle)} » (${fcfa(x.totalD)}). L'original reste visible.`,"Contre-passer",async()=>{
+    const b=fdb.batch(); addEcr(b,reverseOf(x,today()<x.jour?x.jour:today())); b.set(jRef(),jEntry("annulation","ecritures",x.id,"Contre-passation : "+x.libelle,clean(x))); await queued(b.commit()); toast("Écriture annulée")})});
+
+function tresoOpts(){return TRESO.map(([c,l])=>[c,l])}
+function openRecDep(isDep){
+  if(ro()) return;
+  const cats=isDep?CAT_DEP:CAT_REC;
+  openForm(isDep?"Nouvelle dépense":"Nouvelle recette",[
+    {k:"jour",l:"Date",type:"date",def:today()},
+    {k:"cat",l:"Catégorie",type:"select",opts:cats.map(c=>[c[0],c[1]]),full:false},
+    {k:"lib",l:"Libellé",req:true,full:true,ph:isDep?"Ex. Gasoil camion 1234 AB 01":"Ex. Vente de 12 t de cacao"},
+    {k:"tiers",l:isDep?"Fournisseur":"Client / payeur",ph:"Facultatif"},
+    {k:"piece",l:"N° de pièce / facture",ph:"Facultatif"},
+    {k:"ht",l:"Montant HT (sans TVA)",type:"number",req:true},
+    ...(assuj()?[{k:"tva",l:"TVA",type:"select",opts:[["","Pas de TVA"],["TVA","18 %"],["TVAB","9 %"]],def:""},
+      ...(isDep?[{k:"recup",l:"Facture FNE du fournisseur ?",type:"select",opts:[["oui","Oui : TVA récupérable"],["non","Non : TVA non récupérable"]],hint:"Sans facture normalisée, la TVA ne se déduit pas"}]:[])]:[]),
+    {k:"treso",l:isDep?"Payé par":"Reçu par",type:"select",opts:[...tresoOpts(),[isDep?"401":"411",isDep?"À crédit (fournisseur à payer)":"À crédit (client doit payer)"]]},
+    {type:"html",html:`<p class="confirm" id="rd-tot"></p>`}],{},async(o,c)=>{
+    const E=[],W=[];
+    if(!(o.ht>0)) E.push("Indiquez le montant.");
+    if(!o.lib) E.push("Indiquez un libellé.");
+    if(o.jour>today()) E.push("La date ne peut pas être dans le futur.");
+    if((o.treso==="401"||o.treso==="411")&&!o.tiers) E.push(isDep?"Indiquez le fournisseur à payer.":"Indiquez le client qui doit payer.");
+    const tv=o.tva?R(o.ht*TVA_RATE[o.tva]/100):0, ttc=R(o.ht)+tv;
+    if(isDep&&o.treso!=="401"&&o.treso!=="411"&&tresoSolde(o.treso,o.jour)-ttc<0) W.push(`Le solde de ${(TRESO.find(t=>t[0]===o.treso)||[])[1]} deviendrait négatif. Vérifiez qu'une recette n'a pas été oubliée.`);
+    const dup=E_dup(o,ttc); if(dup) W.push("Une opération identique existe déjà ce jour-là (doublon ?).");
+    check(E,W,c);
+    const b=fdb.batch(), L=[];
+    if(isDep){
+      const recup=o.tva&&o.recup!=="non";
+      L.push({c:o.cat,d:recup?R(o.ht):ttc,t:o.tiers}); if(recup) L.push({c:"4452",d:tv}); L.push({c:o.treso,k:ttc,t:o.tiers});
+    }else{
+      L.push({c:o.treso,d:ttc,t:o.tiers}); L.push({c:o.cat,k:R(o.ht),tva:o.tva||null,t:o.tiers}); if(tv) L.push({c:"4431",k:tv});
+    }
+    addEcr(b,{jour:o.jour,journal:isDep?(o.treso==="401"?"AC":"TR"):(o.treso==="411"?"VT":"TR"),piece:o.piece||"",libelle:o.lib,lignes:L,source:isDep?"depense":"recette"});
+    b.set(jRef(),jEntry(isDep?"dépense":"recette","ecritures",null,`${o.lib} : ${fcfa(ttc)}`));
+    await queued(b.commit()); toast(isDep?"Dépense enregistrée":"Recette enregistrée");
+  });
+  const cat=$("#f-cat"), upd=()=>{const ht=num($("#f-ht").value)||0,t=$("#f-tva")?$("#f-tva").value:"";const tv=t?R(ht*TVA_RATE[t]/100):0;$("#rd-tot").innerHTML=`Total ${t?"TTC":""} : <b>${fcfa(ht+tv)}</b>${tv?` dont TVA ${fnum(tv)}`:""}`};
+  if(isDep&&assuj()) cat.addEventListener("change",()=>{const x=CAT_DEP.find(c=>c[0]===cat.value);$("#f-tva").value=x&&x[2]?"TVA":"";upd()});
+  if(isDep&&assuj()){const x=CAT_DEP.find(c=>c[0]===cat.value);$("#f-tva").value=x&&x[2]?"TVA":""}
+  ctx.onInput=upd; upd();
+}
+function E_dup(o,ttc){return E().some(e=>e.jour===o.jour&&e.totalD===ttc&&norm(e.libelle)===norm(o.lib))}
+function openVirement(){
+  if(ro()) return;
+  openForm("Paiement / virement",[
+    {k:"type",l:"Opération",type:"select",full:true,opts:[["vir","Virement entre caisse, banque et mobile money"],["fou","Payer un fournisseur (achat à crédit)"],["cli","Encaisser un client (hors facture de la plateforme)"],["emp","Rembourser un emprunt"]]},
+    {k:"jour",l:"Date",type:"date",def:today()},{k:"montant",l:"Montant",type:"number",req:true},
+    {k:"de",l:"De (sortie)",type:"select",opts:tresoOpts(),def:"571"},{k:"vers",l:"Vers (entrée)",type:"select",opts:tresoOpts(),def:"521"},
+    {k:"tiers",l:"Fournisseur / client",ph:"Nom"},{k:"lib",l:"Libellé",full:true,ph:"Facultatif"}],{},async(o,c)=>{
+    const E=[]; if(!(o.montant>0)) E.push("Indiquez le montant.");
+    if(o.type==="vir"&&o.de===o.vers) E.push("Choisissez deux comptes différents.");
+    if((o.type==="fou"||o.type==="cli")&&!o.tiers) E.push("Indiquez le nom du fournisseur ou du client.");
+    check(E,[],c);
+    const m=R(o.montant), b=fdb.batch(); let L,lib;
+    if(o.type==="vir"){L=[{c:o.vers,d:m},{c:o.de,k:m}];lib=o.lib||`Virement ${accName(o.de)} → ${accName(o.vers)}`}
+    else if(o.type==="fou"){L=[{c:"401",d:m,t:o.tiers},{c:o.de,k:m}];lib=o.lib||"Paiement fournisseur "+o.tiers}
+    else if(o.type==="cli"){L=[{c:o.vers,d:m},{c:"411",k:m,t:o.tiers}];lib=o.lib||"Encaissement client "+o.tiers}
+    else {L=[{c:"162",d:m},{c:o.de,k:m}];lib=o.lib||"Remboursement d'emprunt"}
+    addEcr(b,{jour:o.jour,journal:"TR",libelle:lib,lignes:L,source:"tresorerie"});
+    b.set(jRef(),jEntry("trésorerie","ecritures",null,`${lib} : ${fcfa(m)}`)); await queued(b.commit()); toast("Opération enregistrée");
+  });
+}
+const ecrLine=()=>`<div class="ln"><div><label>Compte</label><input class="l-c" list="plan-dl" placeholder="Ex. 571" autocomplete="off"></div><div><label>Débit</label><input class="l-dd" inputmode="numeric"></div><div><label>Crédit</label><input class="l-kk" inputmode="numeric"></div><button type="button" class="x" data-ln-rm aria-label="Retirer">✕</button></div>`;
+function openOD(){
+  if(ro()) return;
+  openForm("Écriture libre (opérations diverses)",[
+    {type:"html",html:`<p class="confirm trace">Pour le comptable : amortissements, stocks de fin d'année, régularisations… Le total des débits doit égaler celui des crédits.</p><datalist id="plan-dl">${Object.entries(PLAN).map(([c,l])=>`<option value="${c}">${esc(l)}</option>`).join("")}</datalist>`},
+    {k:"jour",l:"Date",type:"date",def:today()},{k:"piece",l:"Pièce"},{k:"lib",l:"Libellé",req:true,full:true},
+    {type:"html",html:`<div class="el full" id="ol" data-tpl="ecr" style="grid-column:1/-1">${ecrLine()}${ecrLine()}</div><div class="row between full" style="grid-column:1/-1"><button type="button" class="btn sm" data-ln-add="ol">+ Ligne</button><span id="ol-tot" class="num"></span></div>`}],{},async(o,c)=>{
+    const L=[...document.querySelectorAll("#ol .ln")].map(r=>({c:r.querySelector(".l-c").value.trim(),d:num(r.querySelector(".l-dd").value)||0,k:num(r.querySelector(".l-kk").value)||0})).filter(l=>l.c||l.d||l.k);
+    const E=[]; if(!o.lib) E.push("Indiquez un libellé.");
+    L.forEach((l,i)=>{if(!/^\d{2,8}$/.test(l.c)) E.push(`Ligne ${i+1} : numéro de compte invalide.`);if(l.d&&l.k) E.push(`Ligne ${i+1} : mettez soit un débit, soit un crédit.`)});
+    if(L.length<2) E.push("Il faut au moins deux lignes.");
+    check(E,[],c);
+    const b=fdb.batch(); addEcr(b,{jour:o.jour,journal:"OD",piece:o.piece,libelle:o.lib,lignes:L,source:"manuel"});
+    b.set(jRef(),jEntry("écriture","ecritures",null,o.lib)); await queued(b.commit()); toast("Écriture enregistrée");
+  });
+  const upd=()=>{let d=0,k=0;document.querySelectorAll("#ol .ln").forEach(r=>{d+=num(r.querySelector(".l-dd").value)||0;k+=num(r.querySelector(".l-kk").value)||0});$("#ol-tot").innerHTML=`Débit ${fnum(d)} · Crédit ${fnum(k)} ${d===k&&d?'<b style="color:var(--ok)">✓ équilibrée</b>':`<b style="color:var(--bad)">écart ${fnum(d-k)}</b>`}`};
+  $("#ol").addEventListener("input",upd); upd();
+}
+const OUV=[["571","Caisse",1],["521","Banque",1],["552","Mobile money",1],["411","Clients qui vous doivent",1],["31","Stocks (valeur)",1],["241","Matériel",1],["245","Véhicules / camions",1],["231","Bâtiments",1],["22","Terrains",1],
+  ["401","Fournisseurs à payer",-1],["162","Emprunts restant dus",-1],["4441","TVA due à l'État",-1],["431","CNPS à payer",-1],["101","Capital social / parts des membres",-1]];
+function openOuverture(){
+  if(ro()) return;
+  const y=new Date().getFullYear();
+  if(E().some(e=>e.journal==="AN"&&!e.annule&&!annulees().has(e.id))) {toast("Les soldes de départ existent déjà. Pour les corriger, annulez l'écriture « À-nouveaux » dans la liste puis recommencez.");return}
+  openForm("Soldes de départ",[{type:"html",html:`<p class="confirm">Indiquez ce que l'entreprise possède et doit à la date de départ (souvent le 1er janvier). Laissez vide si zéro. La différence sera mise en « Report à nouveau ».</p>`},
+    {k:"jour",l:"Date de départ",type:"date",def:y+"-01-01"},
+    ...OUV.map(([c,l])=>({k:"a"+c,l:`${l} (${c})`,type:"number"})),{type:"html",html:`<p class="confirm" id="ouv-tot"></p>`}],{},async(o,c)=>{
+    const L=[]; let net=0;
+    OUV.forEach(([cpt,,s])=>{const v=R(o["a"+cpt]);if(!v) return; if(v<0) return; if(s>0){L.push({c:cpt,d:v});net+=v}else{L.push({c:cpt,k:v});net-=v}});
+    if(!L.length) throw {msgs:["Indiquez au moins un montant."]};
+    if(net>0) L.push({c:"121",k:net}); else if(net<0) L.push({c:"121",d:-net});
+    check([],net?[`Différence de ${fcfa(Math.abs(net))} mise en report à nouveau (${net>0?"créditeur":"débiteur"}).`]:[],c);
+    const b=fdb.batch(); addEcr(b,{jour:o.jour,journal:"AN",libelle:"Soldes de départ (à-nouveaux)",lignes:L,source:"ouverture"});
+    b.set(jRef(),jEntry("ouverture","ecritures",null,"Soldes de départ")); await queued(b.commit()); toast("Soldes de départ enregistrés");
+  },"Enregistrer");
+  const upd=()=>{let a=0,p=0;OUV.forEach(([cpt,,s])=>{const v=num($("#f-a"+cpt).value)||0;if(s>0)a+=v;else p+=v});$("#ouv-tot").innerHTML=`Ce que vous possédez : <b>${fcfa(a)}</b> · Ce que vous devez + capital : <b>${fcfa(p)}</b> · Report à nouveau : <b>${fcfa(a-p)}</b>`};
+  ctx.onInput=upd; upd();
+}
+
+/* ================= PAIE ================= */
+function bareme(x,p){let t=0,lo=0;for(const [hi,r] of p.itsTranches){if(x>lo){t+=(Math.min(x,hi)-lo)*r/100}lo=hi;if(x<=hi) break}return t}
+function ricf(parts,p){const k=Math.min(5,Math.max(1,Math.round((+parts||1)*2)/2));return p.ricf[k]??p.ricf[String(k)]??0}
+function calcPaie(e,x,p){
+  const base=R(x.base),pr=R(x.primes),hs=R(x.hs),avn=R(x.avn),tr=R(x.transport),av=R(x.avance);
+  const brut=base+pr+hs+avn+tr, brutImp=base+pr+hs+avn+Math.max(0,tr-p.transportExo);
+  const bRet=Math.min(brutImp,p.plafRet), bPF=Math.min(brutImp,p.plafPF);
+  const retS=R(bRet*p.retSal/100), retP=R(bRet*p.retPat/100), pf=R(bPF*p.pf/100), mat=R(bPF*p.mat/100), at=R(bPF*p.at/100);
+  const cmuS=brutImp>0?R(p.cmuSal):0, cmuP=brutImp>0?R(p.cmuPat):0;
+  const its=Math.max(0,R(bareme(brutImp,p)-ricf(e.parts,p)));
+  const contrib=R(brutImp*(e.expat?p.contribExpat:p.contribLocal)/100), ta=R(brutImp*p.ta/100), fpc=R(brutImp*p.fpc/100);
+  const net=brut-retS-cmuS-its-av;
+  return{eid:e.id,nom:e.nom,poste:e.poste||"",matricule:e.matricule||"",parts:+e.parts||1,expat:!!e.expat,base,primes:pr,hs,avn,transport:tr,avance:av,brut,brutImp,retS,retP,pf,mat,at,cmuS,cmuP,its,contrib,ta,fpc,net,
+    chargesPat:retP+pf+mat+at+cmuP, taxesPat:contrib+ta+fpc};
+}
+const sumK=(L,k)=>L.reduce((s,x)=>s+(+x[k]||0),0);
+let paieMois=null;
+function renderPaie(){
+  const m=paieMois||prevMonthIfEarly(), emp=EMP().filter(e=>e.actif!==false).sort((a,b)=>a.nom.localeCompare(b.nom)), pa=PAIES().find(x=>x.mois===m);
+  $("#v-paie").innerHTML=`<div class="bar"><h2>Paie</h2><div class="row w"><button class="btn" type="button" data-act="emp-new">+ Salarié</button></div></div>
+    <div class="row" style="margin-bottom:12px"><button class="btn sm" type="button" data-pm="-1">◀</button><input type="month" id="pa-m" value="${m}" class="btn sm"><button class="btn sm" type="button" data-pm="1">▶</button></div>
+    ${pa?paieResume(pa):emp.length?`<div class="panel" style="display:grid;gap:10px"><h3 style="margin:0">Paie de ${moisL(m)} : pas encore faite</h3><p style="margin:0;color:var(--muted)">${emp.length} salarié(s). Vérifiez les primes, heures et avances du mois, puis validez : bulletins, ITS et CNPS seront calculés et passés en comptabilité.</p><div class="row w"><button class="btn primary" type="button" data-paie-prep="${m}">Préparer la paie de ${moisL(m)}</button></div></div>`:""}
+    <h3 style="margin-top:18px">Salariés</h3>
+    ${emp.length?`<div class="panel scroll"><table><thead><tr><th>Nom</th><th>Poste</th><th>N° CNPS</th><th class="r">Salaire de base</th><th class="r">Parts</th><th></th></tr></thead><tbody>${emp.map(e=>`<tr><td><b>${esc(e.nom)}</b>${e.expat?` <span class="pill p-info nodot">expatrié</span>`:""}</td><td>${esc(e.poste||"")}</td><td>${esc(e.matricule||"—")}</td><td class="r num">${fnum(e.base)}</td><td class="r">${nb(e.parts||1)}</td><td><button class="btn sm ghost w" type="button" data-emp="${e.id}">Modifier</button></td></tr>`).join("")}</tbody></table></div>`
+      :`<div class="empty">Aucun salarié enregistré.<br><button class="btn primary w" type="button" data-act="emp-new">Ajouter un salarié</button></div>`}
+    <p class="trace" style="margin-top:12px">Barème ITS 2024 (0 % jusqu'à 75 000, puis 16 %, 21 %, 24 %, 28 %, 32 %) et taux CNPS par défaut : vérifiez-les avec votre comptable dans Outils → Entreprises → Paramètres.</p>`;
+}
+function prevMonthIfEarly(){const t=today();return +t.slice(8)<=10?prevMonth(curMonth()):curMonth()}
+function paieResume(pa){
+  const L=pa.lignes;
+  return `<div class="panel" style="display:grid;gap:10px"><div class="row between"><h3 style="margin:0">Paie de ${moisL(pa.mois)} · validée</h3><span class="pill ${pa.payeLe?"p-ok":"p-warn"}">${pa.payeLe?"Salaires payés le "+fdate(pa.payeLe):"Salaires à payer"}</span></div>
+    <div class="kpis" style="margin:0"><div class="kpi"><div class="l">Masse salariale brute</div><div class="v">${fnum(sumK(L,"brut"))}</div></div><div class="kpi"><div class="l">Net à payer</div><div class="v">${fnum(sumK(L,"net"))}</div></div>
+      <div class="kpi"><div class="l">ITS retenu</div><div class="v">${fnum(sumK(L,"its"))}</div></div><div class="kpi"><div class="l">CNPS (salariés + employeur)</div><div class="v">${fnum(sumK(L,"retS")+sumK(L,"cmuS")+sumK(L,"chargesPat"))}</div></div>
+      <div class="kpi"><div class="l">Coût total employeur</div><div class="v">${fnum(sumK(L,"brut")+sumK(L,"chargesPat")+sumK(L,"taxesPat"))}</div></div></div>
+    <div class="scroll"><table><thead><tr><th>Salarié</th><th class="r">Brut</th><th class="r">CNPS sal.</th><th class="r">ITS</th><th class="r">Avance</th><th class="r">Net</th><th></th></tr></thead><tbody>
+    ${L.map((x,i)=>`<tr><td>${esc(x.nom)}</td><td class="r num">${fnum(x.brut)}</td><td class="r num">${fnum(x.retS+x.cmuS)}</td><td class="r num">${fnum(x.its)}</td><td class="r num">${fnum(x.avance)}</td><td class="r num"><b>${fnum(x.net)}</b></td><td><button class="btn sm" type="button" data-bul="${pa.id}|${i}">Bulletin</button></td></tr>`).join("")}</tbody></table></div>
+    <div class="row">${!pa.payeLe?`<button class="btn primary w" type="button" data-paie-pay="${pa.id}">Enregistrer le paiement des salaires</button>`:""}<button class="btn" type="button" data-bul-all="${pa.id}">Imprimer tous les bulletins</button><button class="btn" type="button" data-go-decl="its|${pa.mois}">Déclarer l'ITS</button><button class="btn" type="button" data-go-decl="cnps|${pa.mois}">Déclarer la CNPS</button>${isOwner?`<button class="btn ghost" type="button" data-paie-ann="${pa.id}" style="color:var(--bad)">Annuler cette paie</button>`:""}</div></div>`;
+}
+document.addEventListener("click",e=>{
+  const pm=e.target.closest("[data-pm]"); if(pm){const m=paieMois||prevMonthIfEarly();paieMois=+pm.dataset.pm>0?nextMonth(m):prevMonth(m);render();return}
+  const em=e.target.closest("[data-emp]"); if(em){openEmploye(em.dataset.emp);return}
+  const pp=e.target.closest("[data-paie-prep]"); if(pp){openPaie(pp.dataset.paiePrep);return}
+  const b=e.target.closest("[data-bul]"); if(b){const [id,i]=b.dataset.bul.split("|");const pa=state.paies.find(x=>x.id===id);showBulletins(pa,[pa.lignes[+i]]);return}
+  const ba=e.target.closest("[data-bul-all]"); if(ba){const pa=state.paies.find(x=>x.id===ba.dataset.bulAll);printHTML(pa.lignes.map(x=>bulletinHTML(pa,x)).join('<div style="page-break-after:always"></div>'));return}
+  const py=e.target.closest("[data-paie-pay]"); if(py){payerSalaires(py.dataset.paiePay);return}
+  const an=e.target.closest("[data-paie-ann]"); if(an){annulerPaie(an.dataset.paieAnn);return}
+});
+document.addEventListener("change",e=>{if(e.target.id==="pa-m"&&e.target.value){paieMois=e.target.value;render()}});
+function openEmploye(id){
+  if(ro()) return; const e=id?state.employes.find(x=>x.id===id):null;
+  openForm(e?"Modifier le salarié":"Nouveau salarié",[
+    {k:"nom",l:"Nom et prénoms",req:true,full:true},{k:"poste",l:"Poste",ph:"Ex. Chauffeur"},{k:"matricule",l:"N° CNPS du salarié"},
+    {k:"embauche",l:"Date d'embauche",type:"date"},{k:"base",l:"Salaire de base mensuel",type:"number",req:true,hint:"SMIG : 75 000 FCFA"},
+    {k:"primes",l:"Primes / sursalaire fixes",type:"number"},{k:"transport",l:"Indemnité de transport",type:"number",hint:"Exonérée jusqu'à 30 000 par mois (par défaut)"},
+    {k:"parts",l:"Parts fiscales",type:"select",opts:["1","1.5","2","2.5","3","3.5","4","4.5","5"],def:"1",hint:"Célibataire 1 · marié 2 · +0,5 par enfant (max 5)"},
+    {k:"expat",l:"Nationalité",type:"select",opts:[["non","Personnel local"],["oui","Expatrié"]]},
+    {k:"tel",l:"Téléphone",type:"tel"}],e?{...e,parts:String(e.parts||1),expat:e.expat?"oui":"non"}:null,async(o,c)=>{
+    const E=[],W=[]; if(!o.nom||o.nom.length<3) E.push("Indiquez le nom."); if(!(o.base>0)) E.push("Indiquez le salaire de base.");
+    if(o.base>0&&o.base<75000) W.push("Le salaire de base est inférieur au SMIG (75 000 FCFA).");
+    check(E,W,c);
+    const s=stamp(), b=fdb.batch(), data={dossierId:D().id,nom:o.nom,poste:o.poste||"",matricule:o.matricule||"",embauche:o.embauche||"",base:R(o.base),primes:R(o.primes),transport:R(o.transport),parts:+o.parts,expat:o.expat==="oui",tel:o.tel||"",actif:true,...s};
+    if(e){b.update(fdb.collection("employes").doc(id),data);b.set(jRef(),jEntry("modif","employes",id,"Salarié modifié : "+o.nom,clean(e)))}
+    else{const r=fdb.collection("employes").doc();b.set(r,data);b.set(jRef(),jEntry("ajout","employes",r.id,"Nouveau salarié : "+o.nom))}
+    await queued(b.commit()); toast("Salarié enregistré");
+  });
+  if(e) $("#dlg-f").insertAdjacentHTML("afterbegin",`<button type="button" class="btn ghost" data-emp-out="${id}" style="color:var(--bad);margin-right:auto">Sortie du personnel</button>`);
+}
+document.addEventListener("click",e=>{const x=e.target.closest("[data-emp-out]");if(!x) return;const em=state.employes.find(y=>y.id===x.dataset.empOut);
+  openConfirm("Sortie du personnel",`${esc(em.nom)} ne sera plus dans les prochaines paies. Ses bulletins passés restent.`,"Confirmer",async()=>{const b=fdb.batch();b.update(fdb.collection("employes").doc(em.id),{actif:false,sortie:today(),...stamp()});b.set(jRef(),jEntry("sortie","employes",em.id,"Sortie : "+em.nom));await queued(b.commit());toast("Salarié retiré des paies")})});
+function openPaie(m){
+  if(ro()) return; const d=D(), p=P(d), emp=EMP().filter(e=>e.actif!==false).sort((a,b)=>a.nom.localeCompare(b.nom));
+  const fields=["base","primes","hs","avn","transport","avance"], lab={base:"Base",primes:"Primes",hs:"Heures sup.",avn:"Avantages nature",transport:"Transport",avance:"Avance à retenir"};
+  openForm("Paie de "+moisL(m),[{type:"html",html:`<p class="confirm">Ajustez les montants du mois si besoin. Les calculs se mettent à jour.</p>
+    <div class="full" style="grid-column:1/-1;display:grid;gap:12px" id="pw">${emp.map(e=>`<div class="card" data-e="${e.id}"><b>${esc(e.nom)}</b><div class="row" style="align-items:end">${fields.map(k=>`<div class="fldx" style="width:118px"><label>${lab[k]}</label><input data-k="${k}" inputmode="numeric" value="${k==="base"?e.base:k==="primes"?(e.primes||""):k==="transport"?(e.transport||""):""}" style="font:inherit;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:7px 8px;width:100%"></div>`).join("")}</div><div class="trace" data-out></div></div>`).join("")}</div>
+    <p class="confirm" id="pw-tot"></p>`}],{},async(o,c)=>{
+    const L=readPaie(emp,p);
+    if(PAIES().some(x=>x.mois===m)) throw {msgs:["La paie de ce mois est déjà validée."]};
+    const W=L.filter(x=>x.net<0).map(x=>`${x.nom} : net négatif (avance trop forte).`);
+    if(W.length) throw {msgs:W};
+    check([],[`Valider la paie de ${moisL(m)} : ${L.length} salarié(s), net total ${fcfa(sumK(L,"net"))} ?`],c);
+    const last=new Date(+m.slice(0,4),+m.slice(5),0).getDate(), jour=m+"-"+String(last).padStart(2,"0");
+    const b=fdb.batch(), id=`${d.id}_${m}`, S=k=>sumK(L,k);
+    const lig=[{c:"661",d:S("brut")},{c:"422",k:S("net")},{c:"431",k:S("retS")+S("cmuS")},{c:"447",k:S("its")}];
+    if(S("avance")) lig.push({c:"421",k:S("avance")});
+    lig.push({c:"664",d:S("chargesPat")},{c:"431",k:S("chargesPat")});
+    if(S("taxesPat")) lig.push({c:"6413",d:S("taxesPat")},{c:"442",k:S("taxesPat")});
+    const er=addEcr(b,{jour,journal:"PA",piece:"PAIE-"+m,libelle:"Paie de "+moisL(m),lignes:lig,source:"paie",srcId:id});
+    b.set(fdb.collection("paies").doc(id),{dossierId:d.id,mois:m,lignes:L,statut:"ok",ecrId:er.id,payeLe:null,params:{...p,itsTranches:p.itsTranches.map(t=>[t[0]===Infinity?1e15:t[0],t[1]])},...stamp()});
+    b.set(jRef(),jEntry("paie","paies",id,`Paie ${moisL(m)} : net ${fcfa(S("net"))}`));
+    await queued(b.commit()); toast("Paie validée");
+  },"Valider la paie");
+  ctx.onInput=()=>{const L=readPaie(emp,p);L.forEach(x=>{const el=document.querySelector(`[data-e="${x.eid}"] [data-out]`);if(el) el.innerHTML=`Brut ${fnum(x.brut)} · CNPS ${fnum(x.retS+x.cmuS)} · ITS ${fnum(x.its)} · <b>Net ${fnum(x.net)}</b> · coût employeur ${fnum(x.brut+x.chargesPat+x.taxesPat)}`});
+    $("#pw-tot").innerHTML=`Net total à payer : <b>${fcfa(sumK(L,"net"))}</b> · ITS ${fnum(sumK(L,"its"))} · CNPS totale ${fnum(sumK(L,"retS")+sumK(L,"cmuS")+sumK(L,"chargesPat"))}`};
+  ctx.onInput();
+}
+function readPaie(emp,p){return emp.map(e=>{const box=document.querySelector(`[data-e="${e.id}"]`);const x={};box.querySelectorAll("[data-k]").forEach(i=>x[i.dataset.k]=num(i.value)||0);return calcPaie(e,x,p)})}
+function bulletinHTML(pa,x){
+  const d=state.dossiers.find(y=>y.id===pa.dossierId)||D();
+  const row=(l,b,t,s,pt)=>`<tr><td>${l}</td><td class="r">${b!=null?fnum(b):""}</td><td class="r">${t!=null?t:""}</td><td class="r">${s?fnum(s):""}</td><td class="r">${pt?fnum(pt):""}</td></tr>`;
+  const p=pa.params||DEF_PARAMS;
+  return `<div class="doc"><div class="hdr"><div><h1>${esc(d.nom)}</h1><div class="muted">${d.ncc?"NCC "+esc(d.ncc):""}${d.cnps?" · N° employeur CNPS "+esc(d.cnps):""}<br>${esc([d.adresse,d.ville].filter(Boolean).join(" · "))}</div></div>
+    <div style="text-align:right"><div style="font-size:18px;font-weight:700">BULLETIN DE PAIE</div><div>${moisL(pa.mois)}</div></div></div>
+    <div class="box" style="margin-bottom:10px"><b>${esc(x.nom)}</b> · ${esc(x.poste)} · N° CNPS ${esc(x.matricule||"—")} · Parts ${nb(x.parts)}${x.expat?" · Expatrié":""}</div>
+    <table><thead><tr><th>Rubrique</th><th class="r">Base</th><th class="r">Taux</th><th class="r">Retenue salarié</th><th class="r">Part employeur</th></tr></thead><tbody>
+    ${row("Salaire de base",x.base)}${x.primes?row("Primes / sursalaire",x.primes):""}${x.hs?row("Heures supplémentaires",x.hs):""}${x.avn?row("Avantages en nature",x.avn):""}${x.transport?row("Indemnité de transport",x.transport):""}
+    <tr class="sub"><td>Salaire brut</td><td class="r">${fnum(x.brut)}</td><td></td><td></td><td></td></tr>
+    ${row("CNPS retraite",Math.min(x.brutImp,p.plafRet),(p.retSal)+" % / "+p.retPat+" %",x.retS,x.retP)}
+    ${row("Prestations familiales",Math.min(x.brutImp,p.plafPF),p.pf+" %",0,x.pf)}${row("Assurance maternité",Math.min(x.brutImp,p.plafPF),p.mat+" %",0,x.mat)}${row("Accidents du travail",Math.min(x.brutImp,p.plafPF),p.at+" %",0,x.at)}
+    ${row("CMU",null,null,x.cmuS,x.cmuP)}${row("ITS (impôt sur salaire)",x.brutImp,"barème",x.its,0)}
+    ${row("Contribution employeur, taxe d'apprentissage, FPC",x.brutImp,null,0,x.taxesPat)}${x.avance?row("Avance / acompte déjà versé",null,null,x.avance,0):""}
+    <tr class="grand"><td>NET À PAYER</td><td></td><td></td><td class="r">${fcfa(x.net)}</td><td></td></tr></tbody></table>
+    <p class="muted" style="margin-top:8px">Net à payer en lettres : ${enLettres(x.net)} francs CFA.</p>
+    <div style="display:flex;justify-content:space-between;margin-top:30px"><span>Signature de l'employeur</span><span>Signature du salarié</span></div></div>`;
+}
+function showBulletins(pa,L){
+  $("#dlg-t").textContent="Bulletin de paie";
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="doc-prev">${L.map(x=>bulletinHTML(pa,x)).join("")}</div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" id="bul-print">Imprimer / PDF</button><button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"info"}; if(!$("#dlg").open) $("#dlg").showModal();
+  $("#bul-print").onclick=()=>printHTML(L.map(x=>bulletinHTML(pa,x)).join('<div style="page-break-after:always"></div>'));
+}
+function payerSalaires(id){
+  const pa=state.paies.find(x=>x.id===id); if(!pa||ro()) return; const net=sumK(pa.lignes,"net");
+  openForm("Paiement des salaires · "+moisL(pa.mois),[{type:"html",html:`<p class="confirm">Net total : <b>${fcfa(net)}</b></p>`},{k:"treso",l:"Payé par",type:"select",opts:tresoOpts()},{k:"jour",l:"Date",type:"date",def:today()}],{},async(o,c)=>{
+    const b=fdb.batch(); addEcr(b,{jour:o.jour,journal:"TR",piece:"PAIE-"+pa.mois,libelle:"Paiement des salaires de "+moisL(pa.mois),lignes:[{c:"422",d:net},{c:o.treso,k:net}],source:"salaires",srcId:id});
+    b.update(fdb.collection("paies").doc(id),{payeLe:o.jour,...stamp()}); b.set(jRef(),jEntry("salaires","paies",id,"Salaires payés "+moisL(pa.mois)));
+    await queued(b.commit()); toast("Paiement enregistré");
+  },"Enregistrer");
+}
+function annulerPaie(id){
+  const pa=state.paies.find(x=>x.id===id); if(!pa||!isOwner) return;
+  if((DECL("its",pa.mois)||{}).statut==="deposee"||(DECL("cnps",pa.mois)||{}).statut==="deposee"){toast("Cette paie est déjà déclarée : annulez d'abord les déclarations ITS / CNPS du mois.");return}
+  openConfirm("Annuler la paie",`Annuler la paie de ${moisL(pa.mois)} ? Une écriture inverse sera passée${pa.payeLe?" (le paiement des salaires déjà enregistré n'est pas annulé)":""}. Vous pourrez la refaire.`,"Annuler la paie",async()=>{
+    const e=state.ecritures.find(x=>x.id===pa.ecrId); const b=fdb.batch();
+    if(e) addEcr(b,reverseOf(e,e.jour>today()?e.jour:(D().verrou&&e.jour<=D().verrou?today():e.jour)));
+    b.update(fdb.collection("paies").doc(id),{statut:"annulee",...stamp()}); b.set(jRef(),jEntry("annulation","paies",id,"Annulation paie "+moisL(pa.mois)));
+    await queued(b.commit()); toast("Paie annulée");
+  });
+}
+
+/* ================= DÉCLARATIONS ================= */
+let declSel=null;
+function tvaCalc(m){
+  const from=m+"-01", to=m+"-31", ecr=E().filter(e=>e.source!=="decl-tva");
+  const col=mvt("4431",from,to,ecr), ded=mvt("4452",from,to,ecr);
+  const credAnt=Math.max(0,mvt("4449",null,prevMonth(m)+"-31").s);
+  const caT={}; for(const e of ecr){if(e.jour<from||e.jour>to) continue;for(const l of e.lignes) if(l.c.startsWith("7")){const k=l.tva||"HORS";caT[k]=(caT[k]||0)+l.k-l.d}}
+  const collectee=col.k-col.d, deductible=ded.d-ded.k, due=collectee-deductible-credAnt;
+  return{collectee,deductible,credAnt,due,caT};
+}
+function cnpsAgg(per){
+  const ms=per.includes("-T")?(q=>{const y=per.slice(0,4),n=+per.slice(-1);return [1,2,3].map(i=>y+"-"+String((n-1)*3+i).padStart(2,"0"))})():[per];
+  const L=PAIES().filter(p=>ms.includes(p.mois)).flatMap(p=>p.lignes);
+  return{ms,L,ret:sumK(L,"retS")+sumK(L,"retP"),pf:sumK(L,"pf"),mat:sumK(L,"mat"),at:sumK(L,"at"),cmu:sumK(L,"cmuS")+sumK(L,"cmuP"),masse:sumK(L,"brutImp"),
+    total:sumK(L,"retS")+sumK(L,"retP")+sumK(L,"pf")+sumK(L,"mat")+sumK(L,"at")+sumK(L,"cmuS")+sumK(L,"cmuP"),nb:new Set(L.map(x=>x.eid)).size};
+}
+function renderDeclarations(){
+  const d=D(), ech=echeances();
+  if(!declSel) declSel={type:d.tva!==false?"tva":"its",per:prevMonth(curMonth())};
+  const t=declSel.type, per=declSel.per;
+  const tabs=[...(d.tva!==false?[["tva","TVA"]]:[]),["its","Impôts sur salaires"],["cnps","CNPS"],["annuel","Annuel (DISA, bilan, BIC)"]];
+  let body="";
+  if(t==="tva") body=declTVA(per);
+  else if(t==="its") body=declITS(per);
+  else if(t==="cnps") body=declCNPS(per);
+  else body=declAnnuel(per.slice(0,4));
+  $("#v-declarations").innerHTML=`<div class="bar"><h2>Déclarations</h2><div class="row"><a class="btn" href="${LIENS["e-impots"]}" target="_blank" rel="noopener">Ouvrir e-impôts</a><a class="btn" href="${LIENS["e-cnps"]}" target="_blank" rel="noopener">Ouvrir e-CNPS</a></div></div>
+    <div class="panel" style="margin-bottom:16px"><h3>Calendrier</h3>${ech.length?ech.map(x=>`<div class="alert"><span style="flex:1"><b>${esc(x.label)}</b> <span class="trace">avant le ${fdate(x.date)}</span></span>${etatPill(x.etat)}<button class="btn sm" type="button" data-go-decl="${x.type}|${x.per}">Ouvrir</button></div>`).join(""):`<p style="margin:0;color:var(--muted)">Aucune échéance.</p>`}</div>
+    <div class="chips" style="margin-bottom:12px">${tabs.map(([k,l])=>`<button type="button" class="chip" data-dt="${k}" aria-pressed="${t===k}">${l}</button>`).join("")}</div>
+    ${t!=="annuel"?`<div class="row" style="margin-bottom:12px"><button class="btn sm" type="button" data-dp="-1">◀</button><input type="month" id="dc-m" value="${per.includes("-T")?per.slice(0,4)+"-"+String(+per.slice(-1)*3).padStart(2,"0"):per}" class="btn sm"><button class="btn sm" type="button" data-dp="1">▶</button></div>`:`<div class="row" style="margin-bottom:12px"><button class="btn sm" type="button" data-dy="-1">◀</button><b style="font-size:1.1rem">${per.slice(0,4)}</b><button class="btn sm" type="button" data-dy="1">▶</button></div>`}
+    ${body}`;
+}
+document.addEventListener("click",e=>{
+  const dt=e.target.closest("[data-dt]"); if(dt){declSel.type=dt.dataset.dt;if(dt.dataset.dt==="cnps"&&P(D()).cnpsTrim&&!declSel.per.includes("-T")){const m=declSel.per;declSel.per=m.slice(0,4)+"-T"+Math.ceil(+m.slice(5)/3)}else if(dt.dataset.dt!=="cnps"&&declSel.per.includes("-T")){declSel.per=declSel.per.slice(0,4)+"-"+String(+declSel.per.slice(-1)*3).padStart(2,"0")}renderDeclarations();return}
+  const dp=e.target.closest("[data-dp]"); if(dp){let m=declSel.per.includes("-T")?declSel.per.slice(0,4)+"-"+String(+declSel.per.slice(-1)*3).padStart(2,"0"):declSel.per;
+    if(declSel.per.includes("-T")){for(let i=0;i<3;i++) m=+dp.dataset.dp>0?nextMonth(m):prevMonth(m);declSel.per=m.slice(0,4)+"-T"+Math.ceil(+m.slice(5)/3)} else declSel.per=+dp.dataset.dp>0?nextMonth(m):prevMonth(m);renderDeclarations();return}
+  const dy=e.target.closest("[data-dy]"); if(dy){declSel.per=String(+declSel.per.slice(0,4)+(+dy.dataset.dy))+"-12";renderDeclarations();return}
+  const dd=e.target.closest("[data-decl-dep]"); if(dd){const [t,p]=dd.dataset.declDep.split("|");openDepot(t,p);return}
+  const da=e.target.closest("[data-decl-ann]"); if(da){annulerDepot(da.dataset.declAnn);return}
+  const dc=e.target.closest("[data-decl-copy]"); if(dc){const el=$("#decl-fiche");navigator.clipboard.writeText(el.innerText).then(()=>toast("Montants copiés"),()=>toast("Copie impossible"));return}
+});
+document.addEventListener("change",e=>{if(e.target.id==="dc-m"&&e.target.value){const m=e.target.value;declSel.per=declSel.type==="cnps"&&P(D()).cnpsTrim?m.slice(0,4)+"-T"+Math.ceil(+m.slice(5)/3):m;renderDeclarations()}});
+function declStatus(type,per,montant,lien){
+  const x=DECL(type,per);
+  if(x&&x.statut==="deposee") return `<div class="banner info"><span><b>Déposée</b> le ${fdate(x.dateDepot)}${x.ref?" · réf. "+esc(x.ref):""} · ${x.paye?"payée "+fcfa(x.paye)+" le "+fdate(x.payeLe):"paiement non enregistré"}</span>${isOwner?`<button class="btn sm ghost" type="button" data-decl-ann="${x.id}">Annuler le dépôt</button>`:""}</div>`;
+  return `<div class="row w"><a class="btn" href="${LIENS[lien]}" target="_blank" rel="noopener">1. Ouvrir ${lien==="e-cnps"?"e-CNPS":"e-impôts"}</a><button class="btn" type="button" data-decl-copy>Copier les montants</button><button class="btn primary" type="button" data-decl-dep="${type}|${per}">2. J'ai déposé${montant>0?" et payé":""}</button></div>`;
+}
+const fl=(l,v,b)=>`<div${b?' class="tot"':""}><span>${l}</span><b class="num">${typeof v==="number"?fcfa(v):v}</b></div>`;
+function declTVA(m){
+  const T=tvaCalc(m), caT=T.caT;
+  return `<div class="panel decl"><div class="head"><h3 style="margin:0">TVA de ${moisL(m)}</h3><span class="trace">à déposer et payer avant le ${fdate(nextMonth(m)+"-"+String(P(D()).jourTVA).padStart(2,"0"))}</span></div>
+    <div class="lines" id="decl-fiche">
+      ${fl("Chiffre d'affaires taxable à 18 % (HT)",caT.TVA||0)}${fl("Chiffre d'affaires taxable à 9 % (HT)",caT.TVAB||0)}${fl("Chiffre d'affaires exonéré (conventions / loi)",(caT.TVAC||0)+(caT.TVAD||0))}${fl("Autres produits (hors champ / sans TVA)",caT.HORS||0)}
+      ${fl("TVA collectée (sur vos ventes)",T.collectee)}${fl("TVA déductible (sur vos achats avec facture FNE)",T.deductible)}${fl("Crédit de TVA du mois précédent",T.credAnt)}
+      ${T.due>=0?fl("TVA NETTE À PAYER",T.due,1):fl("CRÉDIT DE TVA À REPORTER",-T.due,1)}</div>
+    ${declStatus("tva",m,Math.max(0,T.due),"e-impots")}
+    <p class="trace" style="margin:0">Montants calculés à partir des factures et des recettes / dépenses saisies pour le mois. Vérifiez que toutes les factures fournisseurs du mois sont saisies avant de déposer.</p></div>`;
+}
+function declITS(m){
+  const pa=PAIES().find(x=>x.mois===m);
+  if(!pa) return `<div class="empty">Pas de paie validée pour ${moisL(m)}.<br><button class="btn primary" type="button" data-go="paie">Aller à la paie</button></div>`;
+  const L=pa.lignes, its=sumK(L,"its"), con=sumK(L,"contrib"), ta=sumK(L,"ta"), fpc=sumK(L,"fpc"), tot=its+con+ta+fpc;
+  return `<div class="panel decl"><div class="head"><h3 style="margin:0">Impôts sur salaires de ${moisL(m)}</h3><span class="trace">avant le ${fdate(nextMonth(m)+"-"+String(P(D()).jourSal).padStart(2,"0"))}</span></div>
+    <div class="lines" id="decl-fiche">${fl("Nombre de salariés",String(L.length))}${fl("Masse salariale brute imposable",sumK(L,"brutImp"))}${fl("ITS retenu sur les salaires",its)}${fl("Contribution employeur (local / expatrié)",con)}${fl("Taxe d'apprentissage",ta)}${fl("Formation professionnelle continue (FPC)",fpc)}${fl("TOTAL À PAYER",tot,1)}</div>
+    <div class="scroll"><table><thead><tr><th>Salarié</th><th class="r">Brut imposable</th><th class="r">Parts</th><th class="r">ITS</th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.nom)}</td><td class="r num">${fnum(x.brutImp)}</td><td class="r">${nb(x.parts)}</td><td class="r num">${fnum(x.its)}</td></tr>`).join("")}</tbody></table></div>
+    ${declStatus("its",m,tot,"e-impots")}</div>`;
+}
+function declCNPS(per){
+  const A=cnpsAgg(per);
+  if(!A.L.length) return `<div class="empty">Pas de paie validée pour cette période.<br><button class="btn primary" type="button" data-go="paie">Aller à la paie</button></div>`;
+  return `<div class="panel decl"><div class="head"><h3 style="margin:0">Cotisations CNPS · ${per.includes("-T")?per.slice(-1)+"e trimestre "+per.slice(0,4):moisL(per)}</h3><span class="trace">N° employeur : ${esc(D().cnps||"à renseigner dans Outils")}</span></div>
+    <div class="lines" id="decl-fiche">${fl("Nombre de salariés",String(A.nb))}${fl("Masse salariale déclarée",A.masse)}${fl("Retraite (salarié + employeur)",A.ret)}${fl("Prestations familiales",A.pf)}${fl("Assurance maternité",A.mat)}${fl("Accidents du travail",A.at)}${fl("CMU",A.cmu)}${fl("TOTAL À PAYER",A.total,1)}</div>
+    <div class="scroll"><table><thead><tr><th>Salarié</th><th>N° CNPS</th><th class="r">Salaire</th><th class="r">Retraite</th></tr></thead><tbody>${A.L.map(x=>`<tr><td>${esc(x.nom)}</td><td>${esc(x.matricule||"—")}</td><td class="r num">${fnum(x.brutImp)}</td><td class="r num">${fnum(x.retS+x.retP)}</td></tr>`).join("")}</tbody></table></div>
+    ${declStatus("cnps",per,A.total,"e-cnps")}</div>`;
+}
+function declAnnuel(y){
+  const L=PAIES().filter(p=>p.mois.startsWith(y)).flatMap(p=>p.lignes);
+  const per={}; L.forEach(x=>{const o=per[x.eid]||(per[x.eid]={nom:x.nom,matricule:x.matricule,brut:0,brutImp:0,its:0,ret:0,mois:0});o.brut+=x.brut;o.brutImp+=x.brutImp;o.its+=x.its;o.ret+=x.retS+x.retP;o.mois++});
+  const [a0,a1]=exo(y), res=resultat(a0,a1), p=P(D()), bic=Math.max(0,R(res*p.is/100));
+  return `<div class="grid2"><div class="panel decl"><h3 style="margin:0">DISA ${y} (déclaration annuelle CNPS) et état des salaires (DGI)</h3>
+    ${Object.keys(per).length?`<div class="scroll" id="decl-fiche"><table><thead><tr><th>Salarié</th><th>N° CNPS</th><th class="r">Mois</th><th class="r">Brut</th><th class="r">Brut imposable</th><th class="r">ITS</th><th class="r">Retraite</th></tr></thead><tbody>${Object.values(per).map(o=>`<tr><td>${esc(o.nom)}</td><td>${esc(o.matricule||"—")}</td><td class="r">${o.mois}</td><td class="r num">${fnum(o.brut)}</td><td class="r num">${fnum(o.brutImp)}</td><td class="r num">${fnum(o.its)}</td><td class="r num">${fnum(o.ret)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="row"><button class="btn" type="button" data-decl-copy>Copier</button><a class="btn" href="${LIENS["e-cnps"]}" target="_blank" rel="noopener">Ouvrir e-CNPS</a></div>`:`<p style="margin:0;color:var(--muted)">Aucune paie en ${y}.</p>`}</div>
+    <div class="panel decl"><h3 style="margin:0">États financiers et impôt sur le bénéfice ${y}</h3>
+      <div class="lines">${fl("Résultat comptable "+y,res)}${fl("Impôt BIC estimé ("+p.is+" %)",bic,1)}</div>
+      <p class="trace" style="margin:0">Estimation seulement : le résultat fiscal peut différer (charges non déductibles, minimum de perception, acomptes déjà versés). Faites valider par votre comptable avant de déposer la DSF.</p>
+      <div class="row"><button class="btn primary" type="button" data-go="etats">Voir le bilan et le compte de résultat</button><a class="btn" href="${LIENS["e-impots"]}" target="_blank" rel="noopener">Ouvrir e-impôts</a></div></div></div>`;
+}
+function openDepot(type,per){
+  if(ro()) return; const d=D();
+  let montant=0, lignesDecl=null, payLines=null, lib="";
+  if(type==="tva"){const T=tvaCalc(per);montant=Math.max(0,T.due);lib="TVA "+moisL(per);
+    const L=[];if(T.collectee) L.push({c:"4431",d:T.collectee});if(T.deductible) L.push({c:"4452",k:T.deductible});if(T.credAnt) L.push({c:"4449",k:T.credAnt});
+    if(T.due>0) L.push({c:"4441",k:T.due}); else if(T.due<0) L.push({c:"4449",d:-T.due});
+    lignesDecl=L.length>=2?L:null; payLines=k=>[{c:"4441",d:montant},{c:k,k:montant}];}
+  else if(type==="its"){const pa=PAIES().find(x=>x.mois===per);if(!pa) return;const L=pa.lignes;const its=sumK(L,"its"),tx=sumK(L,"taxesPat");montant=its+tx;lib="Impôts sur salaires "+moisL(per);
+    payLines=k=>[...(its?[{c:"447",d:its}]:[]),...(tx?[{c:"442",d:tx}]:[]),{c:k,k:montant}];}
+  else if(type==="cnps"){const A=cnpsAgg(per);montant=A.total;lib="CNPS "+per;payLines=k=>[{c:"431",d:montant},{c:k,k:montant}];}
+  openForm("Déclaration déposée · "+lib,[{type:"html",html:`<p class="confirm">Montant à payer : <b>${fcfa(montant)}</b>. Enregistrez ce que vous avez fait sur ${type==="cnps"?"e-CNPS":"e-impôts"}.</p>`},
+    {k:"dateDepot",l:"Date de dépôt",type:"date",def:today()},{k:"ref",l:"N° de déclaration / quittance",ph:"Facultatif"},
+    ...(montant>0?[{k:"paye",l:"Payé maintenant ?",type:"select",opts:[["oui","Oui"],["non","Pas encore"]]},{k:"treso",l:"Payé par",type:"select",opts:tresoOpts(),def:"521"}]:[])],{},async(o,c)=>{
+    const b=fdb.batch(), id=`${d.id}_${type}_${per}`, jour=o.dateDepot>today()?today():o.dateDepot; const ids=[];
+    if(lignesDecl){const last=new Date(+per.slice(0,4),+per.slice(5),0).getDate();ids.push(addEcr(b,{jour:per+"-"+String(last).padStart(2,"0"),journal:"OD",piece:"TVA-"+per,libelle:"Liquidation de la TVA de "+moisL(per),lignes:lignesDecl,source:"decl-tva",srcId:id}).id)}
+    const payNow=montant>0&&o.paye==="oui";
+    if(payNow) ids.push(addEcr(b,{jour,journal:"TR",piece:o.ref||"",libelle:"Paiement "+lib,lignes:payLines(o.treso),source:"decl-paiement",srcId:id}).id);
+    b.set(fdb.collection("declarations").doc(id),{dossierId:d.id,type,per,statut:"deposee",dateDepot:o.dateDepot,ref:o.ref||"",montant,paye:payNow?montant:0,payeLe:payNow?jour:null,ecrIds:ids,...stamp()});
+    b.set(jRef(),jEntry("déclaration","declarations",id,`${lib} déposée${payNow?" et payée "+fcfa(montant):""}`));
+    await queued(b.commit()); toast("Déclaration enregistrée");
+  },"Enregistrer");
+}
+function annulerDepot(id){
+  const x=state.declarations.find(y=>y.id===id); if(!x||!isOwner) return;
+  openConfirm("Annuler le dépôt",`Les écritures de cette déclaration seront contre-passées et elle redeviendra « à faire ». À n'utiliser qu'en cas d'erreur de saisie dans la plateforme.`,"Annuler le dépôt",async()=>{
+    const b=fdb.batch(); (x.ecrIds||[]).forEach(eid=>{const e=state.ecritures.find(z=>z.id===eid);if(e) addEcr(b,reverseOf(e,(D().verrou&&e.jour<=D().verrou)?today():e.jour))});
+    b.update(fdb.collection("declarations").doc(id),{statut:"annulee",...stamp()}); b.set(jRef(),jEntry("annulation","declarations",id,"Dépôt annulé : "+x.type+" "+x.per));
+    await queued(b.commit()); toast("Dépôt annulé");
+  });
+}
+
+/* ================= ÉTATS FINANCIERS ================= */
+function crLines(from,to){
+  const net=(pre,sign)=>{const x=mvt(pre,from,to);return sign>0?x.k-x.d:x.d-x.k};
+  const ventesM=net("701",1), achatsM=net(["601"],-1), varStock=net("6031",-1);
+  const margeCom=ventesM-achatsM-varStock;
+  const prod=net(["702","703","704","705","706","707"],1), subv=net("71",1), autresP=net(["75","73","78"],1);
+  const achatsAutres=net(["602","604","605","608"],-1), transp=net("61",-1), servExt=net(["62","63"],-1), impots=net("64",-1), autresC=net("65",-1);
+  const VA=margeCom+prod+subv+autresP-achatsAutres-transp-servExt-impots-autresC;
+  const perso=net("66",-1); const EBE=VA-perso;
+  const dot=net("68",-1), rep=net(["79"],1); const RE=EBE-dot+rep;
+  const fin=net("77",1)-net("67",-1); const hao=net(["82","84","86","88"],1)-net(["81","83","85"],-1);
+  const isb=net("89",-1); const RN=RE+fin+hao-isb;
+  return{ventesM,achatsM,varStock,margeCom,prod,subv,autresP,achatsAutres,transp,servExt,impots,autresC,VA,perso,EBE,dot,rep,RE,fin,hao,isb,RN};
+}
+function bilanData(to){
+  const B=balance(null,to), sd=pre=>B.filter(a=>[].concat(pre).some(p=>a.c.startsWith(p)));
+  const debit=pre=>sd(pre).reduce((s,a)=>s+Math.max(0,a.d-a.k),0), credit=pre=>sd(pre).reduce((s,a)=>s+Math.max(0,a.k-a.d),0), solde=pre=>sd(pre).reduce((s,a)=>s+(a.d-a.k),0);
+  const y=to.slice(0,4), RN=resultat(y+"-01-01",to), RNant=resultat(null,(+y-1)+"-12-31");
+  const immoB=debit(["21","22","23","24","25","26","27"]), amort=credit("28")-debit("28");
+  const A={immo:immoB-amort,immoB,amort,stocks:solde("3"),clients:debit("41"),autresCre:debit(["40","42","43","44","45","46","47","48"]),treso:debit("5")};
+  A.total=A.immo+A.stocks+A.clients+A.autresCre+A.treso;
+  const cap=credit("10")-debit("10"), res=credit("11")-debit("11"), ran=(credit(["12"])-debit(["12"]))+(credit("13")-debit("13"))+RNant;
+  const Pp={capital:cap,reserves:res,report:ran,resultat:RN,emprunts:credit(["16","17"])-debit(["16","17"]),fournisseurs:credit("40"),fisc:credit(["42","43","44"]),autresDet:credit(["41","45","46","47","48"]),tresoP:credit("5")};
+  Pp.cp=Pp.capital+Pp.reserves+Pp.report+Pp.resultat; Pp.total=Pp.cp+Pp.emprunts+Pp.fournisseurs+Pp.fisc+Pp.autresDet+Pp.tresoP;
+  return{A,P:Pp};
+}
+function renderEtats(){
+  const y=filters.annee||new Date().getFullYear(), [a0,a1]=exo(y), t=filters.etat, d=D();
+  const to=a1>today()&&String(y)===today().slice(0,4)?today():a1;
+  let body="";
+  if(t==="resultat"){const c=crLines(a0,a1);const r=(l,v,cls)=>`<tr class="${cls||""}"><td>${l}</td><td class="r num">${fnum(v)}</td></tr>`;
+    body=`<table id="etat-t"><tbody>${r("Ventes de marchandises",c.ventesM)}${r("− Achats de marchandises",c.achatsM)}${r("− Variation des stocks",c.varStock)}${r("MARGE COMMERCIALE",c.margeCom,"sub")}
+      ${r("Ventes de produits et services",c.prod)}${r("Subventions d'exploitation",c.subv)}${r("Autres produits",c.autresP)}${r("− Autres achats (fournitures, eau, électricité, carburant)",c.achatsAutres)}${r("− Transports",c.transp)}${r("− Services extérieurs (loyer, entretien, assurances, téléphone, honoraires…)",c.servExt)}${r("− Impôts et taxes",c.impots)}${r("− Autres charges",c.autresC)}
+      ${r("VALEUR AJOUTÉE",c.VA,"sub")}${r("− Charges de personnel",c.perso)}${r("EXCÉDENT BRUT D'EXPLOITATION",c.EBE,"sub")}${r("− Dotations aux amortissements",c.dot)}${r("+ Reprises",c.rep)}${r("RÉSULTAT D'EXPLOITATION",c.RE,"sub")}
+      ${r("Résultat financier",c.fin)}${r("Résultat hors activités ordinaires (HAO)",c.hao)}${r("− Impôt sur le résultat",c.isb)}${r("RÉSULTAT NET",c.RN,"grand")}</tbody></table>`}
+  else if(t==="bilan"){const {A,P:Pp}=bilanData(a1);const r=(l,v,cls)=>`<tr class="${cls||""}"><td>${l}</td><td class="r num">${fnum(v)}</td></tr>`;const eq=A.total===Pp.total;
+    body=`${eq?`<div class="banner info"><span>Bilan équilibré : actif = passif ✓</span></div>`:`<div class="banner bad"><span>Écart actif / passif de ${fcfa(A.total-Pp.total)} : vérifiez les soldes de départ.</span></div>`}
+    <div class="grid2" id="etat-t"><table><thead><tr><th>ACTIF au ${fdate(a1)}</th><th class="r">Net</th></tr></thead><tbody>${r("Immobilisations (brut "+fnum(A.immoB)+" − amortissements "+fnum(A.amort)+")",A.immo)}${r("Stocks",A.stocks)}${r("Clients",A.clients)}${r("Autres créances (crédit de TVA, avances…)",A.autresCre)}${r("Trésorerie (caisse, banque, mobile money)",A.treso)}${r("TOTAL ACTIF",A.total,"grand")}</tbody></table>
+    <table><thead><tr><th>PASSIF au ${fdate(a1)}</th><th class="r">Montant</th></tr></thead><tbody>${r("Capital",Pp.capital)}${r("Réserves",Pp.reserves)}${r("Report à nouveau",Pp.report)}${r("Résultat de l'exercice",Pp.resultat)}${r("CAPITAUX PROPRES",Pp.cp,"sub")}${r("Emprunts",Pp.emprunts)}${r("Fournisseurs",Pp.fournisseurs)}${r("Dettes fiscales et sociales (TVA, ITS, CNPS…)",Pp.fisc)}${r("Autres dettes (avances clients…)",Pp.autresDet)}${r("Découverts bancaires",Pp.tresoP)}${r("TOTAL PASSIF",Pp.total,"grand")}</tbody></table></div>`}
+  else if(t==="balance"){const B=balance(a0,a1);const TD=B.reduce((s,a)=>s+a.d,0),TK=B.reduce((s,a)=>s+a.k,0);
+    body=`<table id="etat-t"><thead><tr><th>Compte</th><th>Intitulé</th><th class="r">Débit</th><th class="r">Crédit</th><th class="r">Solde débiteur</th><th class="r">Solde créditeur</th></tr></thead><tbody>${B.map(a=>`<tr><td class="acc"><button class="btn sm ghost" type="button" data-gl="${a.c}">${a.c}</button></td><td style="white-space:normal">${esc(accName(a.c))}</td><td class="r num">${fnum(a.d)}</td><td class="r num">${fnum(a.k)}</td><td class="r num">${a.d>a.k?fnum(a.d-a.k):""}</td><td class="r num">${a.k>a.d?fnum(a.k-a.d):""}</td></tr>`).join("")}
+      <tr class="grand"><td colspan="2">TOTAUX ${TD===TK?"✓":"⚠"}</td><td class="r num">${fnum(TD)}</td><td class="r num">${fnum(TK)}</td><td></td><td></td></tbody></table>`}
+  else if(t==="gl"){const c=filters.compte||"571";const L=[];let s=mvt(c,null,dayShift(a0,-1)).s;
+    E().filter(e=>e.jour>=a0&&e.jour<=a1).sort((a,b)=>(a.jour+a.le).localeCompare(b.jour+b.le)).forEach(e=>e.lignes.forEach(l=>{if(l.c.startsWith(c)){s+=l.d-l.k;L.push({e,l,s})}}));
+    body=`<div class="row" style="margin-bottom:10px"><label for="gl-c">Compte</label><input id="gl-c" list="plan-dl2" value="${esc(c)}" class="btn" style="width:120px;text-align:left"><datalist id="plan-dl2">${Object.entries(PLAN).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("")}</datalist><b>${esc(accName(c))}</b></div>
+      <table id="etat-t"><thead><tr><th>Date</th><th>Libellé</th><th class="r">Débit</th><th class="r">Crédit</th><th class="r">Solde</th></tr></thead><tbody><tr class="sub"><td colspan="4">Solde au ${fdate(a0)}</td><td class="r num">${fnum(mvt(c,null,dayShift(a0,-1)).s)}</td></tr>
+      ${L.map(x=>`<tr><td>${fdate(x.e.jour)}</td><td style="white-space:normal">${esc(x.e.libelle)}${x.l.t?` <span class="trace">${esc(x.l.t)}</span>`:""}</td><td class="r num">${x.l.d?fnum(x.l.d):""}</td><td class="r num">${x.l.k?fnum(x.l.k):""}</td><td class="r num">${fnum(x.s)}</td></tr>`).join("")}</tbody></table>`}
+  else if(t==="tiers"){const m={};E().forEach(e=>e.lignes.forEach(l=>{if((l.c.startsWith("411")||l.c.startsWith("401"))&&l.t){const k=l.c.slice(0,3)+"|"+l.t;const o=m[k]||(m[k]={c:l.c.slice(0,3),t:l.t,s:0});o.s+=l.d-l.k}}));
+    const L=Object.values(m).filter(x=>x.s).sort((a,b)=>Math.abs(b.s)-Math.abs(a.s));
+    body=`<table id="etat-t"><thead><tr><th>Tiers</th><th>Type</th><th class="r">Vous doit</th><th class="r">Vous lui devez</th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.t)}</td><td>${x.c==="411"?"Client":"Fournisseur"}</td><td class="r num">${x.s>0?fnum(x.s):""}</td><td class="r num">${x.s<0?fnum(-x.s):""}</td></tr>`).join("")||`<tr><td colspan="4">Aucun solde.</td></tr>`}</tbody></table>`}
+  $("#v-etats").innerHTML=`<div class="bar"><h2>Bilan & états</h2><div class="row"><button class="btn" type="button" data-etat-print>Imprimer / PDF</button><button class="btn" type="button" data-etat-csv>Exporter (Excel)</button></div></div>
+    <div class="row" style="margin-bottom:12px"><button class="btn sm" type="button" data-ey="-1">◀</button><b style="font-size:1.1rem">Exercice ${y}</b><button class="btn sm" type="button" data-ey="1">▶</button>${d.verrou?`<span class="trace">Clôturé jusqu'au ${fdate(d.verrou)}</span>`:""}</div>
+    <div class="chips" style="margin-bottom:14px">${[["resultat","Compte de résultat"],["bilan","Bilan"],["balance","Balance"],["gl","Grand livre"],["tiers","Clients & fournisseurs"]].map(([k,l])=>`<button type="button" class="chip" data-et="${k}" aria-pressed="${t===k}">${l}</button>`).join("")}</div>
+    <div class="panel scroll">${body}</div>
+    <p class="trace" style="margin-top:10px">Présentation simplifiée selon le SYSCOHADA révisé, à partir des écritures saisies. Pour la DSF, faites contrôler et compléter (amortissements, stocks de fin d'année, provisions) par votre comptable.${y<new Date().getFullYear()-1?" Les années de plus de 2 ans ne sont pas chargées automatiquement.":""}</p>`;
+}
+document.addEventListener("click",e=>{
+  const et=e.target.closest("[data-et]"); if(et){filters.etat=et.dataset.et;renderEtats();return}
+  const ey=e.target.closest("[data-ey]"); if(ey){filters.annee=(filters.annee||new Date().getFullYear())+(+ey.dataset.ey);renderEtats();return}
+  const gl=e.target.closest("[data-gl]"); if(gl){filters.compte=gl.dataset.gl;filters.etat="gl";renderEtats();return}
+  if(e.target.closest("[data-etat-print]")){const d=D(),y=filters.annee||new Date().getFullYear();printHTML(`<div class="doc"><div class="hdr"><div><h1>${esc(d.nom)}</h1><div class="muted">${d.ncc?"NCC "+esc(d.ncc):""} · Exercice ${y}</div></div><div><b>${esc(document.querySelector("[data-et][aria-pressed=true]").textContent)}</b></div></div>${$("#etat-t").outerHTML.replace(/<button[^>]*>([^<]*)<\/button>/g,"$1")}</div>`);return}
+  if(e.target.closest("[data-etat-csv]")){const rows=[...document.querySelectorAll("#etat-t tr")].map(tr=>[...tr.children].map(td=>td.innerText.replace(/\s/g," ").trim()));
+    const q=v=>/[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; saveBlob(new Blob(["﻿"+rows.map(r=>r.map(q).join(";")).join("\r\n")],{type:"text/csv;charset=utf-8"}),`${filters.etat}_${D().nom.replace(/[^\w]+/g,"_")}_${filters.annee||new Date().getFullYear()}.csv`);return}
+});
+document.addEventListener("change",e=>{if(e.target.id==="gl-c"){filters.compte=e.target.value.trim();renderEtats()}});
+
+/* ================= OUTILS ================= */
+function waLink(tel,text){let t=String(tel||"").replace(/\D/g,"");if(t.length===10) t="225"+t;return "https://wa.me/"+(t.length>=11?t:"")+"?text="+encodeURIComponent(text)}
+function showCode(nom,code){
+  $("#dlg-t").textContent="Code d'accès";
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><p class="confirm">Code de <b>${esc(nom)}</b> :</p><div class="code-big">${code}</div><p class="confirm" style="font-size:.86rem;color:var(--muted)">Notez-le et transmettez-le à ${esc(nom)} en privé. Il ne sera plus jamais affiché ; en cas d'oubli, générez-en un nouveau.</p>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" id="code-copy" data-code="${code}">Copier</button><button type="button" class="btn primary" data-close>J'ai noté le code</button>`;
+  ctx={kind:"code"}; if(!$("#dlg").open) $("#dlg").showModal();
+}
+document.addEventListener("click",async e=>{if(e.target.id==="code-copy"){try{await navigator.clipboard.writeText(e.target.dataset.code);toast("Code copié")}catch(_){toast("Copie impossible : notez le code.")}}});
+function openTools(){
+  $("#dlg-t").textContent="Outils";
+  const V=vendeurs(), Ds=dossiers();
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
+    <div class="tool"><h3>Entreprises suivies</h3>
+      ${Ds.map(d=>`<div class="item"><span><b>${esc(d.nom)}</b><br><span class="trace">${esc(REGIMES[d.regime]||"")}${d.ncc?" · NCC "+esc(d.ncc):""}${d.verrou?" · clôturé jusqu'au "+fdate(d.verrou):""}</span></span><span class="row">${isMgr?`<button class="btn sm" type="button" data-dos="${d.id}">Fiche</button><button class="btn sm" type="button" data-dos-par="${d.id}">Taux paie & impôts</button>`:""}${isOwner?`<button class="btn sm" type="button" data-dos-lock="${d.id}">Clôturer une période</button>`:""}</span></div>`).join("")}
+      ${isOwner?`<div class="item"><span>Ajouter une entreprise (quincaillerie, coopérative…)</span><button class="btn sm primary" type="button" data-act="dos-new">+ Entreprise</button></div>`:""}</div>
+    <div class="tool"><h3>Facturation FNE (DGI)</h3>
+      <p class="trace" style="margin:0">Aujourd'hui : saisissez la facture ici, certifiez-la sur <a href="${LIENS.fne}" target="_blank" rel="noopener">la plateforme FNE</a>, puis notez son numéro FNE.<br>
+      Connexion automatique (API FNE) : la DGI l'accorde après validation. Étapes : inscription sur la plateforme de test FNE → tests de factures → envoi des spécimens à support.fne@dgi.gouv.ci → validation → clé API dans « Paramétrage » de votre espace FNE. La clé doit rester secrète : elle sera installée sur un petit serveur sécurisé, jamais dans cette page.</p></div>
+    <div class="tool"><h3>Lien d'accès</h3>
+      <div class="qr-wrap"><div class="qr" id="qr-box"></div><div style="display:grid;gap:8px;flex:1;min-width:180px"><input class="linkbox" readonly value="${esc(ACCESS_URL)}" aria-label="Lien d'accès"><div class="row"><button class="btn sm" type="button" data-act="copy-link">Copier le lien</button><a class="btn sm" href="${waLink("",`Accès à la comptabilité : ${ACCESS_URL}`)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div></div></div></div>
+    ${isOwner?`<div class="tool"><h3>Équipe</h3>
+      <p class="trace" style="margin:0"><b>Comptable</b> : saisit factures, dépenses, paie, déclarations. <b>Consultation</b> : voit tout sans rien modifier (ex. commissaire aux comptes, membre du conseil).</p>
+      ${V.map(g=>`<div class="item"><span><b>${esc(g.nom)}</b> <span class="pill nodot ${g.role==="lecture"?"p-mut":"p-info"}">${ROLE_L[roleOf(g)]}</span><br><span class="trace">code créé le ${fdate((g.codeLe||"").slice(0,10))}</span></span><span class="row"><button class="btn sm" type="button" data-renew="${g.id}">Nouveau code</button><button class="btn sm ghost" type="button" data-deact="${g.id}" style="color:var(--bad)">Retirer l'accès</button></span></div>`).join("")||`<p class="trace" style="margin:0">Personne pour le moment.</p>`}
+      <div class="item"><span>Ajouter une personne</span><span class="row"><button class="btn sm" type="button" data-act="lect-new">+ Consultation</button><button class="btn sm primary" type="button" data-act="compta-new">+ Comptable</button></span></div></div>
+    <div class="tool"><h3>Sécurité des données</h3>
+      <div class="item"><span>Sauvegarde complète (à garder sur le téléphone ou Google Drive)</span><button class="btn sm" type="button" data-act="backup">Télécharger</button></div>
+      <div class="item"><span>Historique des actions (qui a fait quoi)</span><button class="btn sm" type="button" data-act="journal">Voir</button></div>
+      <div class="item"><span>Changer mon code propriétaire</span><button class="btn sm" type="button" data-act="my-code">Changer</button></div></div>`:""}`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"tools"}; if(!$("#dlg").open) $("#dlg").showModal();
+  try{new QRCode($("#qr-box"),{text:ACCESS_URL,width:160,height:160,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("#qr-box").innerHTML=`<p class="trace">QR indisponible hors connexion</p>`}
+}
+$("#btn-tools").addEventListener("click",openTools);
+async function createCompte(nom,replaceOf,role){
+  role=role==="lecture"?"lecture":"comptable";
+  const code=newCode(); const u=await newAuthUser(code); const s=stamp(), b=fdb.batch();
+  b.set(fdb.collection("comptes").doc(u.uid),{nom,role,actif:true,email:u.email,codeLe:s.majLe,...s});
+  if(replaceOf) b.update(fdb.collection("comptes").doc(replaceOf),{actif:false,remplace:true,...s});
+  b.set(jRef(),jEntry(replaceOf?"nouveau code":"ajout","comptes",u.uid,(replaceOf?"Nouveau code pour ":"Nouvel accès "+ROLE_L[role].toLowerCase()+" : ")+nom));
+  await b.commit(); return code;
+}
+function openDossier(id){
+  const d=id?state.dossiers.find(x=>x.id===id):null;
+  openForm(d?"Fiche de l'entreprise":"Nouvelle entreprise",[
+    {k:"nom",l:"Raison sociale",req:true,full:true},{k:"ncc",l:"N° compte contribuable (NCC)"},{k:"rccm",l:"RCCM / N° d'agrément"},
+    {k:"regime",l:"Régime d'imposition",type:"select",opts:Object.entries(REGIMES),def:"RSI"},{k:"tva",l:"Assujettie à la TVA ?",type:"select",opts:[["oui","Oui"],["non","Non"]]},
+    {k:"centre",l:"Centre des impôts",ph:"Ex. Centre des impôts de Séguéla"},{k:"cnps",l:"N° employeur CNPS"},
+    {k:"adresse",l:"Adresse",full:true,ph:"BP 87 Mankono"},{k:"ville",l:"Ville",def:"Mankono"},{k:"tel",l:"Téléphone",type:"tel"}],
+    d?{...d,tva:d.tva===false?"non":"oui"}:null,async(o,c)=>{
+    const E=[]; if(!o.nom||o.nom.length<2) E.push("Indiquez la raison sociale.");
+    if(o.ncc&&!/^[0-9A-Za-z]{7,9}$/.test(o.ncc.replace(/\s/g,""))) E.push("Le NCC compte normalement 8 caractères (chiffres et une lettre).");
+    if(dossiers().some(x=>x.id!==id&&norm(x.nom)===norm(o.nom))) E.push("Une entreprise porte déjà ce nom.");
+    check(E,[],c);
+    const s=stamp(), b=fdb.batch(), data={nom:o.nom,ncc:(o.ncc||"").replace(/\s/g,"").toUpperCase(),rccm:o.rccm||"",regime:o.regime,tva:o.tva!=="non",centre:o.centre||"",cnps:o.cnps||"",adresse:o.adresse||"",ville:o.ville||"",tel:o.tel||"",...s};
+    if(d){b.update(fdb.collection("dossiers").doc(id),data);b.set(jRef(),jEntry("modif","dossiers",id,"Fiche entreprise : "+o.nom,clean(d)))}
+    else{const r=fdb.collection("dossiers").doc();b.set(r,{...data,params:{},creeLe:s.majLe});b.set(jRef(),jEntry("ajout","dossiers",r.id,"Nouvelle entreprise : "+o.nom));curD=r.id;try{localStorage.setItem("c-dossier",r.id)}catch(_){}}
+    await queued(b.commit()); toast("Entreprise enregistrée");
+  });
+}
+const PAR_F=[["retSal","CNPS retraite, part salarié (%)"],["retPat","CNPS retraite, part employeur (%)"],["plafRet","Plafond mensuel retraite (FCFA)"],["pf","Prestations familiales (%)"],["mat","Assurance maternité (%)"],["at","Accidents du travail (%)"],["plafPF","Plafond PF / maternité / AT (FCFA)"],
+  ["cmuSal","CMU part salarié (FCFA / mois)"],["cmuPat","CMU part employeur (FCFA / mois)"],["contribLocal","Contribution employeur, local (%)"],["contribExpat","Contribution employeur, expatrié (%)"],["ta","Taxe d'apprentissage (%)"],["fpc","Formation professionnelle continue (%)"],
+  ["transportExo","Transport exonéré jusqu'à (FCFA / mois)"],["is","Taux de l'impôt sur le bénéfice (%)"],["jourTVA","Échéance TVA (jour du mois suivant)"],["jourSal","Échéance ITS (jour)"],["jourCNPS","Échéance CNPS (jour)"]];
+function openParams(id){
+  const d=state.dossiers.find(x=>x.id===id); const p=P(d);
+  openForm("Taux paie & impôts · "+d.nom,[{type:"html",html:`<p class="confirm">Valeurs par défaut courantes en Côte d'Ivoire. <b>Faites-les vérifier par votre comptable</b> (secteur d'activité pour les accidents du travail, lois de finances récentes) et corrigez si besoin.</p>`},
+    ...PAR_F.map(([k,l])=>({k,l,type:"number",def:p[k]})),
+    {k:"cnpsTrim",l:"Déclaration CNPS",type:"select",opts:[["non","Mensuelle"],["oui","Trimestrielle"]],def:p.cnpsTrim?"oui":"non"}],{},async(o,c)=>{
+    const E=[]; PAR_F.forEach(([k,l])=>{if(o[k]==null||o[k]<0) E.push(l+" : valeur invalide.")}); ["jourTVA","jourSal","jourCNPS"].forEach(k=>{if(o[k]<1||o[k]>28) E.push("Les jours d'échéance vont de 1 à 28.")});
+    check(E,[],c);
+    const params={...(d.params||{})}; PAR_F.forEach(([k])=>params[k]=o[k]); params.cnpsTrim=o.cnpsTrim==="oui";
+    const b=fdb.batch(); b.update(fdb.collection("dossiers").doc(id),{params,...stamp()}); b.set(jRef(),jEntry("paramètres","dossiers",id,"Taux paie / impôts modifiés",{params:d.params||{}}));
+    await queued(b.commit()); toast("Taux enregistrés");
+  });
+}
+function openVerrou(id){
+  const d=state.dossiers.find(x=>x.id===id);
+  openForm("Clôturer une période · "+d.nom,[{type:"html",html:`<p class="confirm">Après clôture, plus aucune écriture ne pourra être ajoutée à cette date ou avant (déclarations déposées, exercice terminé). Une erreur se corrigera par une écriture datée après la clôture.</p>`},
+    {k:"verrou",l:"Clôturer jusqu'au (inclus)",type:"date",def:d.verrou||prevMonth(curMonth())+"-"+String(new Date(+prevMonth(curMonth()).slice(0,4),+prevMonth(curMonth()).slice(5),0).getDate()).padStart(2,"0")}],{},async(o,c)=>{
+    if(!o.verrou) throw {msgs:["Choisissez la date."]};
+    if(d.verrou&&o.verrou<d.verrou) throw {msgs:["On ne peut pas rouvrir une période déjà clôturée."]};
+    if(o.verrou>=today()) throw {msgs:["La date doit être passée."]};
+    const b=fdb.batch(); b.update(fdb.collection("dossiers").doc(id),{verrou:o.verrou,...stamp()}); b.set(jRef(),jEntry("clôture","dossiers",id,`Période clôturée jusqu'au ${o.verrou}`));
+    await queued(b.commit()); toast("Période clôturée");
+  },"Clôturer");
+}
+document.addEventListener("click",e=>{
+  const rn=e.target.closest("[data-renew]"); if(rn){const g=state.comptes.find(x=>x.id===rn.dataset.renew);
+    openConfirm("Nouveau code",`Générer un nouveau code pour <b>${esc(g.nom)}</b> ? L'ancien code ne fonctionnera plus.`,"Générer",async()=>{if(!navigator.onLine) throw {msgs:["Il faut une connexion internet pour créer un code."]};const code=await createCompte(g.nom,g.id,g.role);setTimeout(()=>showCode(g.nom,code),50)},false);return}
+  const dz=e.target.closest("[data-deact]"); if(dz){const g=state.comptes.find(x=>x.id===dz.dataset.deact);
+    openConfirm("Retirer l'accès",`${esc(g.nom)} ne pourra plus ouvrir la plateforme. Son travail passé reste.`,"Retirer l'accès",async()=>{const s=stamp(),b=fdb.batch();b.update(fdb.collection("comptes").doc(g.id),{actif:false,...s});b.set(jRef(),jEntry("désactivation","comptes",g.id,"Accès retiré : "+g.nom));await queued(b.commit());toast("Accès retiré")});return}
+  const ds=e.target.closest("[data-dos]"); if(ds){openDossier(ds.dataset.dos);return}
+  const dp=e.target.closest("[data-dos-par]"); if(dp){openParams(dp.dataset.dosPar);return}
+  const dl=e.target.closest("[data-dos-lock]"); if(dl){openVerrou(dl.dataset.dosLock);return}
+});
+async function backup(){
+  toast("Préparation de la sauvegarde…");
+  const out={app:"comptabilite",version:1,le:new Date().toISOString()};
+  for(const c of ["dossiers","ecritures","factures","employes","paies","declarations","comptes"]){const s=await fdb.collection(c).get(); out[c]=s.docs.map(d=>({id:d.id,...d.data()}))}
+  out.comptes=out.comptes.map(({email,...r})=>r);
+  saveBlob(new Blob([JSON.stringify(out)],{type:"application/json"}),`sauvegarde_comptabilite_${today()}.json`);
+  try{localStorage.setItem("c-bak",new Date().toISOString())}catch(e){}
+  renderBanners(); toast("Sauvegarde téléchargée");
+}
+async function showJournal(){
+  $("#dlg-t").textContent="Historique des actions";
+  $("#dlg-b").innerHTML=`<p class="confirm">Chargement…</p>`; $("#dlg-f").innerHTML=`<button type="button" class="btn primary" data-close>Fermer</button>`; ctx={kind:"info"};
+  if(!$("#dlg").open) $("#dlg").showModal();
+  try{const s=await fdb.collection("journal").orderBy("le","desc").limit(200).get();
+    $("#dlg-b").innerHTML=`<div class="full scroll" style="grid-column:1/-1"><table><tbody>${s.docs.map(d=>{const j=d.data();return `<tr><td class="trace">${fdt(j.le)}</td><td style="white-space:normal"><b>${esc(j.nom||"")}</b> · ${esc(j.resume||j.action)}</td></tr>`}).join("")||"<tr><td>Aucune action.</td></tr>"}</tbody></table></div>`}
+  catch(e){$("#dlg-b").innerHTML=`<p class="confirm">${esc(errMsg(e))}</p>`}
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  const own=["compta-new","lect-new","my-code","backup","journal","dos-new"];
+  if(own.includes(a)&&!isOwner){toast("Réservé au propriétaire.");return}
+  const wr=["fac-new","rec-new","dep-new","vir-new","od-new","ouverture","emp-new"];
+  if(wr.includes(a)&&ro()){toast("Accès en consultation seulement.");return}
+  try{switch(a){
+    case "fac-new": openFacture(); break;
+    case "rec-new": openRecDep(false); break;
+    case "dep-new": openRecDep(true); break;
+    case "vir-new": openVirement(); break;
+    case "od-new": openOD(); break;
+    case "ouverture": openOuverture(); break;
+    case "emp-new": openEmploye(); break;
+    case "dos-new": openDossier(); break;
+    case "backup": await backup(); break;
+    case "journal": await showJournal(); break;
+    case "copy-link": try{await navigator.clipboard.writeText(ACCESS_URL);toast("Lien copié")}catch(_){toast("Sélectionnez le lien et copiez-le.")} break;
+    case "compta-new": case "lect-new": { const role=a==="lect-new"?"lecture":"comptable";
+      openForm(role==="lecture"?"Nouvel accès en consultation":"Nouveau comptable",[{k:"nom",l:"Nom",req:true,full:true}],{},async(o,c)=>{
+        const E=[]; if(!o.nom||o.nom.length<2) E.push("Indiquez le nom.");
+        if(pool().find(g=>norm(g.nom)===norm(o.nom))) E.push("Ce nom existe déjà.");
+        if(!navigator.onLine) E.push("Il faut une connexion internet pour créer un accès.");
+        check(E,[],c); const code=await createCompte(o.nom,null,role); setTimeout(()=>showCode(o.nom,code),50);
+      },"Créer l'accès"); break; }
+    case "my-code":
+      openForm("Changer mon code",[{k:"p1",l:"Nouveau code (6 chiffres)",type:"password"},{k:"p2",l:"Retapez le code",type:"password"}],{},async(o,c)=>{
+        if(!/^\d{6}$/.test(o.p1||"")) throw {msgs:["Le code doit contenir exactement 6 chiffres."]};
+        if(o.p1!==o.p2) throw {msgs:["Les deux codes ne sont pas identiques."]};
+        await auth.currentUser.updatePassword(o.p1); toast("Code changé");},"Changer"); break;
+  }}catch(err){if(err&&err.msgs) toast(err.msgs[0]); else toast(errMsg(err))}
+});
+
+if("serviceWorker" in navigator&&location.protocol==="https:") addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+setView(view);
+init();
+})();
+</script>
+</body>
+</html>
