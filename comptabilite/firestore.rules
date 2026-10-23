@@ -22,6 +22,7 @@ service cloud.firestore {
     }
     function signe() { return request.resource.data.majPar == request.auth.uid; }
     function taille() { return request.resource.data.size() <= 60; }
+    function seuls(champs) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(champs); }
 
     match /config/admin {
       allow read: if true;
@@ -54,7 +55,7 @@ service cloud.firestore {
       allow read: if compteActif();
       allow create: if gere() && signe() && taille()
         && request.resource.data.lignes is list
-        && request.resource.data.lignes.size() >= 2 && request.resource.data.lignes.size() <= 200
+        && request.resource.data.lignes.size() >= 2 && request.resource.data.lignes.size() <= 500
         && request.resource.data.totalD is number
         && request.resource.data.totalD == request.resource.data.totalC
         && request.resource.data.jour is string && request.resource.data.jour.size() == 10
@@ -62,9 +63,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Numéros de facture : réservés une seule fois (aucun doublon possible, même avec plusieurs saisies en même temps).
+    match /numeros/{id} {
+      allow read: if compteActif();
+      allow create: if gere() && signe();
+      allow update, delete: if false;
+    }
+    // Factures : après création, seuls l'encaissement (sans dépasser le TTC), le n° FNE
+    // et l'annulation (propriétaire) peuvent changer. Les montants sont figés.
     match /factures/{id} {
       allow read: if compteActif();
-      allow create, update: if gere() && signe() && taille();
+      allow create: if gere() && signe() && taille()
+        && exists(/databases/$(database)/documents/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num)) == false
+        && existsAfter(/databases/$(database)/documents/numeros/$(request.resource.data.dossierId + '_' + request.resource.data.num))
+        && request.resource.data.ttc is number && request.resource.data.paye <= request.resource.data.ttc;
+      allow update: if gere() && signe()
+        && seuls(['paye', 'fne', 'statut', 'annulMotif', 'majLe', 'majPar', 'par'])
+        && request.resource.data.paye <= resource.data.ttc && request.resource.data.paye >= 0
+        && (request.resource.data.statut == resource.data.statut || estPca());
       allow delete: if false;
     }
     match /employes/{id} {
@@ -72,14 +88,21 @@ service cloud.firestore {
       allow create, update: if gere() && signe() && taille();
       allow delete: if false;
     }
+    // Une paie validée ne peut plus être recalculée (sauf après annulation par le propriétaire).
     match /paies/{id} {
       allow read: if compteActif();
-      allow create, update: if gere() && signe() && taille();
+      allow create: if gere() && signe() && taille();
+      allow update: if gere() && signe() && taille()
+        && (resource.data.statut == 'annulee'
+          || seuls(['payeLe', 'majLe', 'majPar', 'par'])
+          || (estPca() && seuls(['statut', 'majLe', 'majPar', 'par']) && request.resource.data.statut == 'annulee'));
       allow delete: if false;
     }
     match /declarations/{id} {
       allow read: if compteActif();
-      allow create, update: if gere() && signe() && taille();
+      allow create: if gere() && signe() && taille();
+      allow update: if gere() && signe() && taille()
+        && (resource.data.statut == 'annulee' || (estPca() && request.resource.data.statut == 'annulee'));
       allow delete: if false;
     }
 

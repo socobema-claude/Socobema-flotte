@@ -660,7 +660,11 @@ function balance(from,to,ecr){
     for(const l of e.lignes){const x=m[l.c]||(m[l.c]={c:l.c,d:0,k:0});x.d+=l.d;x.k+=l.k} }
   return Object.values(m).sort((a,b)=>a.c.localeCompare(b.c));
 }
-const tresoSolde=(c,to)=>mvt(c,null,to).s;
+/* Clôture d'exercice : une écriture « à-nouveaux » au 1er janvier reprend tous les soldes du bilan.
+   Les soldes se calculent alors à partir de cette date (les années anciennes n'ont plus besoin d'être chargées). */
+const closings=()=>{const A=annulees();return E().filter(e=>e.source==="cloture-exo"&&!A.has(e.id)).map(e=>e.jour).sort()};
+const baseDate=to=>{const c=closings().filter(j=>j<=(to||"9999"));return c.length?c[c.length-1]:null};
+const tresoSolde=(c,to)=>mvt(c,baseDate(to||today()),to).s;
 const exo=(y)=>[y+"-01-01",y+"-12-31"];
 function resultat(from,to){const p=mvt("7",from,to), c=mvt("6",from,to), h=mvt(["8"],from,to);return (p.k-p.d)-(c.d-c.k)-(h.d-h.k)}
 
@@ -775,6 +779,8 @@ function renderAccueil(){
       <div class="panel"><h3>À faire</h3>
         ${sansFne.length?`<div class="alert"><span style="flex:1">${sansFne.length} facture(s) à certifier sur la plateforme FNE</span><button class="btn sm" type="button" data-go="factures">Voir</button></div>`:""}
         ${impay.length?`<div class="alert"><span style="flex:1">${impay.length} facture(s) non encaissée(s)</span><button class="btn sm" type="button" data-go="factures">Voir</button></div>`:""}
+        ${(()=>{const py=String(new Date().getFullYear()-1);return E().some(e=>e.jour.startsWith(py))&&!closings().includes((+py+1)+"-01-01")&&isOwner?`<div class="alert"><span style="flex:1">Exercice ${py} à clôturer (après validation du comptable)</span><button class="btn sm" type="button" data-dos-exo="${d.id}">Clôturer</button></div>`:""})()}
+        <div class="alert"><span style="flex:1">Contrôler la cohérence de la comptabilité</span><button class="btn sm" type="button" data-dos-check="${d.id}">Vérifier</button></div>
         ${!E().length?`<div class="alert"><span style="flex:1">Saisissez les soldes de départ (caisse, banque, capital…)</span><button class="btn sm" type="button" data-act="ouverture">Commencer</button></div>`:""}
         ${!sansFne.length&&!impay.length&&E().length?`<p style="margin:0;color:var(--muted)">Rien d'urgent.</p>`:""}</div></div>`;
 }
@@ -853,19 +859,28 @@ function openFacture(){
     if(o.template==="B2B"&&!/^[0-9A-Za-z]{7,9}$/.test((o.cncc||"").replace(/\s/g,""))) E.push("Pour une entreprise (B2B), le NCC du client est obligatoire (8 caractères).");
     if(o.template==="B2B"&&(!o.ctel||!o.cmail)) W.push("Pour la FNE, le téléphone et l'e-mail du client sont demandés en B2B.");
     if(o.jour>today()) E.push("La date ne peut pas être dans le futur.");
-    const facNum=nextFacNum();
+    if(!navigator.onLine) E.push("Connexion internet nécessaire : le numéro de facture doit être réservé auprès du serveur pour éviter tout doublon.");
     check(E,W,c);
-    const b=fdb.batch(), ref=fdb.collection("factures").doc(), d=D(), lib=`Facture ${facNum} · ${o.cnom}`;
-    const lignes=[{c:"411",d:T.ttc,t:o.cnom}];
-    for(const [tv,h] of Object.entries(T.parT)) lignes.push({c:o.compte,k:h,tva:tv||null});
-    if(T.tva) lignes.push({c:"4431",k:T.tva});
-    const er=addEcr(b,{jour:o.jour,journal:"VT",piece:facNum,libelle:lib,lignes,source:"facture",srcId:ref.id});
-    let paye=0;
-    if(o.mode!=="deferred"){paye=T.ttc;addEcr(b,{jour:o.jour,journal:"TR",piece:facNum,libelle:"Encaissement "+lib,lignes:[{c:MODE_TRESO[o.mode],d:T.ttc},{c:"411",k:T.ttc,t:o.cnom}],source:"encaissement",srcId:ref.id})}
-    b.set(ref,{dossierId:d.id,num:facNum,jour:o.jour,client:{nom:o.cnom,ncc:(o.cncc||"").replace(/\s/g,"").toUpperCase(),tel:o.ctel||"",email:o.cmail||""},template:o.template,compte:o.compte,
-      lignes:L.map(l=>({desc:l.desc,qte:l.qte,pu:R(l.pu),tva:l.tva||""})),ht:T.ht,tva:T.tva,ttc:T.ttc,mode:o.mode,paye,note:o.note||"",statut:"ok",fne:null,ecrId:er.id,...stamp()});
-    b.set(jRef(),jEntry("facture","factures",ref.id,`${lib} : ${fcfa(T.ttc)}`));
-    await queued(b.commit()); toast("Facture "+facNum+" enregistrée");
+    const d=D(); let n0=+nextFacNum().slice(-4), ref, facNum, done=false, lastErr=null;
+    /* Le numéro est réservé dans « numeros » : si quelqu'un l'a pris au même moment, le serveur refuse et on essaie le suivant. */
+    for(let tries=0;tries<6&&!done;tries++){
+      facNum=`FAC-${new Date().getFullYear()}-${String(n0+tries).padStart(4,"0")}`;
+      const b=fdb.batch(); ref=fdb.collection("factures").doc(); const lib=`Facture ${facNum} · ${o.cnom}`;
+      const lignes=[{c:"411",d:T.ttc,t:o.cnom}];
+      for(const [tv,h] of Object.entries(T.parT)) lignes.push({c:o.compte,k:h,tva:tv||null});
+      if(T.tva) lignes.push({c:"4431",k:T.tva});
+      const er=addEcr(b,{jour:o.jour,journal:"VT",piece:facNum,libelle:lib,lignes,source:"facture",srcId:ref.id});
+      let paye=0;
+      if(o.mode!=="deferred"){paye=T.ttc;addEcr(b,{jour:o.jour,journal:"TR",piece:facNum,libelle:"Encaissement "+lib,lignes:[{c:MODE_TRESO[o.mode],d:T.ttc},{c:"411",k:T.ttc,t:o.cnom}],source:"encaissement",srcId:ref.id})}
+      b.set(fdb.collection("numeros").doc(d.id+"_"+facNum),{dossierId:d.id,num:facNum,factureId:ref.id,le:new Date().toISOString(),majPar:authUser.uid});
+      b.set(ref,{dossierId:d.id,num:facNum,jour:o.jour,client:{nom:o.cnom,ncc:(o.cncc||"").replace(/\s/g,"").toUpperCase(),tel:o.ctel||"",email:o.cmail||""},template:o.template,compte:o.compte,
+        lignes:L.map(l=>({desc:l.desc,qte:l.qte,pu:R(l.pu),tva:l.tva||""})),ht:T.ht,tva:T.tva,ttc:T.ttc,mode:o.mode,paye,note:o.note||"",statut:"ok",fne:null,ecrId:er.id,...stamp()});
+      b.set(jRef(),jEntry("facture","factures",ref.id,`${lib} : ${fcfa(T.ttc)}`));
+      try{await Promise.race([b.commit(),sleep(20000).then(()=>{throw {code:"unavailable"}})]);done=true}
+      catch(x){lastErr=x;if(!(x&&x.code==="permission-denied")) break}
+    }
+    if(!done) throw {msgs:[lastErr&&lastErr.code==="permission-denied"?"Impossible de réserver un numéro de facture. Vérifiez votre accès puis réessayez.":errMsg(lastErr)]};
+    toast("Facture "+facNum+" enregistrée");
     setTimeout(()=>showFacture(ref.id,true),80);
   },"Enregistrer la facture");
   const upd=()=>{const T=facTotals(readFacLines());$("#fl-tot").innerHTML=`HT ${fnum(T.ht)} · TVA ${fnum(T.tva)} · <b>TTC ${fcfa(T.ttc)}</b>`};
@@ -1222,7 +1237,7 @@ let declSel=null;
 function tvaCalc(m){
   const from=m+"-01", to=m+"-31", ecr=E().filter(e=>e.source!=="decl-tva");
   const col=mvt("4431",from,to,ecr), ded=mvt("4452",from,to,ecr);
-  const credAnt=Math.max(0,mvt("4449",null,prevMonth(m)+"-31").s);
+  const credAnt=Math.max(0,mvt("4449",baseDate(prevMonth(m)+"-31"),prevMonth(m)+"-31").s);
   const caT={}; for(const e of ecr){if(e.jour<from||e.jour>to) continue;for(const l of e.lignes) if(l.c.startsWith("7")){const k=l.tva||"HORS";caT[k]=(caT[k]||0)+l.k-l.d}}
   const collectee=col.k-col.d, deductible=ded.d-ded.k, due=collectee-deductible-credAnt;
   return{collectee,deductible,credAnt,due,caT};
@@ -1350,9 +1365,9 @@ function crLines(from,to){
   return{ventesM,achatsM,varStock,margeCom,prod,subv,autresP,achatsAutres,transp,servExt,impots,autresC,VA,perso,EBE,dot,rep,RE,fin,hao,isb,RN};
 }
 function bilanData(to){
-  const B=balance(null,to), sd=pre=>B.filter(a=>[].concat(pre).some(p=>a.c.startsWith(p)));
+  const base=baseDate(to), B=balance(base,to), sd=pre=>B.filter(a=>[].concat(pre).some(p=>a.c.startsWith(p)));
   const debit=pre=>sd(pre).reduce((s,a)=>s+Math.max(0,a.d-a.k),0), credit=pre=>sd(pre).reduce((s,a)=>s+Math.max(0,a.k-a.d),0), solde=pre=>sd(pre).reduce((s,a)=>s+(a.d-a.k),0);
-  const y=to.slice(0,4), RN=resultat(y+"-01-01",to), RNant=resultat(null,(+y-1)+"-12-31");
+  const y=to.slice(0,4), RN=resultat(y+"-01-01",to), RNant=base&&base>=(y+"-01-01")?0:resultat(base,(+y-1)+"-12-31");
   const immoB=debit(["21","22","23","24","25","26","27"]), amort=credit("28")-debit("28");
   const A={immo:immoB-amort,immoB,amort,stocks:solde("3"),clients:debit("41"),autresCre:debit(["40","42","43","44","45","46","47","48"]),treso:debit("5")};
   A.total=A.immo+A.stocks+A.clients+A.autresCre+A.treso;
@@ -1377,12 +1392,12 @@ function renderEtats(){
   else if(t==="balance"){const B=balance(a0,a1);const TD=B.reduce((s,a)=>s+a.d,0),TK=B.reduce((s,a)=>s+a.k,0);
     body=`<table id="etat-t"><thead><tr><th>Compte</th><th>Intitulé</th><th class="r">Débit</th><th class="r">Crédit</th><th class="r">Solde débiteur</th><th class="r">Solde créditeur</th></tr></thead><tbody>${B.map(a=>`<tr><td class="acc"><button class="btn sm ghost" type="button" data-gl="${a.c}">${a.c}</button></td><td style="white-space:normal">${esc(accName(a.c))}</td><td class="r num">${fnum(a.d)}</td><td class="r num">${fnum(a.k)}</td><td class="r num">${a.d>a.k?fnum(a.d-a.k):""}</td><td class="r num">${a.k>a.d?fnum(a.k-a.d):""}</td></tr>`).join("")}
       <tr class="grand"><td colspan="2">TOTAUX ${TD===TK?"✓":"⚠"}</td><td class="r num">${fnum(TD)}</td><td class="r num">${fnum(TK)}</td><td></td><td></td></tbody></table>`}
-  else if(t==="gl"){const c=filters.compte||"571";const L=[];let s=mvt(c,null,dayShift(a0,-1)).s;
+  else if(t==="gl"){const c=filters.compte||"571";const L=[];const op0=closings().includes(a0)?0:mvt(c,baseDate(dayShift(a0,-1)),dayShift(a0,-1)).s;let s=op0;
     E().filter(e=>e.jour>=a0&&e.jour<=a1).sort((a,b)=>(a.jour+a.le).localeCompare(b.jour+b.le)).forEach(e=>e.lignes.forEach(l=>{if(l.c.startsWith(c)){s+=l.d-l.k;L.push({e,l,s})}}));
     body=`<div class="row" style="margin-bottom:10px"><label for="gl-c">Compte</label><input id="gl-c" list="plan-dl2" value="${esc(c)}" class="btn" style="width:120px;text-align:left"><datalist id="plan-dl2">${Object.entries(PLAN).map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("")}</datalist><b>${esc(accName(c))}</b></div>
-      <table id="etat-t"><thead><tr><th>Date</th><th>Libellé</th><th class="r">Débit</th><th class="r">Crédit</th><th class="r">Solde</th></tr></thead><tbody><tr class="sub"><td colspan="4">Solde au ${fdate(a0)}</td><td class="r num">${fnum(mvt(c,null,dayShift(a0,-1)).s)}</td></tr>
+      <table id="etat-t"><thead><tr><th>Date</th><th>Libellé</th><th class="r">Débit</th><th class="r">Crédit</th><th class="r">Solde</th></tr></thead><tbody><tr class="sub"><td colspan="4">Solde au ${fdate(a0)}</td><td class="r num">${fnum(op0)}</td></tr>
       ${L.map(x=>`<tr><td>${fdate(x.e.jour)}</td><td style="white-space:normal">${esc(x.e.libelle)}${x.l.t?` <span class="trace">${esc(x.l.t)}</span>`:""}</td><td class="r num">${x.l.d?fnum(x.l.d):""}</td><td class="r num">${x.l.k?fnum(x.l.k):""}</td><td class="r num">${fnum(x.s)}</td></tr>`).join("")}</tbody></table>`}
-  else if(t==="tiers"){const m={};E().forEach(e=>e.lignes.forEach(l=>{if((l.c.startsWith("411")||l.c.startsWith("401"))&&l.t){const k=l.c.slice(0,3)+"|"+l.t;const o=m[k]||(m[k]={c:l.c.slice(0,3),t:l.t,s:0});o.s+=l.d-l.k}}));
+  else if(t==="tiers"){const m={},bd=baseDate(today());E().filter(e=>!bd||e.jour>=bd).forEach(e=>e.lignes.forEach(l=>{if((l.c.startsWith("411")||l.c.startsWith("401"))&&l.t){const k=l.c.slice(0,3)+"|"+l.t;const o=m[k]||(m[k]={c:l.c.slice(0,3),t:l.t,s:0});o.s+=l.d-l.k}}));
     const L=Object.values(m).filter(x=>x.s).sort((a,b)=>Math.abs(b.s)-Math.abs(a.s));
     body=`<table id="etat-t"><thead><tr><th>Tiers</th><th>Type</th><th class="r">Vous doit</th><th class="r">Vous lui devez</th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.t)}</td><td>${x.c==="411"?"Client":"Fournisseur"}</td><td class="r num">${x.s>0?fnum(x.s):""}</td><td class="r num">${x.s<0?fnum(-x.s):""}</td></tr>`).join("")||`<tr><td colspan="4">Aucun solde.</td></tr>`}</tbody></table>`}
   $("#v-etats").innerHTML=`<div class="bar"><h2>Bilan & états</h2><div class="row"><button class="btn" type="button" data-etat-print>Imprimer / PDF</button><button class="btn" type="button" data-etat-csv>Exporter (Excel)</button></div></div>
@@ -1415,7 +1430,7 @@ function openTools(){
   const V=vendeurs(), Ds=dossiers();
   $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div>
     <div class="tool"><h3>Entreprises suivies</h3>
-      ${Ds.map(d=>`<div class="item"><span><b>${esc(d.nom)}</b><br><span class="trace">${esc(REGIMES[d.regime]||"")}${d.ncc?" · NCC "+esc(d.ncc):""}${d.verrou?" · clôturé jusqu'au "+fdate(d.verrou):""}</span></span><span class="row">${isMgr?`<button class="btn sm" type="button" data-dos="${d.id}">Fiche</button><button class="btn sm" type="button" data-dos-par="${d.id}">Taux paie & impôts</button>`:""}${isOwner?`<button class="btn sm" type="button" data-dos-lock="${d.id}">Clôturer une période</button>`:""}</span></div>`).join("")}
+      ${Ds.map(d=>`<div class="item"><span><b>${esc(d.nom)}</b><br><span class="trace">${esc(REGIMES[d.regime]||"")}${d.ncc?" · NCC "+esc(d.ncc):""}${d.verrou?" · clôturé jusqu'au "+fdate(d.verrou):""}</span></span><span class="row">${isMgr?`<button class="btn sm" type="button" data-dos="${d.id}">Fiche</button><button class="btn sm" type="button" data-dos-par="${d.id}">Taux paie & impôts</button>`:""}<button class="btn sm" type="button" data-dos-check="${d.id}">Vérifier</button>${isOwner?`<button class="btn sm" type="button" data-dos-lock="${d.id}">Clôturer une période</button><button class="btn sm" type="button" data-dos-exo="${d.id}">Clôturer l'exercice</button>`:""}</span></div>`).join("")}
       ${isOwner?`<div class="item"><span>Ajouter une entreprise (quincaillerie, coopérative…)</span><button class="btn sm primary" type="button" data-act="dos-new">+ Entreprise</button></div>`:""}</div>
     <div class="tool"><h3>Facturation FNE (DGI)</h3>
       <p class="trace" style="margin:0">Aujourd'hui : saisissez la facture ici, certifiez-la sur <a href="${LIENS.fne}" target="_blank" rel="noopener">la plateforme FNE</a>, puis notez son numéro FNE.<br>
@@ -1495,7 +1510,63 @@ document.addEventListener("click",e=>{
   const ds=e.target.closest("[data-dos]"); if(ds){openDossier(ds.dataset.dos);return}
   const dp=e.target.closest("[data-dos-par]"); if(dp){openParams(dp.dataset.dosPar);return}
   const dl=e.target.closest("[data-dos-lock]"); if(dl){openVerrou(dl.dataset.dosLock);return}
+  const dc=e.target.closest("[data-dos-check]"); if(dc){selectD(dc.dataset.dosCheck);showControle();return}
+  const dx=e.target.closest("[data-dos-exo]"); if(dx){selectD(dx.dataset.dosExo);openClotureExo();return}
 });
+function selectD(id){curD=id;try{localStorage.setItem("c-dossier",id)}catch(_){}render()}
+/* ---------- Clôture de l'exercice : à-nouveaux au 1er janvier suivant + période verrouillée ---------- */
+function openClotureExo(){
+  const d=D(), cl=closings(), y=String(new Date().getFullYear()-1);
+  const deja=cl.includes((+y+1)+"-01-01");
+  if(deja){toast(`L'exercice ${y} est déjà clôturé.`);return}
+  const fin=y+"-12-31", base=baseDate(fin), A=annulees();
+  const W=[];
+  if(!E().some(e=>e.jour>=y+"-01-01"&&e.jour<=fin)) W.push(`Aucune écriture en ${y}.`);
+  if(d.tva!==false&&!(DECL("tva",y+"-12")||{}).statut) W.push("La TVA de décembre n'est pas encore déclarée dans la plateforme.");
+  const B=balance(base,fin).filter(a=>a.d!==a.k); const td=B.reduce((s,a)=>s+a.d,0), tk=B.reduce((s,a)=>s+a.k,0);
+  if(td!==tk) W.push("La balance n'est pas équilibrée : faites « Vérifier » d'abord.");
+  const R0=resultat(base,fin);
+  openForm(`Clôturer l'exercice ${y}`,[{type:"html",html:`<p class="confirm">Cette opération :<br>1. reprend au <b>1er janvier ${+y+1}</b> tous les soldes du bilan (caisse, banque, clients, fournisseurs, dettes, capital…) ;<br>2. met le résultat ${y} (<b>${R0>=0?"bénéfice":"perte"} de ${fcfa(Math.abs(R0))}</b>) en attente d'affectation par l'assemblée générale ;<br>3. <b>verrouille définitivement</b> toutes les écritures jusqu'au 31/12/${y}.<br><br>Faites-le une fois les écritures de fin d'année passées (stocks, amortissements) et validées par votre comptable. Téléchargez une sauvegarde avant.</p>`}],{},async(o,c)=>{
+    check([],W.length?W:[`Confirmez-vous la clôture définitive de ${y} ?`],c);
+    const m={}; for(const e of E()){ if((base&&e.jour<base)||e.jour>fin) continue;
+      for(const l of e.lignes){ if(!/^[1-5]/.test(l.c)) continue; const k=l.c+"|"+((l.c.startsWith("41")||l.c.startsWith("40"))?(l.t||""):""); const x=m[k]||(m[k]={c:l.c,t:k.split("|")[1],s:0}); x.s+=l.d-l.k } }
+    let L=Object.values(m).filter(x=>x.s).map(x=>({c:x.c,t:x.t||undefined,d:Math.max(0,x.s),k:Math.max(0,-x.s)}));
+    if(L.length>450){const g={};L.forEach(l=>{const k=l.c;const x=g[k]||(g[k]={c:k,s:0});x.s+=l.d-l.k});L=Object.values(g).filter(x=>x.s).map(x=>({c:x.c,d:Math.max(0,x.s),k:Math.max(0,-x.s)}))}
+    const net=L.reduce((s,l)=>s+l.d-l.k,0);
+    if(net>0) L.push({c:"131",k:net}); else if(net<0) L.push({c:"139",d:-net});
+    if(L.length<2) throw {msgs:["Aucun solde à reprendre."]};
+    const b=fdb.batch();
+    addEcr(b,{jour:(+y+1)+"-01-01",journal:"AN",piece:"CLOT-"+y,libelle:`À-nouveaux : clôture de l'exercice ${y}`,lignes:L,source:"cloture-exo"});
+    if(!d.verrou||d.verrou<fin) b.update(fdb.collection("dossiers").doc(d.id),{verrou:fin,...stamp()});
+    b.set(jRef(),jEntry("clôture exercice","dossiers",d.id,`Exercice ${y} clôturé (résultat ${fcfa(net)})`));
+    await Promise.race([b.commit(),sleep(20000)]); toast(`Exercice ${y} clôturé`);
+  },"Clôturer définitivement");
+}
+/* ---------- Contrôle de cohérence ---------- */
+function showControle(){
+  const d=D(), A=annulees(), out=[]; const ok=(t)=>out.push(["ok",t]), ko=(t)=>out.push(["bad",t]), wa=(t)=>out.push(["warn",t]);
+  const bad=E().filter(e=>e.totalD!==e.totalC||e.lignes.reduce((s,l)=>s+l.d,0)!==e.lignes.reduce((s,l)=>s+l.k,0));
+  bad.length?ko(`${bad.length} écriture(s) déséquilibrée(s).`):ok(`${E().length} écritures, toutes équilibrées.`);
+  const B=balance(); const td=B.reduce((s,a)=>s+a.d,0), tk=B.reduce((s,a)=>s+a.k,0); td===tk?ok("Balance générale équilibrée."):ko(`Balance déséquilibrée de ${fcfa(td-tk)}.`);
+  const y=String(new Date().getFullYear()); const bl=bilanData(y+"-12-31"); bl.A.total===bl.P.total?ok("Bilan : actif = passif."):ko(`Bilan : écart de ${fcfa(bl.A.total-bl.P.total)}.`);
+  const Fa=F().filter(f=>f.statut!=="annulee");
+  const sansEcr=Fa.filter(f=>!state.ecritures.some(e=>e.srcId===f.id&&e.source==="facture")&&f.jour>=(+y-1)+"-01-01"); sansEcr.length?ko(`${sansEcr.length} facture(s) sans écriture comptable : ${sansEcr.map(f=>f.num).join(", ")}.`):ok("Chaque facture a son écriture.");
+  const encF=Fa.filter(f=>{const s=state.ecritures.filter(e=>e.srcId===f.id&&e.source==="encaissement"&&!A.has(e.id)&&!e.annule).reduce((t,e)=>t+e.totalD,0);return s!==R(f.paye)});
+  encF.length?wa(`${encF.length} facture(s) dont le montant payé ne correspond pas aux encaissements : ${encF.map(f=>f.num).join(", ")}.`):ok("Encaissements des factures cohérents.");
+  const nums=Fa.map(f=>f.num), dup=nums.filter((n,i)=>nums.indexOf(n)!==i); dup.length?ko("Numéros de facture en double : "+[...new Set(dup)].join(", ")):ok("Aucun numéro de facture en double.");
+  const nf=Fa.filter(f=>!(f.fne&&f.fne.ref)); nf.length?wa(`${nf.length} facture(s) sans numéro FNE.`):ok("Toutes les factures ont leur numéro FNE.");
+  TRESO.forEach(([c,l])=>{const s=tresoSolde(c);if(s<0) ko(`${l} négative (${fcfa(s)}) : une recette manque ou une dépense est en trop.`)});
+  if(!E().some(e=>e.journal==="AN")) wa("Soldes de départ non saisis : le bilan sera incomplet.");
+  const ech=echeances().filter(x=>x.etat==="retard"); ech.length?wa(`${ech.length} déclaration(s) en retard : ${ech.map(x=>x.label).join(" ; ")}.`):ok("Aucune déclaration en retard.");
+  const pa=PAIES().filter(p=>!p.payeLe); if(pa.length) wa(`Salaires non payés pour : ${pa.map(p=>moisL(p.mois)).join(", ")}.`);
+  const py=String(+y-1); if(E().some(e=>e.jour.startsWith(py))&&!closings().includes(y+"-01-01")) wa(`L'exercice ${py} n'est pas clôturé (Outils → Clôturer l'exercice, après validation du comptable).`);
+  const nbad=out.filter(x=>x[0]==="bad").length, nw=out.filter(x=>x[0]==="warn").length;
+  $("#dlg-t").textContent="Vérification · "+d.nom;
+  $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="banner ${nbad?"bad":nw?"warn":"info"}" style="grid-column:1/-1"><span>${nbad?nbad+" problème(s) à corriger":nw?"Comptabilité cohérente, "+nw+" point(s) à surveiller":"Tout est cohérent ✓"}</span></div>
+    <div class="full" style="grid-column:1/-1">${out.map(([k,t])=>`<div class="alert"><span class="pill nodot ${k==="ok"?"p-ok":k==="bad"?"p-bad":"p-warn"}">${k==="ok"?"OK":k==="bad"?"À corriger":"Attention"}</span><span style="flex:1">${esc(t)}</span></div>`).join("")}</div>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn primary" data-close>Fermer</button>`;
+  ctx={kind:"info"}; if(!$("#dlg").open) $("#dlg").showModal();
+}
 async function backup(){
   toast("Préparation de la sauvegarde…");
   const out={app:"comptabilite",version:1,le:new Date().toISOString()};
