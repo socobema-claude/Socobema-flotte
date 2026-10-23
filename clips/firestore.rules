@@ -1,0 +1,117 @@
+rules_version = '2';
+// Règles de sécurité – Site de vidéos courtes
+// À coller dans Firebase (projet du site de vidéos) > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function admin() {
+      return connecte() && exists(/databases/$(database)/documents/config/admin)
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    function moi(uid) { return connecte() && request.auth.uid == uid; }
+    function seuls(ch) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(ch); }
+    function plusUn(ch) { return seuls([ch]) && request.resource.data[ch] == resource.data[ch] + 1; }
+    function pasBloque() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('bloque', false) == false;
+    }
+
+    // Modérateur : le tout premier inscrit, une seule fois.
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && request.resource.data.uid == request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update, delete: if false;
+    }
+
+    // Pseudos uniques (réservés à vie).
+    match /pseudos/{p} {
+      allow read: if true;
+      allow create: if connecte() && request.resource.data.uid == request.auth.uid
+        && p.matches('^[a-z0-9_.]{3,24}$')
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.pseudo == p;
+      allow update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if moi(uid) && request.resource.data.followers == 0 && request.resource.data.following == 0
+        && request.resource.data.videos == 0 && request.resource.data.bloque == false
+        && existsAfter(/databases/$(database)/documents/pseudos/$(request.resource.data.pseudo));
+      allow update: if (moi(uid) && seuls(['nom', 'bio', 'photo', 'momo']))
+        || (moi(uid) && seuls(['videos']))
+        || (moi(uid) && seuls(['following']))
+        || (connecte() && seuls(['followers']) && (
+              (request.resource.data.followers == resource.data.followers + 1
+                && !exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid))
+                && existsAfter(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid)))
+           || (request.resource.data.followers == resource.data.followers - 1
+                && exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid))
+                && !existsAfter(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid)))))
+        || (admin() && seuls(['bloque']));
+      allow delete: if false;
+    }
+
+    // Abonnements : un document « moi_lui ».
+    match /follows/{id} {
+      allow read: if true;
+      allow create: if connecte() && request.resource.data.de == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.vers;
+      allow delete: if connecte() && resource.data.de == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /videos/{id} {
+      allow read: if true;
+      allow create: if connecte() && pasBloque() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.url.matches('https://res[.]cloudinary[.]com/.*')
+        && request.resource.data.likes == 0 && request.resource.data.comments == 0
+        && request.resource.data.vues == 0 && request.resource.data.cache == false
+        && !('boostFin' in request.resource.data);
+      allow update: if
+           (connecte() && resource.data.uid == request.auth.uid && seuls(['legende', 'supprime']))
+        || (connecte() && seuls(['likes']) && (
+              (request.resource.data.likes == resource.data.likes + 1
+                && !exists(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid))
+                && existsAfter(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid)))
+           || (request.resource.data.likes == resource.data.likes - 1
+                && exists(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid))
+                && !existsAfter(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid)))))
+        || (connecte() && seuls(['comments']) && (request.resource.data.comments - resource.data.comments) in [1, -1])
+        || plusUn('vues') || plusUn('partages')
+        || (admin() && seuls(['cache', 'boostFin']));
+      allow delete: if false;
+
+      match /likes/{uid} {
+        allow read: if true;
+        allow create, delete: if moi(uid);
+        allow update: if false;
+      }
+      match /comments/{c} {
+        allow read: if true;
+        allow create: if connecte() && pasBloque() && request.resource.data.uid == request.auth.uid
+          && request.resource.data.texte is string && request.resource.data.texte.size() <= 300;
+        allow delete: if connecte() && (resource.data.uid == request.auth.uid || admin());
+        allow update: if false;
+      }
+    }
+
+    match /reports/{id} {
+      allow create: if connecte() && request.resource.data.uid == request.auth.uid && request.resource.data.traite == false;
+      allow read, update: if admin();
+      allow delete: if false;
+    }
+
+    // Publicités : visibles par tous, gérées par l'administrateur ; vues et clics comptés par tous.
+    match /pubs/{id} {
+      allow read: if true;
+      allow create: if admin();
+      allow update: if admin() || plusUn('impressions') || plusUn('clics');
+      allow delete: if false;
+    }
+    match /revenus/{id} {
+      allow read, create, update: if admin();
+      allow delete: if false;
+    }
+  }
+}

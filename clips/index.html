@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Vidéos courtes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout : fil vertical plein écran (scroll-snap) + barre du bas ; pages Découvrir / Profil / Publier en surimpression. Ton : nuit, néon chaud. */
+:root{--bg:#0B0B0F;--panel:#16161D;--sunk:#22222B;--ink:#F4F2EE;--muted:#A3A1AD;--line:#2E2E38;--hot:#FF3D6E;--hot-ink:#fff;--sun:#FFC247;--ok:#3DDC97;--bad:#FF6B6B;
+  --f-disp:"Bricolage Grotesque",system-ui,sans-serif;--f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--nav:62px;color-scheme:dark}
+:root[data-theme="light"]{--bg:#0B0B0F}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+[hidden]{display:none!important}
+a{color:var(--sun)}
+/* Fil */
+#feed{position:fixed;inset:0 0 var(--nav) 0;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}
+#feed::-webkit-scrollbar{display:none}
+.slide{position:relative;height:calc(100dvh - var(--nav));scroll-snap-align:start;scroll-snap-stop:always;background:#000;display:grid;place-items:center;overflow:hidden}
+.slide video{width:100%;height:100%;object-fit:contain;background:#000}
+.slide .shade{position:absolute;inset:auto 0 0 0;height:45%;background:linear-gradient(transparent,rgba(0,0,0,.75));pointer-events:none}
+.cap{position:absolute;left:14px;right:84px;bottom:16px;display:grid;gap:6px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.cap .who{font-weight:700;font-size:1.02rem;background:none;border:0;padding:0;text-align:left;color:#fff}
+.cap .txt{font-size:.92rem;line-height:1.4;max-height:4.2em;overflow:hidden;overflow-wrap:anywhere}
+.cap .txt a{color:#fff;font-weight:700;text-decoration:none}
+.cap .meta{font-size:.78rem;color:#ddd}
+.rail{position:absolute;right:8px;bottom:22px;display:grid;gap:14px;justify-items:center}
+.rb{display:grid;justify-items:center;gap:3px;background:none;border:0;color:#fff;font-size:.74rem;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.6);min-width:56px}
+.rb .ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);backdrop-filter:blur(6px)}
+.rb.on .ic{color:var(--hot)}
+.rb svg{width:26px;height:26px}
+.av{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--sunk);border:2px solid #fff;display:grid;place-items:center;font-weight:800;color:#fff;font-family:var(--f-disp);overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.fol{position:relative}
+.fol .plus{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;background:var(--hot);color:#fff;border:0;font-weight:800;line-height:22px;padding:0;font-size:15px}
+.mute{position:absolute;top:calc(env(safe-area-inset-top,0px) + 58px);right:12px;background:rgba(0,0,0,.45);border:0;border-radius:999px;padding:6px 10px;font-size:.8rem;color:#fff}
+.pausei{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.pausei svg{width:76px;height:76px;opacity:.75}
+.heartpop{position:absolute;width:110px;height:110px;color:var(--hot);pointer-events:none;animation:pop .8s ease-out forwards}
+@keyframes pop{0%{transform:scale(.4);opacity:0}30%{transform:scale(1.1);opacity:1}100%{transform:scale(1.4) translateY(-40px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.heartpop{animation:none;opacity:0}}
+.ftabs{position:fixed;top:0;left:0;right:0;z-index:4;display:flex;justify-content:center;gap:18px;padding:calc(env(safe-area-inset-top,0px) + 12px) 12px 10px;background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none}
+.ftabs button{pointer-events:auto;background:none;border:0;color:rgba(255,255,255,.7);font-weight:700;font-size:1rem;padding:4px 2px;border-bottom:2px solid transparent}
+.ftabs button[aria-pressed="true"]{color:#fff;border-bottom-color:#fff}
+.ftabs .brandn{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 12px);font-family:var(--f-disp);font-weight:800;font-size:1.1rem;color:#fff;pointer-events:none}
+.empty{height:calc(100dvh - var(--nav));display:grid;place-items:center;text-align:center;padding:30px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:1.15rem;margin-bottom:6px;font-family:var(--f-disp)}
+/* Barre du bas */
+nav.bot{position:fixed;left:0;right:0;bottom:0;height:var(--nav);padding-bottom:env(safe-area-inset-bottom,0px);background:#000;border-top:1px solid #1d1d24;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;z-index:6}
+nav.bot button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:.7rem;font-weight:600;padding:6px 0}
+nav.bot button[aria-current="true"]{color:#fff}
+nav.bot svg{width:24px;height:24px}
+nav.bot .add{width:52px;height:34px;border-radius:10px;background:linear-gradient(90deg,#25F4EE 0 12%,#fff 12% 88%,var(--hot) 88%);color:#000;display:grid;place-items:center;justify-self:center;font-size:1.5rem;font-weight:800;padding:0}
+/* Pages */
+.page{position:fixed;inset:0 0 var(--nav) 0;overflow-y:auto;background:var(--bg);z-index:3;padding:calc(env(safe-area-inset-top,0px) + 14px) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:640px;margin:0 auto;display:grid;gap:14px}
+h1,h2,h3{font-family:var(--f-disp);margin:0;line-height:1.15}
+h2{font-size:1.5rem;font-weight:800}
+.in{font:inherit;font-size:16px;width:100%;background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:12px 14px}
+.in:focus{outline:2px solid var(--hot);outline-offset:1px}
+textarea.in{min-height:90px;resize:vertical}
+.btn{font-weight:700;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px 16px;min-height:44px}
+.btn.hot{background:var(--hot);border-color:var(--hot);color:var(--hot-ink)}
+.btn.sm{min-height:34px;padding:6px 12px;font-size:.86rem}
+.btn:disabled{opacity:.5}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.muted{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.86rem}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.tile{position:relative;display:block;width:100%;aspect-ratio:9/16;background:var(--sunk);border:0;padding:0;overflow:hidden;border-radius:4px}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile span{position:absolute;left:6px;bottom:5px;font-size:.74rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000}
+.tile .hid{position:absolute;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;font-size:.75rem;color:#fff}
+.urow{display:flex;gap:12px;align-items:center;background:none;border:0;padding:8px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.urow .av{width:44px;height:44px;border-width:0}
+.prof{display:grid;justify-items:center;gap:8px;text-align:center}
+.prof .av{width:96px;height:96px;font-size:2rem;border-width:0}
+.stats{display:flex;gap:26px;justify-content:center}
+.stats div{display:grid}.stats b{font-size:1.1rem}.stats span{font-size:.8rem;color:var(--muted)}
+.err{color:var(--bad);min-height:1.2em;margin:0;font-size:.9rem}
+.lab{font-size:.84rem;font-weight:600;color:var(--muted);display:grid;gap:6px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;color:var(--ink)}
+.chk input{width:20px;height:20px;margin-top:1px;accent-color:var(--hot)}
+.bar{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--hot);transition:width .2s}
+/* Feuilles (commentaires, connexion…) */
+dialog{border:0;padding:0;background:transparent;color:var(--ink);max-width:none;max-height:none;width:100%;height:100%;margin:0}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:78dvh;background:var(--panel);border-radius:18px 18px 0 0;display:grid;grid-template-rows:auto 1fr auto;padding-bottom:env(safe-area-inset-bottom,0px);max-width:640px;margin:0 auto}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.sheet .bd{overflow-y:auto;padding:12px 16px;display:grid;gap:12px;align-content:start}
+.sheet .ft{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px}
+.x{background:none;border:0;font-size:1.4rem;line-height:1;padding:4px 8px;color:var(--muted)}
+.cm{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start}
+.cm .av{width:36px;height:36px;border-width:0;font-size:.9rem}
+.cm b{font-size:.82rem;color:var(--muted)}.cm p{margin:2px 0 0;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav) + 14px);background:#fff;color:#000;font-weight:600;padding:10px 16px;border-radius:999px;z-index:30;max-width:calc(100vw - 32px);text-align:center;font-size:.9rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.spons{display:inline-block;font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:6px;background:var(--sun);color:#1a1200;margin-right:6px}
+.cta{position:absolute;left:14px;right:14px;bottom:18px;display:grid;gap:8px}
+.cta .btn{width:100%}
+.slide.ad img.adimg{width:100%;height:100%;object-fit:contain;background:#000}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+button:focus-visible,.in:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="ftabs" id="ftabs"><span class="brandn" id="appname"></span><button type="button" data-ff="abo" aria-pressed="false">Abonnements</button><button type="button" data-ff="pourtoi" aria-pressed="true">Pour toi</button></div>
+<main id="feed" aria-label="Fil de vidéos"></main>
+<section class="page" id="p-decouvrir" hidden></section>
+<section class="page" id="p-publier" hidden></section>
+<section class="page" id="p-profil" hidden></section>
+<nav class="bot" aria-label="Navigation">
+  <button type="button" data-nav="feed" aria-current="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>Accueil</button>
+  <button type="button" data-nav="decouvrir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>Découvrir</button>
+  <button type="button" data-nav="publier" aria-label="Publier une vidéo"><span class="add">+</span></button>
+  <button type="button" data-nav="profil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>Profil</button>
+</nav>
+<dialog id="dlg"></dialog>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kfmt=n=>{n=+n||0;return n>=1e6?(n/1e6).toFixed(1).replace(".0","")+" M":n>=1e3?(n/1e3).toFixed(1).replace(".0","")+" k":String(n)};
+const ago=iso=>{const s=(Date.now()-new Date(iso))/1e3;return s<60?"à l'instant":s<3600?Math.floor(s/60)+" min":s<86400?Math.floor(s/3600)+" h":s<604800?Math.floor(s/86400)+" j":new Date(iso).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const APP=window.APP||{nom:"Vidéos"}, CL=window.CLOUDINARY||{};
+const IC={heart:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.4.7-1.2 2.2-2.4 4.3-2.4 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>',
+  com:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 4v4C7 9 4 13 3 20c2.5-3.5 6-5 11-5v4l7-7.5z"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-1 3 1 3H7v11z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>'};
+document.title=APP.nom; $("#appname").textContent=APP.nom;
+
+let fdb,auth,me=null,meDoc=null,adminUid=null,ready=false;
+const users={}; // cache des profils
+const likedSet=new Set(), viewed=new Set(), followSet=new Set();
+let feedMode="pourtoi", feedList=[], muted=true, lastFeedDoc=null, loadingMore=false, noMore=false;
+
+function toast(m){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+function errMsg(e){const c=(e&&e.code)||"";
+  if(c==="permission-denied") return "Action refusée.";
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return "E-mail ou mot de passe incorrect.";
+  if(c==="auth/email-already-in-use") return "Cette adresse a déjà un compte : connectez-vous.";
+  if(c==="auth/weak-password") return "Mot de passe trop court (6 caractères minimum).";
+  if(c==="auth/invalid-email") return "Adresse e-mail invalide.";
+  if(c==="auth/too-many-requests") return "Trop d'essais. Patientez quelques minutes.";
+  if(c==="auth/network-request-failed"||c==="unavailable") return "Pas de connexion internet.";
+  if(c==="auth/operation-not-allowed"||c==="auth/configuration-not-found") return "La connexion par e-mail n'est pas activée dans Firebase.";
+  return "Une erreur est survenue"+(c?" ("+c+")":"")+". Réessayez.";}
+const inc=n=>firebase.firestore.FieldValue.increment(n);
+const avHTML=(u,cls="av")=>u&&u.photo?`<span class="${cls}"><img src="${esc(u.photo)}" alt=""></span>`:`<span class="${cls}" style="background:hsl(${[...String((u&&u.pseudo)||"?")].reduce((a,c)=>a+c.charCodeAt(0),0)%360} 55% 38%)">${esc(((u&&u.pseudo)||"?").slice(0,1).toUpperCase())}</span>`;
+async function getUser(uid){if(users[uid]) return users[uid];try{const s=await fdb.doc("users/"+uid).get();users[uid]=s.exists?{id:uid,...s.data()}:{id:uid,pseudo:"inconnu"}}catch(e){users[uid]={id:uid,pseudo:"…"}}return users[uid]}
+const tagsOf=t=>[...new Set((String(t||"").match(/#[\p{L}\p{N}_]{2,30}/gu)||[]).map(x=>x.slice(1).toLowerCase()))].slice(0,10);
+const capHTML=t=>esc(t).replace(/#([\p{L}\p{N}_]{2,30})/gu,(m,g)=>`<a href="#" data-tag="${esc(g.toLowerCase())}">#${esc(g)}</a>`).replace(/@([a-z0-9_.]{3,24})/g,(m,g)=>`<a href="#" data-pseudo="${g}">@${g}</a>`);
+const cldVideo=pid=>`https://res.cloudinary.com/${CL.cloud}/video/upload/q_auto,vc_auto,w_720/${pid}.mp4`;
+const cldPoster=pid=>`https://res.cloudinary.com/${CL.cloud}/video/upload/so_1,w_480,q_auto/${pid}.jpg`;
+const visible=v=>!v.supprime&&!v.cache;
+
+/* ================= FIL ================= */
+const io=new IntersectionObserver(es=>{es.forEach(e=>{const sl=e.target,v=sl.querySelector("video");
+  if(sl.dataset.pub&&e.isIntersecting&&e.intersectionRatio>=.6&&!pubSeen.has(sl.dataset.pub)){pubSeen.add(sl.dataset.pub);fdb.doc("pubs/"+sl.dataset.pub).update({impressions:inc(1)}).catch(()=>{})}
+  if(!v){if(e.isIntersecting&&e.intersectionRatio>=.6) document.querySelectorAll("#feed video").forEach(x=>x.pause());return}
+  if(e.isIntersecting&&e.intersectionRatio>=.6){activate(sl)} else {v.pause()}})},{root:null,threshold:[0,.6,1]});
+function activate(sl){
+  const all=[...document.querySelectorAll("#feed .slide")], i=all.indexOf(sl);
+  all.forEach((s,k)=>{const v=s.querySelector("video");if(!v) return;
+    if(Math.abs(k-i)<=1){if(!v.src) v.src=v.dataset.src} else if(v.src&&Math.abs(k-i)>3){v.removeAttribute("src");v.load()}
+    if(k!==i) v.pause()});
+  const v=sl.querySelector("video"); if(!v) return; v.muted=muted; const p=v.play(); if(p&&p.catch) p.catch(()=>{v.muted=true;muted=true;v.play().catch(()=>{});updMute()});
+  sl.querySelector(".pausei").hidden=true;
+  const id=sl.dataset.id; if(id&&!viewed.has(id)){clearTimeout(activate.t);activate.t=setTimeout(()=>{if(!viewed.has(id)&&!v.paused){viewed.add(id);fdb.doc("videos/"+id).update({vues:inc(1)}).catch(()=>{})}},3000)}
+  if(i>=all.length-3) loadMore();
+}
+function updMute(){document.querySelectorAll(".mute").forEach(b=>b.textContent=muted?"🔇 Son coupé":"🔊 Son")}
+async function slideHTML(v){
+  const u=await getUser(v.uid); const liked=likedSet.has(v.id), mine=me&&me.uid===v.uid, fol=followSet.has(v.uid);
+  return `<section class="slide" data-id="${v.id}" data-uid="${v.uid}">
+    <video data-src="${esc(v.url)}" poster="${esc(v.poster||"")}" playsinline loop preload="none" muted aria-label="Vidéo de ${esc(u.pseudo)}"></video>
+    <div class="shade"></div><div class="pausei" hidden>${IC.play}</div>
+    <button type="button" class="mute" data-mute>${muted?"🔇 Son coupé":"🔊 Son"}</button>
+    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div><div class="meta">${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
+    <div class="rail">
+      <div class="fol"><button type="button" class="rb" data-pseudo="${esc(u.pseudo)}" aria-label="Profil de ${esc(u.pseudo)}">${avHTML(u)}</button>${!mine&&!fol?`<button type="button" class="plus" data-follow="${v.uid}" aria-label="S'abonner">+</button>`:""}</div>
+      <button type="button" class="rb${liked?" on":""}" data-like="${v.id}" aria-pressed="${liked}"><span class="ic">${IC.heart}</span><span data-n="likes">${kfmt(v.likes)}</span></button>
+      <button type="button" class="rb" data-com="${v.id}"><span class="ic">${IC.com}</span><span data-n="comments">${kfmt(v.comments)}</span></button>
+      <button type="button" class="rb" data-share="${v.id}"><span class="ic">${IC.share}</span><span>Partager</span></button>
+      <button type="button" class="rb" data-report="${v.id}" aria-label="Signaler"><span class="ic">${IC.flag}</span><span>Signaler</span></button>
+    </div></section>`;
+}
+const boosted=v=>v.boostFin&&v.boostFin>=new Date().toISOString().slice(0,10);
+function score(v){const h=(Date.now()-new Date(v.le))/36e5;return ((+v.likes||0)*3+(+v.comments||0)*4+(+v.partages||0)*5+(+v.vues||0)*.2+5)/Math.pow(h+2,1.2)*(boosted(v)?50:1)}
+/* ---------- Publicités : une annonce toutes les PUB_EVERY vidéos, en rotation ---------- */
+const PUB_EVERY=6; let pubs=[], pubSeen=new Set();
+async function loadPubs(){try{const t=new Date().toISOString().slice(0,10);const s=await fdb.collection("pubs").where("actif","==",true).limit(30).get();
+  pubs=s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(!p.debut||p.debut<=t)&&(!p.fin||p.fin>=t))}catch(_){pubs=[]}}
+function pubHTML(i){
+  if(!pubs.length) return ""; const p=pubs[Math.floor(i/PUB_EVERY)%pubs.length];
+  return `<section class="slide ad" data-pub="${p.id}">${p.media==="video"?`<video data-src="${esc(p.url)}" poster="${esc(p.poster||"")}" playsinline loop preload="none" muted></video>`:`<img class="adimg" src="${esc(p.url)}" alt="" loading="lazy">`}
+    <div class="shade"></div><div class="pausei" hidden>${IC.play}</div>${p.media==="video"?`<button type="button" class="mute" data-mute>${muted?"🔇 Son coupé":"🔊 Son"}</button>`:""}
+    <div class="cap" style="right:14px;bottom:86px"><div><span class="spons">Publicité</span><b>${esc(p.annonceur||"")}</b></div><div class="who" style="font-size:1.1rem">${esc(p.titre||"")}</div><div class="txt">${esc(p.texte||"")}</div></div>
+    <div class="cta"><button class="btn hot" type="button" data-pubclick="${p.id}">${esc(p.bouton||"Contacter")}</button></div></section>`;
+}
+function pubLink(p){const l=String(p.lien||"").trim();if(/^https?:\/\//.test(l)) return l;const d=l.replace(/\D/g,"");return d.length>=8?"https://wa.me/"+(d.length===10?"225"+d:d)+"?text="+encodeURIComponent("Bonjour, j'ai vu votre annonce « "+(p.titre||"")+" » sur "+APP.nom+"."):"#"}
+async function loadFeed(){
+  const feed=$("#feed"); feed.innerHTML=`<div class="empty"><div><b>Chargement…</b></div></div>`;
+  feedList=[]; lastFeedDoc=null; noMore=false;
+  try{
+    if(feedMode==="abo"){
+      if(!me){feed.innerHTML=`<div class="empty"><div><b>Vos abonnements</b>Connectez-vous pour voir les vidéos des personnes que vous suivez.<br><br><button class="btn hot" type="button" data-login>Se connecter</button></div></div>`;return}
+      const ids=[...followSet]; if(!ids.length){feed.innerHTML=`<div class="empty"><div><b>Aucun abonnement</b>Abonnez-vous à des créateurs avec le bouton + sur leurs vidéos.</div></div>`;return}
+      const L=[]; for(let i=0;i<ids.length&&i<90;i+=30){const s=await fdb.collection("videos").where("uid","in",ids.slice(i,i+30)).limit(60).get();s.docs.forEach(d=>L.push({id:d.id,...d.data()}))}
+      feedList=L.filter(visible).sort((a,b)=>b.le.localeCompare(a.le)); noMore=true;
+    } else {
+      const s=await fdb.collection("videos").orderBy("le","desc").limit(40).get(); lastFeedDoc=s.docs[s.docs.length-1]||null; if(s.docs.length<40) noMore=true;
+      feedList=s.docs.map(d=>({id:d.id,...d.data()})).filter(visible).sort((a,b)=>score(b)-score(a));
+      await loadPubs();
+    }
+    await markLikes(feedList);
+    if(!feedList.length){feed.innerHTML=`<div class="empty"><div><b>Pas encore de vidéo</b>Soyez le premier à publier !<br><br><button class="btn hot" type="button" data-nav="publier">Publier une vidéo</button></div></div>`;return}
+    feed.innerHTML=(await Promise.all(feedList.map(slideHTML))).map((h,i)=>h+((i+1)%PUB_EVERY===0&&feedMode==="pourtoi"?pubHTML(i):"")).join("");
+    feed.scrollTop=0; feed.querySelectorAll(".slide").forEach(s=>io.observe(s));
+  }catch(e){feed.innerHTML=`<div class="empty"><div><b>Connexion impossible</b>${esc(errMsg(e))}<br><br><button class="btn" type="button" data-reload>Réessayer</button></div></div>`}
+}
+async function loadMore(){
+  if(loadingMore||noMore||feedMode!=="pourtoi"||!lastFeedDoc) return; loadingMore=true;
+  try{const s=await fdb.collection("videos").orderBy("le","desc").startAfter(lastFeedDoc).limit(30).get(); lastFeedDoc=s.docs[s.docs.length-1]||lastFeedDoc; if(s.docs.length<30) noMore=true;
+    const L=s.docs.map(d=>({id:d.id,...d.data()})).filter(visible).filter(v=>!feedList.some(x=>x.id===v.id)); await markLikes(L); feedList.push(...L);
+    const base=feedList.length-L.length; const html=(await Promise.all(L.map(slideHTML))).map((h,k)=>h+((base+k+1)%PUB_EVERY===0?pubHTML(base+k):"")).join(""); const f=$("#feed"); const n=f.children.length; f.insertAdjacentHTML("beforeend",html); [...f.children].slice(n).forEach(s=>io.observe(s));
+  }catch(e){} loadingMore=false;
+}
+async function markLikes(L){if(!me) return; await Promise.all(L.filter(v=>!likedSet.has(v.id)).slice(0,60).map(v=>fdb.doc(`videos/${v.id}/likes/${me.uid}`).get().then(s=>{if(s.exists) likedSet.add(v.id)}).catch(()=>{})))}
+
+/* Interactions sur le fil */
+let lastTap=0;
+$("#feed").addEventListener("click",e=>{
+  if(e.target.closest("button,a")) return;
+  const sl=e.target.closest(".slide"); if(!sl) return; const v=sl.querySelector("video");
+  const now=Date.now();
+  if(now-lastTap<300){ // double tape : j'aime
+    lastTap=0; clearTimeout(sl._t); const h=document.createElement("div");h.className="heartpop";h.innerHTML=IC.heart;const r=sl.getBoundingClientRect();h.style.left=(e.clientX-r.left-55)+"px";h.style.top=(e.clientY-r.top-55)+"px";sl.appendChild(h);setTimeout(()=>h.remove(),900);
+    if(!likedSet.has(sl.dataset.id)) toggleLike(sl.dataset.id); return;
+  }
+  lastTap=now;
+  sl._t=setTimeout(()=>{ if(muted){muted=false;v.muted=false;updMute();if(v.paused) v.play().catch(()=>{});return}
+    if(v.paused){v.play().catch(()=>{});sl.querySelector(".pausei").hidden=true}else{v.pause();sl.querySelector(".pausei").hidden=false}},280);
+});
+document.addEventListener("click",async e=>{
+  const pc=e.target.closest("[data-pubclick]"); if(pc){const p=pubs.find(x=>x.id===pc.dataset.pubclick);if(p){fdb.doc("pubs/"+p.id).update({clics:inc(1)}).catch(()=>{});window.open(pubLink(p),"_blank","noopener")}return}
+  const bo=e.target.closest("[data-boost]"); if(bo){e.preventDefault();return openBoost(bo.dataset.boost)}
+  const tp=e.target.closest("[data-tip]"); if(tp){return openTip(tp.dataset.tip)}
+  const rv=e.target.closest("[data-revenus]"); if(rv){return openRevenus()}
+  const t=e.target.closest("[data-mute],[data-like],[data-com],[data-share],[data-report],[data-follow],[data-pseudo],[data-tag],[data-nav],[data-ff],[data-login],[data-reload],[data-close],[data-unfollow],[data-vid],[data-logout],[data-editprof],[data-del],[data-admin]");
+  if(!t) return;
+  if(t.matches("a")) e.preventDefault();
+  if(t.dataset.mute!=null){muted=!muted;document.querySelectorAll("#feed video").forEach(v=>v.muted=muted);updMute();return}
+  if(t.dataset.like) return toggleLike(t.dataset.like);
+  if(t.dataset.com) return openComments(t.dataset.com);
+  if(t.dataset.share) return share(t.dataset.share);
+  if(t.dataset.report) return report(t.dataset.report);
+  if(t.dataset.follow) return follow(t.dataset.follow,true);
+  if(t.dataset.unfollow) return follow(t.dataset.unfollow,false);
+  if(t.dataset.pseudo) return openProfileByPseudo(t.dataset.pseudo);
+  if(t.dataset.tag) return openTag(t.dataset.tag);
+  if(t.dataset.nav) return go(t.dataset.nav);
+  if(t.dataset.ff){feedMode=t.dataset.ff;document.querySelectorAll("[data-ff]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.ff===feedMode)));go("feed");return loadFeed()}
+  if(t.dataset.login!=null) return openLogin();
+  if(t.dataset.reload!=null) return location.reload();
+  if(t.dataset.close!=null) return closeDlg();
+  if(t.dataset.vid) return openSingle(t.dataset.vid);
+  if(t.dataset.logout!=null){await auth.signOut();toast("Déconnecté");return go("feed")}
+  if(t.dataset.editprof!=null) return editProfile();
+  if(t.dataset.del) return delVideo(t.dataset.del);
+  if(t.dataset.admin!=null) return openAdmin();
+});
+function needLogin(msg){if(me&&meDoc) return false; openLogin(msg); return true}
+async function toggleLike(id){
+  if(needLogin("Connectez-vous pour aimer cette vidéo.")) return;
+  const on=!likedSet.has(id), b=fdb.batch();
+  b[on?"set":"delete"](fdb.doc(`videos/${id}/likes/${me.uid}`),...(on?[{le:new Date().toISOString()}]:[]));
+  b.update(fdb.doc("videos/"+id),{likes:inc(on?1:-1)});
+  on?likedSet.add(id):likedSet.delete(id);
+  document.querySelectorAll(`[data-like="${id}"]`).forEach(x=>{x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on));const n=x.querySelector("[data-n]");const v=feedList.find(y=>y.id===id);if(v){v.likes=(+v.likes||0)+(on?1:-1);n.textContent=kfmt(v.likes)}});
+  try{await b.commit()}catch(e){on?likedSet.delete(id):likedSet.add(id);toast(errMsg(e))}
+}
+async function share(id){
+  const v=feedList.find(x=>x.id===id)||{}; const url=location.origin+location.pathname+"?v="+id;
+  const txt=`${(v.legende||"Regarde cette vidéo").slice(0,80)} · ${APP.nom}`;
+  try{ if(navigator.share){await navigator.share({title:APP.nom,text:txt,url})} else {window.open("https://wa.me/?text="+encodeURIComponent(txt+" "+url),"_blank","noopener")}
+    fdb.doc("videos/"+id).update({partages:inc(1)}).catch(()=>{}) }catch(_){}
+}
+async function follow(uid,on){
+  if(needLogin("Connectez-vous pour vous abonner.")) return;
+  if(uid===me.uid) return;
+  const b=fdb.batch(), f=fdb.doc(`follows/${me.uid}_${uid}`);
+  if(on) b.set(f,{de:me.uid,vers:uid,le:new Date().toISOString()}); else b.delete(f);
+  b.update(fdb.doc("users/"+uid),{followers:inc(on?1:-1)}); b.update(fdb.doc("users/"+me.uid),{following:inc(on?1:-1)});
+  try{await b.commit();on?followSet.add(uid):followSet.delete(uid);if(users[uid]) users[uid].followers=(+users[uid].followers||0)+(on?1:-1);
+    document.querySelectorAll(`[data-follow="${uid}"]`).forEach(x=>{if(x.classList.contains("plus")) x.remove()});toast(on?"Abonné":"Abonnement retiré");
+    if(!$("#p-profil").hidden&&profUid===uid) renderProfile(uid)}
+  catch(e){toast(errMsg(e))}
+}
+
+/* ================= COMMENTAIRES ================= */
+let comUnsub=null;
+function openDlg(html){const d=$("#dlg");d.innerHTML=html;if(!d.open) d.showModal();d.onclick=e=>{if(e.target===d) closeDlg()};}
+function closeDlg(){const d=$("#dlg");if(comUnsub){comUnsub();comUnsub=null}if(d.open) d.close()}
+function openComments(id){
+  openDlg(`<div class="sheet" role="document"><div class="hd"><h3>Commentaires</h3><button class="x" type="button" data-close aria-label="Fermer">×</button></div><div class="bd" id="cm-list"><p class="muted">Chargement…</p></div>
+    <form class="ft" id="cm-f">${me&&meDoc?`<input class="in" id="cm-t" maxlength="300" placeholder="Ajouter un commentaire…" autocomplete="off"><button class="btn hot" type="submit">Envoyer</button>`:`<button class="btn hot" type="button" data-login style="width:100%">Se connecter pour commenter</button>`}</form></div>`);
+  comUnsub=fdb.collection(`videos/${id}/comments`).orderBy("le","desc").limit(100).onSnapshot(async s=>{
+    const L=s.docs.map(d=>({id:d.id,...d.data()}));
+    $("#cm-list").innerHTML=L.length?(await Promise.all(L.map(async c=>{const u=await getUser(c.uid);return `<div class="cm">${avHTML(u)}<div><b>${esc(u.pseudo)} · ${ago(c.le)}</b><p>${capHTML(c.texte)}</p></div>${me&&(me.uid===c.uid||me.uid===adminUid)?`<button class="x" type="button" data-delcom="${c.id}" aria-label="Supprimer">🗑</button>`:""}</div>`}))).join(""):`<p class="muted">Aucun commentaire. Lancez la discussion !</p>`;
+    $("#cm-list").querySelectorAll("[data-delcom]").forEach(b=>b.onclick=async()=>{const bb=fdb.batch();bb.delete(fdb.doc(`videos/${id}/comments/${b.dataset.delcom}`));bb.update(fdb.doc("videos/"+id),{comments:inc(-1)});try{await bb.commit()}catch(e){toast(errMsg(e))}});
+  },()=>{$("#cm-list").innerHTML=`<p class="muted">Impossible de charger les commentaires.</p>`});
+  const f=$("#cm-f"); f.onsubmit=async e=>{e.preventDefault();const t=$("#cm-t");const txt=t.value.trim();if(!txt) return;
+    if(meDoc.bloque){toast("Votre compte est suspendu.");return}
+    const b=fdb.batch();b.set(fdb.collection(`videos/${id}/comments`).doc(),{uid:me.uid,texte:txt.slice(0,300),le:new Date().toISOString()});b.update(fdb.doc("videos/"+id),{comments:inc(1)});
+    t.value="";try{await b.commit();const v=feedList.find(x=>x.id===id);if(v){v.comments=(+v.comments||0)+1;document.querySelectorAll(`[data-com="${id}"] [data-n]`).forEach(n=>n.textContent=kfmt(v.comments))}}catch(e){toast(errMsg(e));t.value=txt}};
+}
+function report(id){
+  if(needLogin("Connectez-vous pour signaler une vidéo.")) return;
+  const M=["Violence ou contenu choquant","Nudité ou contenu sexuel","Harcèlement ou insultes","Arnaque ou escroquerie","Discours haineux","Mineur en danger","Autre"];
+  openDlg(`<div class="sheet"><div class="hd"><h3>Signaler la vidéo</h3><button class="x" type="button" data-close>×</button></div><div class="bd">${M.map(m=>`<button class="btn" type="button" data-motif="${esc(m)}" style="text-align:left">${esc(m)}</button>`).join("")}</div></div>`);
+  document.querySelectorAll("[data-motif]").forEach(b=>b.onclick=async()=>{try{await fdb.collection("reports").add({videoId:id,uid:me.uid,motif:b.dataset.motif,le:new Date().toISOString(),traite:false});closeDlg();toast("Merci, la vidéo sera examinée.")}catch(e){toast(errMsg(e))}});
+}
+
+/* ================= CONNEXION / INSCRIPTION ================= */
+function openLogin(msg,signup){
+  openDlg(`<div class="sheet"><div class="hd"><h3>${signup?"Créer un compte":"Se connecter"}</h3><button class="x" type="button" data-close>×</button></div>
+  <form class="bd" id="lg-f" novalidate>${msg?`<p class="muted" style="margin:0">${esc(msg)}</p>`:""}
+    ${signup?`<label class="lab">Pseudo<input class="in" id="lg-ps" maxlength="24" autocomplete="username" placeholder="ex. kone_mankono"></label>`:""}
+    <label class="lab">E-mail<input class="in" id="lg-m" type="email" autocomplete="email"></label>
+    <label class="lab">Mot de passe<input class="in" id="lg-p" type="password" autocomplete="${signup?"new-password":"current-password"}"></label>
+    ${signup?`<label class="chk"><input type="checkbox" id="lg-age"> J'ai 13 ans ou plus.</label><label class="chk"><input type="checkbox" id="lg-cgu"> J'accepte les règles : pas de violence, de nudité, d'arnaque ni de harcèlement. Les contenus signalés peuvent être retirés.</label>`:""}
+    <p class="err" id="lg-err" role="alert"></p>
+    <button class="btn hot" type="submit">${signup?"Créer mon compte":"Se connecter"}</button>
+    <button class="btn" type="button" id="lg-sw">${signup?"J'ai déjà un compte":"Créer un compte"}</button>
+    ${signup?"":`<button class="btn" type="button" id="lg-fg" style="border:0;background:none;color:var(--muted)">Mot de passe oublié ?</button>`}</form></div>`);
+  $("#lg-sw").onclick=()=>openLogin(msg,!signup);
+  if(!signup) $("#lg-fg").onclick=async()=>{const m=$("#lg-m").value.trim();if(!m){$("#lg-err").textContent="Écrivez d'abord votre e-mail.";return}try{await auth.sendPasswordResetEmail(m);$("#lg-err").textContent="E-mail de réinitialisation envoyé."}catch(e){$("#lg-err").textContent=errMsg(e)}};
+  $("#lg-f").onsubmit=async e=>{e.preventDefault();const er=$("#lg-err"),m=$("#lg-m").value.trim(),p=$("#lg-p").value,btn=e.target.querySelector("[type=submit]");er.textContent="";
+    try{
+      if(signup){
+        const ps=$("#lg-ps").value.trim().toLowerCase();
+        if(!/^[a-z0-9_.]{3,24}$/.test(ps)){er.textContent="Pseudo : 3 à 24 caractères (lettres minuscules, chiffres, _ et .).";return}
+        if(!$("#lg-age").checked){er.textContent="Il faut avoir au moins 13 ans.";return}
+        if(!$("#lg-cgu").checked){er.textContent="Acceptez les règles pour continuer.";return}
+        if(p.length<6){er.textContent="Mot de passe : 6 caractères minimum.";return}
+        btn.disabled=true;
+        const taken=await fdb.doc("pseudos/"+ps).get(); if(taken.exists){er.textContent="Ce pseudo est déjà pris.";btn.disabled=false;return}
+        signingUp=true;
+        const cred=await auth.createUserWithEmailAndPassword(m,p);
+        const b=fdb.batch(), now=new Date().toISOString();
+        b.set(fdb.doc("pseudos/"+ps),{uid:cred.user.uid});
+        b.set(fdb.doc("users/"+cred.user.uid),{pseudo:ps,nom:"",bio:"",photo:"",followers:0,following:0,videos:0,bloque:false,creeLe:now});
+        try{await b.commit()}catch(x){await cred.user.delete().catch(()=>{});signingUp=false;throw x}
+        signingUp=false; await loadMe(); closeDlg(); toast("Bienvenue @"+ps+" !");
+      } else { btn.disabled=true; await auth.signInWithEmailAndPassword(m,p); closeDlg(); toast("Connecté") }
+    }catch(x){er.textContent=errMsg(x);btn.disabled=false}};
+}
+let signingUp=false;
+
+/* ================= NAVIGATION ================= */
+function go(p){
+  ["decouvrir","publier","profil"].forEach(k=>$("#p-"+k).hidden=k!==p);
+  $("#ftabs").hidden=p!=="feed";
+  document.querySelectorAll("nav.bot [data-nav]").forEach(b=>b.setAttribute("aria-current",String(b.dataset.nav===p)));
+  if(p!=="feed") document.querySelectorAll("#feed video").forEach(v=>v.pause()); else {const s=[...document.querySelectorAll("#feed .slide")].find(x=>{const r=x.getBoundingClientRect();return r.top>=-10&&r.top<innerHeight/2});if(s) activate(s)}
+  if(p==="decouvrir") renderDiscover();
+  if(p==="publier") renderPublish();
+  if(p==="profil"){ if(!me){openLogin("Connectez-vous pour voir votre profil.");return go("feed")} renderProfile(me.uid) }
+}
+
+/* ================= DÉCOUVRIR ================= */
+let dq="";
+async function renderDiscover(){
+  const P=$("#p-decouvrir");
+  if(!P.querySelector("#dq")) P.innerHTML=`<div class="wrap"><h2>Découvrir</h2><input class="in" id="dq" type="search" placeholder="Chercher un pseudo ou un #hashtag" autocomplete="off" enterkeyhint="search"><div id="dres"></div></div>`;
+  const q=dq.trim().toLowerCase().replace(/^@/,""), R=$("#dres");
+  if(!q){
+    R.innerHTML=`<p class="muted">Tendances</p><div class="chips" id="dtags">…</div><p class="muted" style="margin-top:16px">Vidéos populaires</p><div class="grid3" id="dpop"></div>`;
+    try{const s=await fdb.collection("videos").orderBy("le","desc").limit(60).get();const L=s.docs.map(d=>({id:d.id,...d.data()})).filter(visible);
+      const cnt={};L.forEach(v=>(v.tags||[]).forEach(t=>cnt[t]=(cnt[t]||0)+1));
+      $("#dtags").innerHTML=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([t,n])=>`<button class="chip" type="button" data-tag="${esc(t)}">#${esc(t)} · ${n}</button>`).join("")||`<span class="muted">Pas encore de hashtag.</span>`;
+      $("#dpop").innerHTML=gridHTML(L.sort((a,b)=>(b.likes||0)-(a.likes||0)).slice(0,18))}catch(e){R.innerHTML=`<p class="err">${esc(errMsg(e))}</p>`}
+    return;
+  }
+  if(q.startsWith("#")) return openTag(q.slice(1));
+  try{const s=await fdb.collection("users").orderBy("pseudo").startAt(q).endAt(q+"").limit(20).get();const L=s.docs.map(d=>({id:d.id,...d.data()}));L.forEach(u=>users[u.id]=u);
+    const tg=await fdb.collection("videos").where("tags","array-contains",q).limit(30).get();const V=tg.docs.map(d=>({id:d.id,...d.data()})).filter(visible);
+    R.innerHTML=(L.length?L.map(u=>`<button class="urow" type="button" data-pseudo="${esc(u.pseudo)}">${avHTML(u)}<span><b>@${esc(u.pseudo)}</b><br><span class="muted">${kfmt(u.followers)} abonnés · ${kfmt(u.videos)} vidéos</span></span></button>`).join(""):"")
+      +(V.length?`<p class="muted">#${esc(q)}</p><div class="grid3">${gridHTML(V)}</div>`:"")||`<p class="muted">Aucun résultat pour « ${esc(q)} ».</p>`}
+  catch(e){R.innerHTML=`<p class="err">${esc(errMsg(e))}</p>`}
+}
+document.addEventListener("input",e=>{if(e.target.id==="dq"){dq=e.target.value;clearTimeout(renderDiscover.t);renderDiscover.t=setTimeout(renderDiscover,350)}});
+const gridHTML=L=>L.map(v=>`<button class="tile" type="button" data-vid="${v.id}" aria-label="Vidéo">${v.poster?`<img src="${esc(v.poster)}" alt="" loading="lazy" onerror="this.remove()">`:""}<span>▶ ${kfmt(v.vues)}</span>${v.cache?`<span class="hid">Masquée</span>`:""}</button>`).join("");
+async function openTag(t){
+  go("decouvrir"); $("#dq").value="#"+t; dq="#"+t;
+  try{const s=await fdb.collection("videos").where("tags","array-contains",t).limit(60).get();const V=s.docs.map(d=>({id:d.id,...d.data()})).filter(visible).sort((a,b)=>b.le.localeCompare(a.le));
+    $("#dres").innerHTML=`<h3 style="margin:6px 0">#${esc(t)}</h3><p class="muted">${V.length} vidéo(s)</p><div class="grid3">${gridHTML(V)}</div>`}catch(e){$("#dres").innerHTML=`<p class="err">${esc(errMsg(e))}</p>`}
+}
+async function openSingle(id){
+  const s=await fdb.doc("videos/"+id).get(); if(!s.exists){toast("Vidéo introuvable");return}
+  const v={id,...s.data()}; if(v.supprime||(v.cache&&!(me&&(me.uid===adminUid||me.uid===v.uid)))){toast("Cette vidéo n'est plus disponible.");return}
+  feedList=[v,...feedList.filter(x=>x.id!==id)]; await markLikes([v]);
+  go("feed"); const f=$("#feed"); f.insertAdjacentHTML("afterbegin",await slideHTML(v)); const sl=f.firstElementChild; io.observe(sl); f.scrollTop=0; activate(sl);
+}
+
+/* ================= PROFIL ================= */
+let profUid=null;
+async function openProfileByPseudo(ps){
+  ps=String(ps).toLowerCase();
+  try{const s=await fdb.doc("pseudos/"+ps).get(); if(!s.exists){toast("Profil introuvable");return} closeDlg(); go("_"); $("#p-profil").hidden=false; $("#ftabs").hidden=true;
+    document.querySelectorAll("#feed video").forEach(v=>v.pause()); renderProfile(s.data().uid)}catch(e){toast(errMsg(e))}
+}
+async function renderProfile(uid){
+  profUid=uid; const P=$("#p-profil"); P.innerHTML=`<div class="wrap"><p class="muted">Chargement…</p></div>`;
+  delete users[uid]; const u=await getUser(uid), mine=me&&me.uid===uid, isAdm=me&&me.uid===adminUid;
+  if(me&&!mine){try{const f=await fdb.doc(`follows/${me.uid}_${uid}`).get();f.exists?followSet.add(uid):followSet.delete(uid)}catch(_){}}
+  let V=[]; try{const s=await fdb.collection("videos").where("uid","==",uid).limit(120).get();V=s.docs.map(d=>({id:d.id,...d.data()})).filter(v=>!v.supprime&&(!v.cache||mine||isAdm)).sort((a,b)=>b.le.localeCompare(a.le))}catch(_){}
+  const totLikes=V.reduce((s,v)=>s+(+v.likes||0),0);
+  P.innerHTML=`<div class="wrap"><div class="row" style="justify-content:space-between">${!mine?`<button class="btn sm" type="button" data-nav="feed">‹ Retour</button>`:"<span></span>"}${mine?`<span class="row">${isAdm?`<button class="btn sm" type="button" data-revenus>💰 Revenus & pubs</button><button class="btn sm" type="button" data-admin>Modération</button>`:""}<button class="btn sm" type="button" data-logout>Se déconnecter</button></span>`:""}</div>
+    <div class="prof">${avHTML(u)}<h2>@${esc(u.pseudo)}</h2>${u.nom?`<div>${esc(u.nom)}</div>`:""}
+      <div class="stats"><div><b>${kfmt(u.following)}</b><span>Abonnements</span></div><div><b>${kfmt(u.followers)}</b><span>Abonnés</span></div><div><b>${kfmt(totLikes)}</b><span>J'aime</span></div></div>
+      ${u.bio?`<p style="margin:0;max-width:420px;overflow-wrap:anywhere">${capHTML(u.bio)}</p>`:""}
+      ${u.bloque?`<span class="pill" style="color:var(--bad)">Compte suspendu</span>`:""}
+      <div class="row" style="justify-content:center">${mine?`<button class="btn" type="button" data-editprof>Modifier le profil</button>`:me&&followSet.has(uid)?`<button class="btn" type="button" data-unfollow="${uid}">Abonné ✓</button>`:`<button class="btn hot" type="button" data-follow="${uid}">S'abonner</button>`}
+        ${u.momo&&Object.values(u.momo).some(Boolean)?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
+    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0">🗑</button>`:""}</div>`).join("")}</div>`
+      :`<p class="muted" style="text-align:center">${mine?"Vous n'avez pas encore publié. Touchez + pour commencer.":"Aucune vidéo pour le moment."}</p>`}</div>`;
+  $("#pf-share").onclick=()=>{const url=location.origin+location.pathname+"?u="+u.pseudo;navigator.share?navigator.share({title:"@"+u.pseudo,url}).catch(()=>{}):window.open("https://wa.me/?text="+encodeURIComponent(`@${u.pseudo} sur ${APP.nom} : ${url}`),"_blank","noopener")};
+  const ban=$("#pf-ban"); if(ban) ban.onclick=async()=>{try{await fdb.doc("users/"+uid).update({bloque:!u.bloque});toast(u.bloque?"Compte débloqué":"Compte bloqué");renderProfile(uid)}catch(e){toast(errMsg(e))}};
+}
+function smallImg(file,size=160){return new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=size;const k=Math.max(size/im.width,size/im.height),w=im.width*k,h=im.height*k;c.getContext("2d").drawImage(im,(size-w)/2,(size-h)/2,w,h);ok(c.toDataURL("image/jpeg",.82))};im.onerror=ko;im.src=r.result};r.onerror=ko;r.readAsDataURL(file)})}
+function editProfile(){
+  let photo=meDoc.photo||"";
+  openDlg(`<div class="sheet"><div class="hd"><h3>Modifier le profil</h3><button class="x" type="button" data-close>×</button></div><form class="bd" id="ep-f">
+    <div class="prof"><span id="ep-av">${avHTML(meDoc)}</span><label class="btn sm">Changer la photo<input type="file" accept="image/*" id="ep-ph" hidden></label></div>
+    <label class="lab">Nom affiché<input class="in" id="ep-n" maxlength="40" value="${esc(meDoc.nom||"")}"></label>
+    <label class="lab">Bio<textarea class="in" id="ep-b" maxlength="160">${esc(meDoc.bio||"")}</textarea></label>
+    <p class="muted" style="margin:6px 0 0">Recevoir des soutiens (facultatif) : vos numéros mobile money apparaîtront sur votre profil.</p>
+    ${[["om","Orange Money"],["mtn","MTN MoMo"],["moov","Moov Money"],["wave","Wave"]].map(([k,l])=>`<label class="lab">${l}<input class="in" id="ep-${k}" type="tel" maxlength="20" value="${esc((meDoc.momo||{})[k]||"")}" placeholder="07 00 00 00 00"></label>`).join("")}
+    <p class="err" id="ep-err"></p><button class="btn hot" type="submit">Enregistrer</button></form></div>`);
+  $("#ep-ph").onchange=async e=>{const f=e.target.files[0];if(!f) return;try{photo=await smallImg(f);$("#ep-av").innerHTML=avHTML({...meDoc,photo})}catch(_){toast("Image illisible")}};
+  $("#ep-f").onsubmit=async e=>{e.preventDefault();try{await fdb.doc("users/"+me.uid).update({nom:$("#ep-n").value.trim().slice(0,40),bio:$("#ep-b").value.trim().slice(0,160),photo,momo:Object.fromEntries(["om","mtn","moov","wave"].map(k=>[k,$("#ep-"+k).value.replace(/[^\d +]/g,"").trim().slice(0,20)]))});await loadMe();closeDlg();renderProfile(me.uid);toast("Profil mis à jour")}catch(x){$("#ep-err").textContent=errMsg(x)}};
+}
+async function delVideo(id){
+  if(!confirmBox("Supprimer cette vidéo de votre profil ?")) return;
+  const b=fdb.batch();b.update(fdb.doc("videos/"+id),{supprime:true});b.update(fdb.doc("users/"+me.uid),{videos:inc(-1)});
+  try{await b.commit();toast("Vidéo supprimée");renderProfile(me.uid);feedList=feedList.filter(v=>v.id!==id);const s=document.querySelector(`#feed .slide[data-id="${id}"]`);if(s) s.remove()}catch(e){toast(errMsg(e))}
+}
+function confirmBox(m){return window.confirm(m)}
+
+/* ================= PUBLIER ================= */
+function renderPublish(){
+  const P=$("#p-publier");
+  if(!me||!meDoc){P.innerHTML=`<div class="wrap"><h2>Publier</h2><p class="muted">Connectez-vous pour publier une vidéo.</p><button class="btn hot" type="button" data-login>Se connecter</button></div>`;return}
+  if(meDoc.bloque){P.innerHTML=`<div class="wrap"><h2>Publier</h2><p class="err">Votre compte est suspendu : vous ne pouvez pas publier.</p></div>`;return}
+  if(!CL.cloud||!CL.preset||/COLLER/.test(CL.cloud)){P.innerHTML=`<div class="wrap"><h2>Publier</h2><div class="card"><b>Hébergement vidéo non configuré</b><p class="muted" style="margin:0">L'administrateur doit renseigner le compte Cloudinary dans config.js.</p></div></div>`;return}
+  if(P.querySelector("#pb-f")&&!P.dataset.done) return;
+  P.dataset.done="";
+  P.innerHTML=`<div class="wrap"><h2>Nouvelle vidéo</h2><form id="pb-f" class="wrap" novalidate>
+    <label class="btn" style="text-align:center;padding:22px">📹 Choisir ou filmer une vidéo<input type="file" id="pb-file" accept="video/*" hidden></label>
+    <video id="pb-prev" playsinline controls hidden style="width:100%;max-height:50dvh;background:#000;border-radius:12px"></video>
+    <p class="muted" id="pb-info" style="margin:0">Format vertical conseillé · 3 minutes maximum · 100 Mo maximum</p>
+    <label class="lab">Légende<textarea class="in" id="pb-cap" maxlength="300" placeholder="Décrivez votre vidéo… #mankono #cacao"></textarea></label>
+    <div class="bar" id="pb-bar" hidden><i></i></div>
+    <p class="err" id="pb-err" role="alert"></p>
+    <button class="btn hot" type="submit" id="pb-go" disabled>Publier</button></form></div>`;
+  let file=null,dur=0;
+  $("#pb-file").onchange=e=>{file=e.target.files[0];const er=$("#pb-err");er.textContent="";if(!file) return;
+    if(!/^video\//.test(file.type)){er.textContent="Ce fichier n'est pas une vidéo.";file=null;return}
+    if(file.size>100*1024*1024){er.textContent="Vidéo trop lourde (100 Mo maximum).";file=null;return}
+    const v=$("#pb-prev");v.hidden=false;v.src=URL.createObjectURL(file);v.onloadedmetadata=()=>{dur=v.duration;if(dur>180.5){er.textContent="Vidéo trop longue (3 minutes maximum).";file=null;$("#pb-go").disabled=true;return}
+      $("#pb-info").textContent=`${Math.round(dur)} s · ${(file.size/1048576).toFixed(1)} Mo`;$("#pb-go").disabled=false};
+    v.onerror=()=>{$("#pb-go").disabled=false}};
+  $("#pb-f").onsubmit=async e=>{e.preventDefault();if(!file) return;const er=$("#pb-err"),go_=$("#pb-go"),bar=$("#pb-bar");
+    if(!navigator.onLine){er.textContent="Pas de connexion internet.";return}
+    go_.disabled=true;go_.textContent="Envoi… ne fermez pas la page";bar.hidden=false;er.textContent="";
+    try{
+      const r=await uploadCld(file,p=>bar.firstElementChild.style.width=Math.round(p*100)+"%");
+      const legende=$("#pb-cap").value.trim().slice(0,300), b=fdb.batch(), ref=fdb.collection("videos").doc();
+      b.set(ref,{uid:me.uid,url:cldVideo(r.public_id),poster:cldPoster(r.public_id),pid:r.public_id,duree:Math.round(r.duration||dur||0),largeur:r.width||0,hauteur:r.height||0,
+        legende,tags:tagsOf(legende),likes:0,comments:0,vues:0,partages:0,cache:false,supprime:false,le:new Date().toISOString()});
+      b.update(fdb.doc("users/"+me.uid),{videos:inc(1)});
+      await b.commit(); P.dataset.done="1"; toast("Vidéo publiée !"); feedMode="pourtoi"; go("feed"); loadFeed();
+    }catch(x){er.textContent=x&&x.cld?x.cld:errMsg(x);go_.disabled=false;go_.textContent="Réessayer";bar.hidden=true}};
+}
+function uploadCld(file,onp,kind){return new Promise((ok,ko)=>{
+  const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CL.preset);fd.append("folder",(CL.dossier||"clips")+"/"+me.uid);
+  const x=new XMLHttpRequest();x.open("POST",`https://api.cloudinary.com/v1_1/${CL.cloud}/${kind||"video"}/upload`);
+  x.upload.onprogress=e=>{if(e.lengthComputable) onp(e.loaded/e.total)};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(_){}
+    if(x.status>=200&&x.status<300&&j.public_id) ok(j); else ko({cld:"Envoi refusé par l'hébergeur vidéo"+(j.error&&j.error.message?" : "+j.error.message:"")+"."})};
+  x.onerror=()=>ko({cld:"Envoi interrompu (connexion). Réessayez avec un meilleur réseau."});
+  x.send(fd)})}
+
+/* ================= REVENUS ================= */
+const fc=n=>String(Math.round(+n||0)).replace(/\B(?=(\d{3})+(?!\d))/g," ")+" FCFA";
+const tday=()=>new Date().toISOString().slice(0,10);
+const addD=(d,n)=>{const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+async function openTip(uid){
+  const u=await getUser(uid), m=u.momo||{};
+  openDlg(`<div class="sheet"><div class="hd"><h3>Soutenir @${esc(u.pseudo)}</h3><button class="x" type="button" data-close>×</button></div><div class="bd">
+    <p class="muted" style="margin:0">Envoyez le montant de votre choix directement au créateur depuis votre application mobile money.</p>
+    ${[["om","Orange Money"],["mtn","MTN MoMo"],["moov","Moov Money"],["wave","Wave"]].filter(([k])=>m[k]).map(([k,l])=>`<div class="card" style="grid-template-columns:1fr auto;align-items:center"><span><b>${l}</b><br>${esc(m[k])}</span><button class="btn sm" type="button" data-copy="${esc(m[k])}">Copier</button></div>`).join("")}
+    <p class="muted" style="margin:0;font-size:.8rem">${esc(APP.nom)} n'intervient pas dans ces paiements : vérifiez le nom du bénéficiaire avant de valider.</p></div></div>`);
+  document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copy).then(()=>toast("Numéro copié"),()=>toast(b.dataset.copy)));
+}
+function openBoost(id){
+  const v=feedList.find(x=>x.id===id)||{};
+  openDlg(`<div class="sheet"><div class="hd"><h3>⚡ Booster la vidéo</h3><button class="x" type="button" data-close>×</button></div><form class="bd" id="bo-f">
+    <p class="muted" style="margin:0">La vidéo passe en tête du fil « Pour toi » avec la mention « Sponsorisé ».${boosted(v)?` Boost en cours jusqu'au ${esc(v.boostFin)}.`:""}</p>
+    <label class="lab">Durée<select class="in" id="bo-j"><option value="1">1 jour</option><option value="3">3 jours</option><option value="7" selected>7 jours</option><option value="30">30 jours</option></select></label>
+    <label class="lab">Montant payé par le créateur (FCFA)<input class="in" id="bo-m" inputmode="numeric" value="${(window.TARIFS||{}).boost7||5000}"></label>
+    <label class="lab">Payé par<select class="in" id="bo-mode"><option>Orange Money</option><option>MTN MoMo</option><option>Moov Money</option><option>Wave</option><option>Espèces</option></select></label>
+    <label class="lab">Référence de la transaction<input class="in" id="bo-ref"></label>
+    <p class="err" id="bo-err"></p><button class="btn hot" type="submit">Activer le boost</button></form></div>`);
+  $("#bo-f").onsubmit=async e=>{e.preventDefault();const j=+$("#bo-j").value,m=Math.round(+$("#bo-m").value.replace(/\D/g,"")||0);
+    const start=boosted(v)?v.boostFin:tday(), fin=addD(start,j), b=fdb.batch();
+    b.update(fdb.doc("videos/"+id),{boostFin:fin});
+    b.set(fdb.collection("revenus").doc(),{type:"boost",videoId:id,uid:v.uid||"",montant:m,jours:j,mode:$("#bo-mode").value,ref:$("#bo-ref").value.trim(),jour:tday(),le:new Date().toISOString()});
+    try{await b.commit();v.boostFin=fin;closeDlg();toast("Boost actif jusqu'au "+fin)}catch(x){$("#bo-err").textContent=errMsg(x)}};
+}
+async function openRevenus(){
+  openDlg(`<div class="sheet" style="max-height:94dvh"><div class="hd"><h3>💰 Revenus & publicités</h3><button class="x" type="button" data-close>×</button></div><div class="bd" id="rv-b"><p class="muted">Chargement…</p></div></div>`);
+  const [rs,ps]=await Promise.all([fdb.collection("revenus").orderBy("le","desc").limit(300).get(),fdb.collection("pubs").limit(100).get()]);
+  const R=rs.docs.map(d=>({id:d.id,...d.data()})), Pb=ps.docs.map(d=>({id:d.id,...d.data()})), t=tday(), m=t.slice(0,7), y=t.slice(0,4);
+  const sum=f=>R.filter(f).reduce((s,x)=>s+(+x.montant||0),0);
+  $("#rv-b").innerHTML=`<div class="row" style="gap:10px">${[["Ce mois",sum(x=>(x.jour||"").startsWith(m))],["Cette année",sum(x=>(x.jour||"").startsWith(y))],["Publicités (année)",sum(x=>x.type==="pub"&&(x.jour||"").startsWith(y))],["Boosts (année)",sum(x=>x.type==="boost"&&(x.jour||"").startsWith(y))]].map(([l,v])=>`<div class="card" style="flex:1;min-width:130px;gap:2px"><span class="muted" style="font-size:.78rem">${l}</span><b style="font-size:1.2rem">${fc(v)}</b></div>`).join("")}</div>
+    <div class="row" style="justify-content:space-between"><h3>Publicités</h3><button class="btn sm hot" type="button" id="rv-new">+ Nouvelle publicité</button></div>
+    ${Pb.length?Pb.sort((a,b)=>(b.fin||"").localeCompare(a.fin||"")).map(p=>{const on=p.actif&&(!p.fin||p.fin>=t);return `<div class="card"><div class="row" style="justify-content:space-between"><b>${esc(p.annonceur)} · ${esc(p.titre)}</b><span class="pill" style="${on?"color:var(--ok)":""}">${on?"En ligne":"Terminée"}</span></div>
+      <div class="muted" style="font-size:.85rem">${esc(p.debut||"")} → ${esc(p.fin||"")} · ${fc(p.prix)} · ${kfmt(p.impressions)} vues · ${kfmt(p.clics)} clics${p.impressions?` (${((+p.clics||0)/p.impressions*100).toFixed(1)} %)`:""}</div>
+      <div class="row"><button class="btn sm" type="button" data-pubrep="${p.id}">Envoyer le bilan</button>${on?`<button class="btn sm" type="button" data-pubstop="${p.id}">Arrêter</button>`:""}</div></div>`}).join(""):`<p class="muted">Aucune publicité. Proposez des annonces aux commerces de votre région : le fil affiche une annonce toutes les ${PUB_EVERY} vidéos.</p>`}
+    <h3>Encaissements</h3>${R.length?`<div class="card" style="gap:6px">${R.slice(0,40).map(x=>`<div class="row" style="justify-content:space-between;font-size:.88rem"><span>${esc(x.jour)} · ${x.type==="pub"?"Publicité":x.type==="boost"?"Boost":"Autre"} ${esc(x.libelle||"")} <span class="muted">${esc(x.mode||"")}</span></span><b>${fc(x.montant)}</b></div>`).join("")}</div>`:`<p class="muted">Aucun encaissement.</p>`}
+    <button class="btn" type="button" id="rv-add">+ Autre encaissement</button>`;
+  $("#rv-new").onclick=newPub;
+  $("#rv-add").onclick=async()=>{const l=prompt("Libellé (ex. partenariat, soutien…)");if(!l) return;const mt=Math.round(+String(prompt("Montant (FCFA)")||"").replace(/\D/g,""));if(!mt) return;
+    await fdb.collection("revenus").add({type:"autre",libelle:l.slice(0,60),montant:mt,jour:tday(),le:new Date().toISOString()});openRevenus()};
+  document.querySelectorAll("[data-pubstop]").forEach(b=>b.onclick=async()=>{await fdb.doc("pubs/"+b.dataset.pubstop).update({actif:false});openRevenus()});
+  document.querySelectorAll("[data-pubrep]").forEach(b=>b.onclick=()=>{const p=Pb.find(x=>x.id===b.dataset.pubrep);const d=String(p.tel||"").replace(/\D/g,"");
+    window.open("https://wa.me/"+(d.length===10?"225"+d:d)+"?text="+encodeURIComponent(`Bilan de votre publicité « ${p.titre} » sur ${APP.nom} (${p.debut} → ${p.fin}) : ${p.impressions||0} vues, ${p.clics||0} clics. Merci de votre confiance !`),"_blank","noopener")});
+}
+function newPub(){
+  openDlg(`<div class="sheet" style="max-height:94dvh"><div class="hd"><h3>Nouvelle publicité</h3><button class="x" type="button" data-close>×</button></div><form class="bd" id="pu-f" novalidate>
+    <label class="lab">Annonceur<input class="in" id="pu-a" maxlength="60" placeholder="Ex. Quincaillerie Traoré"></label>
+    <label class="lab">Téléphone de l'annonceur (pour le bilan)<input class="in" id="pu-tel" type="tel"></label>
+    <label class="lab">Titre de l'annonce<input class="in" id="pu-t" maxlength="70" placeholder="Ex. Ciment à 5 800 F le sac"></label>
+    <label class="lab">Texte<textarea class="in" id="pu-x" maxlength="200"></textarea></label>
+    <label class="lab">Bouton<select class="in" id="pu-b"><option>Contacter</option><option>Commander</option><option>Appeler</option><option>En savoir plus</option></select></label>
+    <label class="lab">Lien du bouton : numéro WhatsApp ou adresse web<input class="in" id="pu-l" placeholder="07 00 00 00 00 ou https://…"></label>
+    <label class="btn" style="text-align:center">🖼 Image ou vidéo de l'annonce<input type="file" id="pu-file" accept="image/*,video/*" hidden></label><p class="muted" id="pu-fn" style="margin:0"></p>
+    <div class="row"><label class="lab" style="flex:1">Début<input class="in" id="pu-d" type="date" value="${tday()}"></label><label class="lab" style="flex:1">Fin<input class="in" id="pu-f2" type="date" value="${addD(tday(),7)}"></label></div>
+    <label class="lab">Prix payé (FCFA)<input class="in" id="pu-p" inputmode="numeric" value="${(window.TARIFS||{}).pub7||10000}"></label>
+    <label class="lab">Payé par<select class="in" id="pu-mode"><option>Orange Money</option><option>MTN MoMo</option><option>Moov Money</option><option>Wave</option><option>Espèces</option><option>Virement</option></select></label>
+    <div class="bar" id="pu-bar" hidden><i></i></div><p class="err" id="pu-err"></p><button class="btn hot" type="submit">Mettre en ligne</button></form></div>`);
+  let file=null; $("#pu-file").onchange=e=>{file=e.target.files[0];$("#pu-fn").textContent=file?file.name:""};
+  $("#pu-f").onsubmit=async e=>{e.preventDefault();const er=$("#pu-err");const a=$("#pu-a").value.trim(),ti=$("#pu-t").value.trim(),l=$("#pu-l").value.trim(),d=$("#pu-d").value,f=$("#pu-f2").value,px=Math.round(+$("#pu-p").value.replace(/\D/g,"")||0);
+    if(!a||!ti){er.textContent="Indiquez l'annonceur et le titre.";return} if(!file){er.textContent="Ajoutez une image ou une vidéo.";return} if(!l){er.textContent="Indiquez le lien du bouton.";return} if(f<d){er.textContent="La fin est avant le début.";return}
+    if(!CL.cloud){er.textContent="Hébergement Cloudinary non configuré.";return}
+    const isV=/^video\//.test(file.type), btn=e.target.querySelector("[type=submit]"); btn.disabled=true; $("#pu-bar").hidden=false;
+    try{const r=await uploadCld(file,p=>$("#pu-bar").firstElementChild.style.width=Math.round(p*100)+"%",isV?"video":"image");
+      const url=isV?cldVideo(r.public_id):`https://res.cloudinary.com/${CL.cloud}/image/upload/q_auto,w_720/${r.public_id}`;
+      const b=fdb.batch(), ref=fdb.collection("pubs").doc();
+      b.set(ref,{annonceur:a,tel:$("#pu-tel").value.trim(),titre:ti,texte:$("#pu-x").value.trim(),bouton:$("#pu-b").value,lien:l,media:isV?"video":"image",url,poster:isV?cldPoster(r.public_id):"",debut:d,fin:f,prix:px,actif:true,impressions:0,clics:0,le:new Date().toISOString()});
+      if(px) b.set(fdb.collection("revenus").doc(),{type:"pub",pubId:ref.id,libelle:a,montant:px,mode:$("#pu-mode").value,jour:tday(),le:new Date().toISOString()});
+      await b.commit(); toast("Publicité en ligne"); openRevenus();
+    }catch(x){er.textContent=x&&x.cld?x.cld:errMsg(x);btn.disabled=false}};
+}
+
+/* ================= MODÉRATION (administrateur) ================= */
+async function openAdmin(){
+  openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>Modération</h3><button class="x" type="button" data-close>×</button></div><div class="bd" id="ad-l"><p class="muted">Chargement…</p></div></div>`);
+  const s=await fdb.collection("reports").where("traite","==",false).limit(100).get();
+  const R=s.docs.map(d=>({id:d.id,...d.data()})); const byV={}; R.forEach(r=>(byV[r.videoId]=byV[r.videoId]||[]).push(r));
+  const L=$("#ad-l"); if(!R.length){L.innerHTML=`<p class="muted">Aucun signalement en attente. 👍</p>`;return}
+  L.innerHTML=(await Promise.all(Object.entries(byV).map(async([vid,rs])=>{const v=await fdb.doc("videos/"+vid).get();const d=v.exists?v.data():null;const u=d?await getUser(d.uid):null;
+    return `<div class="card"><div class="row" style="justify-content:space-between"><b>${rs.length} signalement(s)</b>${d&&d.cache?`<span class="pill">masquée</span>`:""}</div>
+      <div class="muted">${[...new Set(rs.map(r=>r.motif))].map(esc).join(" · ")}</div>
+      ${d?`<video src="${esc(d.url)}" poster="${esc(d.poster)}" controls playsinline preload="none" style="width:100%;max-height:40dvh;background:#000;border-radius:8px"></video><div>@${esc(u.pseudo)} : ${esc(d.legende||"")}</div>`:`<p class="muted">Vidéo supprimée.</p>`}
+      <div class="row">${d?`<button class="btn sm hot" type="button" data-ad="hide" data-v="${vid}" data-r="${rs.map(r=>r.id).join(",")}">Masquer la vidéo</button><button class="btn sm" type="button" data-ad="ban" data-u="${d.uid}" data-v="${vid}" data-r="${rs.map(r=>r.id).join(",")}">Masquer + bloquer @${esc(u.pseudo)}</button>`:""}<button class="btn sm" type="button" data-ad="ok" data-r="${rs.map(r=>r.id).join(",")}">Rien à signaler</button></div></div>`}))).join("");
+  L.querySelectorAll("[data-ad]").forEach(b=>b.onclick=async()=>{const bb=fdb.batch();
+    if(b.dataset.ad!=="ok") bb.update(fdb.doc("videos/"+b.dataset.v),{cache:true});
+    if(b.dataset.ad==="ban") bb.update(fdb.doc("users/"+b.dataset.u),{bloque:true});
+    b.dataset.r.split(",").forEach(id=>bb.update(fdb.doc("reports/"+id),{traite:true,decision:b.dataset.ad,par:me.uid}));
+    try{await bb.commit();toast("Décision enregistrée");b.closest(".card").remove()}catch(e){toast(errMsg(e))}});
+}
+
+/* ================= DÉMARRAGE ================= */
+async function loadMe(){ if(!me){meDoc=null;return} try{const s=await fdb.doc("users/"+me.uid).get();meDoc=s.exists?{id:me.uid,...s.data()}:null;if(meDoc) users[me.uid]=meDoc}catch(_){meDoc=null} }
+async function loadFollows(){followSet.clear();if(!me) return;try{const s=await fdb.collection("follows").where("de","==",me.uid).limit(500).get();s.docs.forEach(d=>followSet.add(d.data().vers))}catch(_){}}
+async function init(){
+  const C=window.FIREBASE_CONFIG;
+  if(!window.firebase||!C||!C.apiKey||/COLLER/.test(C.apiKey)){$("#feed").innerHTML=`<div class="empty"><div><b>${esc(APP.nom)}</b>Le site n'est pas encore relié à sa base de données (config.js).</div></div>`;return}
+  firebase.initializeApp(C); fdb=firebase.firestore(); auth=firebase.auth();
+  try{fdb.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
+  fdb.doc("config/admin").get().then(s=>{adminUid=s.exists?s.data().uid:null}).catch(()=>{});
+  let first=true;
+  auth.onAuthStateChanged(async u=>{
+    me=u; if(signingUp) return;
+    await loadMe();
+    if(me&&!meDoc){ // compte sans profil (inscription interrompue) : terminer l'inscription
+      openLogin("Choisissez votre pseudo pour terminer l'inscription.",true);}
+    if(me&&meDoc&&!adminUid){ // le tout premier inscrit devient administrateur (modération)
+      try{await fdb.doc("config/admin").set({uid:me.uid,le:new Date().toISOString()});adminUid=me.uid}catch(_){} }
+    await loadFollows();
+    if(first){first=false;const q=new URLSearchParams(location.search);
+      if(q.get("v")){await loadFeed();openSingle(q.get("v"))} else if(q.get("u")){await loadFeed();openProfileByPseudo(q.get("u"))} else loadFeed()}
+    else if(!$("#p-profil").hidden&&me) renderProfile(profUid||me.uid);
+  });
+}
+if("serviceWorker" in navigator&&location.protocol==="https:") addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+init();
+})();
+</script>
+</body>
+</html>
