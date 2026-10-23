@@ -329,7 +329,8 @@ function errMsg(e){
   if(c==="auth/network-request-failed"||c==="unavailable") return "Pas de connexion internet. Réessayez quand le réseau revient.";
   if(/api-key|invalid-api|app-not-authorized/.test(c)) return "Configuration Firebase incorrecte (clé API).";
   if(c==="auth/operation-not-allowed") return "La connexion par e-mail/mot de passe n'est pas activée dans Firebase.";
-  return "L'enregistrement n'a pas abouti. Réessayez.";
+  if(c==="auth/configuration-not-found"||c==="auth/admin-restricted-operation") return "Authentication n'est pas activée dans Firebase (Sécurité → Authentication → Commencer, puis activer « Adresse e-mail/Mot de passe »).";
+  return "L'enregistrement n'a pas abouti. Réessayez."+(c?" (code : "+c+")":"");
 }
 function newCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0]%900000+100000)}
 function rid(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(x=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x%32]).join("")}
