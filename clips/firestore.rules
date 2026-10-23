@@ -11,7 +11,7 @@ service cloud.firestore {
     }
     function moi(uid) { return connecte() && request.auth.uid == uid; }
     function seuls(ch) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(ch); }
-    function plusUn(ch) { return seuls([ch]) && request.resource.data[ch] == resource.data[ch] + 1; }
+    function plusUn(ch) { return seuls([ch]) && request.resource.data[ch] == resource.data.get(ch, 0) + 1; }
     function pasBloque() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('bloque', false) == false;
     }
@@ -38,7 +38,7 @@ service cloud.firestore {
       allow create: if moi(uid) && request.resource.data.followers == 0 && request.resource.data.following == 0
         && request.resource.data.videos == 0 && request.resource.data.bloque == false
         && existsAfter(/databases/$(database)/documents/pseudos/$(request.resource.data.pseudo));
-      allow update: if (moi(uid) && seuls(['nom', 'bio', 'photo', 'momo']))
+      allow update: if (moi(uid) && seuls(['nom', 'bio', 'photo', 'momo', 'ville']))
         || (moi(uid) && seuls(['videos']))
         || (moi(uid) && seuls(['following']))
         || (connecte() && seuls(['followers']) && (
@@ -67,6 +67,7 @@ service cloud.firestore {
         && request.resource.data.url.matches('https://res[.]cloudinary[.]com/.*')
         && request.resource.data.likes == 0 && request.resource.data.comments == 0
         && request.resource.data.vues == 0 && request.resource.data.cache == false
+        && (!('prix' in request.resource.data) || (request.resource.data.prix is number && request.resource.data.prix > 0))
         && !('boostFin' in request.resource.data);
       allow update: if
            (connecte() && resource.data.uid == request.auth.uid && seuls(['legende', 'supprime']))
@@ -78,7 +79,7 @@ service cloud.firestore {
                 && exists(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid))
                 && !existsAfter(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid)))))
         || (connecte() && seuls(['comments']) && (request.resource.data.comments - resource.data.comments) in [1, -1])
-        || plusUn('vues') || plusUn('partages')
+        || plusUn('vues') || plusUn('partages') || plusUn('vuesCompletes') || plusUn('commandes')
         || (admin() && seuls(['cache', 'boostFin']));
       allow delete: if false;
 

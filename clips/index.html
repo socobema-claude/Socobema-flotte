@@ -8,6 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Vidéos courtes</title>
+<link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -50,6 +51,7 @@ a{color:var(--sun)}
 .ftabs button{pointer-events:auto;background:none;border:0;color:rgba(255,255,255,.7);font-weight:700;font-size:1rem;padding:4px 2px;border-bottom:2px solid transparent}
 .ftabs button[aria-pressed="true"]{color:#fff;border-bottom-color:#fff}
 .ftabs .brandn{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 12px);font-family:var(--f-disp);font-weight:800;font-size:1.1rem;color:#fff;pointer-events:none}
+@media (max-width:540px){.ftabs .brandn{display:none}.ftabs{gap:14px}}
 .empty{height:calc(100dvh - var(--nav));display:grid;place-items:center;text-align:center;padding:30px;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:1.15rem;margin-bottom:6px;font-family:var(--f-disp)}
 /* Barre du bas */
@@ -107,12 +109,13 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .cta{position:absolute;left:14px;right:14px;bottom:18px;display:grid;gap:8px}
 .cta .btn{width:100%}
 .slide.ad img.adimg{width:100%;height:100%;object-fit:contain;background:#000}
+.shop{display:inline-flex;gap:6px;align-items:center;background:var(--sun);color:#1a1200;border:0;border-radius:10px;padding:8px 12px;font-weight:800;font-size:.9rem;width:max-content}
 .pill{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 button:focus-visible,.in:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 </style>
 </head>
 <body>
-<div class="ftabs" id="ftabs"><span class="brandn" id="appname"></span><button type="button" data-ff="abo" aria-pressed="false">Abonnements</button><button type="button" data-ff="pourtoi" aria-pressed="true">Pour toi</button></div>
+<div class="ftabs" id="ftabs"><span class="brandn" id="appname"></span><button type="button" data-ff="pres" aria-pressed="false">Près de moi</button><button type="button" data-ff="abo" aria-pressed="false">Abonnements</button><button type="button" data-ff="pourtoi" aria-pressed="true">Pour toi</button></div>
 <main id="feed" aria-label="Fil de vidéos"></main>
 <section class="page" id="p-decouvrir" hidden></section>
 <section class="page" id="p-publier" hidden></section>
@@ -167,6 +170,18 @@ const tagsOf=t=>[...new Set((String(t||"").match(/#[\p{L}\p{N}_]{2,30}/gu)||[]).
 const capHTML=t=>esc(t).replace(/#([\p{L}\p{N}_]{2,30})/gu,(m,g)=>`<a href="#" data-tag="${esc(g.toLowerCase())}">#${esc(g)}</a>`).replace(/@([a-z0-9_.]{3,24})/g,(m,g)=>`<a href="#" data-pseudo="${g}">@${g}</a>`);
 const cldVideo=pid=>`https://res.cloudinary.com/${CL.cloud}/video/upload/q_auto,vc_auto,w_720/${pid}.mp4`;
 const cldPoster=pid=>`https://res.cloudinary.com/${CL.cloud}/video/upload/so_1,w_480,q_auto/${pid}.jpg`;
+/* ---------- Préférences de l'appareil + profil d'intérêts (recommandations personnalisées, sans rien envoyer) ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}}};
+let prefs=LS.get("k-prefs",{eco:"auto",ville:""});
+const conn=navigator.connection||{};
+const isEco=()=>prefs.eco==="on"||(prefs.eco==="auto"&&(conn.saveData||/(^|-)2g|3g/.test(conn.effectiveType||"")));
+/* Qualité adaptée : 480p léger sur réseau faible, 720p sinon (la vidéo source reste en haute qualité chez Cloudinary). */
+const vsrc=v=>v.pid&&CL.cloud?`https://res.cloudinary.com/${CL.cloud}/video/upload/${isEco()?"q_auto:low,vc_auto,w_480,br_500k":"q_auto,vc_auto,w_720"}/${v.pid}.mp4`:v.url;
+let INT=LS.get("k-int",{t:{},u:{},seen:{}});
+function bump(v,w){if(!v) return;(v.tags||[]).forEach(t=>INT.t[t]=Math.max(-10,Math.min(50,(INT.t[t]||0)+w)));INT.u[v.uid]=Math.max(-10,Math.min(60,(INT.u[v.uid]||0)+w*1.5));
+  const kk=Object.keys(INT.t);if(kk.length>300) kk.sort((a,b)=>Math.abs(INT.t[a])-Math.abs(INT.t[b])).slice(0,100).forEach(k=>delete INT.t[k]);LS.set("k-int",INT)}
+function affinity(v){const t=(v.tags||[]).reduce((s,x)=>s+(INT.t[x]||0),0), u=INT.u[v.uid]||0;return Math.max(.3,Math.min(5,1+t/12+u/10))}
+function markSeen(id){INT.seen[id]=Date.now();const k=Object.keys(INT.seen);if(k.length>800) k.sort((a,b)=>INT.seen[a]-INT.seen[b]).slice(0,300).forEach(x=>delete INT.seen[x]);LS.set("k-int",INT)}
 const visible=v=>!v.supprime&&!v.cache;
 
 /* ================= FIL ================= */
@@ -177,21 +192,31 @@ const io=new IntersectionObserver(es=>{es.forEach(e=>{const sl=e.target,v=sl.que
 function activate(sl){
   const all=[...document.querySelectorAll("#feed .slide")], i=all.indexOf(sl);
   all.forEach((s,k)=>{const v=s.querySelector("video");if(!v) return;
-    if(Math.abs(k-i)<=1){if(!v.src) v.src=v.dataset.src} else if(v.src&&Math.abs(k-i)>3){v.removeAttribute("src");v.load()}
+    if(Math.abs(k-i)<=(isEco()?0:1)){if(!v.src) v.src=v.dataset.src} else if(v.src&&Math.abs(k-i)>3){v.removeAttribute("src");v.load()}
     if(k!==i) v.pause()});
   const v=sl.querySelector("video"); if(!v) return; v.muted=muted; const p=v.play(); if(p&&p.catch) p.catch(()=>{v.muted=true;muted=true;v.play().catch(()=>{});updMute()});
   sl.querySelector(".pausei").hidden=true;
+  trackWatch(sl,v);
   const id=sl.dataset.id; if(id&&!viewed.has(id)){clearTimeout(activate.t);activate.t=setTimeout(()=>{if(!viewed.has(id)&&!v.paused){viewed.add(id);fdb.doc("videos/"+id).update({vues:inc(1)}).catch(()=>{})}},3000)}
   if(i>=all.length-3) loadMore();
+}
+/* Suivi du visionnage : vidéo regardée à 80 % = signal fort ; zappée en moins de 2 s = signal négatif. */
+let watching=null;
+function trackWatch(sl,v){
+  if(watching&&watching.sl!==sl){const w=watching;const vv=feedList.find(x=>x.id===w.sl.dataset.id);if(vv&&!w.done&&w.v.currentTime<2) bump(vv,-0.5)}
+  const id=sl.dataset.id; if(!id){watching=null;return}
+  watching={sl,v,done:false}; const me_=watching; markSeen(id);
+  v.ontimeupdate=()=>{if(me_.done||!v.duration) return; if(v.currentTime/v.duration>=.8){me_.done=true;const vv=feedList.find(x=>x.id===id);bump(vv,2);
+    if(!sessionStorage.getItem("c"+id)){try{sessionStorage.setItem("c"+id,"1")}catch(_){}fdb.doc("videos/"+id).update({vuesCompletes:inc(1)}).catch(()=>{})}}};
 }
 function updMute(){document.querySelectorAll(".mute").forEach(b=>b.textContent=muted?"🔇 Son coupé":"🔊 Son")}
 async function slideHTML(v){
   const u=await getUser(v.uid); const liked=likedSet.has(v.id), mine=me&&me.uid===v.uid, fol=followSet.has(v.uid);
   return `<section class="slide" data-id="${v.id}" data-uid="${v.uid}">
-    <video data-src="${esc(v.url)}" poster="${esc(v.poster||"")}" playsinline loop preload="none" muted aria-label="Vidéo de ${esc(u.pseudo)}"></video>
+    <video data-src="${esc(vsrc(v))}" poster="${esc(v.poster||"")}" playsinline loop preload="none" muted aria-label="Vidéo de ${esc(u.pseudo)}"></video>
     <div class="shade"></div><div class="pausei" hidden>${IC.play}</div>
     <button type="button" class="mute" data-mute>${muted?"🔇 Son coupé":"🔊 Son"}</button>
-    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div><div class="meta">${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
+    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div>${v.prix&&v.wa?`<button type="button" class="shop" data-shop="${v.id}">🛒 Commander · ${String(v.prix).replace(/\B(?=(\d{3})+(?!\d))/g," ")} F</button>`:""}<div class="meta">${v.ville?`📍 ${esc(v.ville)} · `:""}${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
     <div class="rail">
       <div class="fol"><button type="button" class="rb" data-pseudo="${esc(u.pseudo)}" aria-label="Profil de ${esc(u.pseudo)}">${avHTML(u)}</button>${!mine&&!fol?`<button type="button" class="plus" data-follow="${v.uid}" aria-label="S'abonner">+</button>`:""}</div>
       <button type="button" class="rb${liked?" on":""}" data-like="${v.id}" aria-pressed="${liked}"><span class="ic">${IC.heart}</span><span data-n="likes">${kfmt(v.likes)}</span></button>
@@ -201,7 +226,11 @@ async function slideHTML(v){
     </div></section>`;
 }
 const boosted=v=>v.boostFin&&v.boostFin>=new Date().toISOString().slice(0,10);
-function score(v){const h=(Date.now()-new Date(v.le))/36e5;return ((+v.likes||0)*3+(+v.comments||0)*4+(+v.partages||0)*5+(+v.vues||0)*.2+5)/Math.pow(h+2,1.2)*(boosted(v)?50:1)}
+/* Classement « Pour toi » : engagement + taux de visionnage complet + fraîcheur + vos goûts ; déjà vu = relégué. */
+function score(v){const h=(Date.now()-new Date(v.le))/36e5, vues=+v.vues||0, compl=vues?Math.min(1,(+v.vuesCompletes||0)/vues):.5;
+  const eng=(+v.likes||0)*3+(+v.comments||0)*4+(+v.partages||0)*6+(+v.commandes||0)*6+vues*.2+5;
+  const seen=INT.seen[v.id]&&(Date.now()-INT.seen[v.id]<3*864e5)?.15:1;
+  return eng*(.5+compl*1.5)/Math.pow(h+2,1.15)*affinity(v)*seen*(boosted(v)?50:1)}
 /* ---------- Publicités : une annonce toutes les PUB_EVERY vidéos, en rotation ---------- */
 const PUB_EVERY=6; let pubs=[], pubSeen=new Set();
 async function loadPubs(){try{const t=new Date().toISOString().slice(0,10);const s=await fdb.collection("pubs").where("actif","==",true).limit(30).get();
@@ -218,7 +247,12 @@ async function loadFeed(){
   const feed=$("#feed"); feed.innerHTML=`<div class="empty"><div><b>Chargement…</b></div></div>`;
   feedList=[]; lastFeedDoc=null; noMore=false;
   try{
-    if(feedMode==="abo"){
+    if(feedMode==="pres"){
+      const ville=prefs.ville||(meDoc&&meDoc.ville)||"";
+      if(!ville){feed.innerHTML=`<div class="empty"><div><b>Près de moi</b>Indiquez votre ville pour voir les vidéos de votre région.<br><br><button class="btn hot" type="button" data-settings>Choisir ma ville</button></div></div>`;return}
+      const s=await fdb.collection("videos").where("ville","==",ville).limit(80).get();
+      feedList=s.docs.map(d=>({id:d.id,...d.data()})).filter(visible).sort((a,b)=>score(b)-score(a)); noMore=true;
+    } else if(feedMode==="abo"){
       if(!me){feed.innerHTML=`<div class="empty"><div><b>Vos abonnements</b>Connectez-vous pour voir les vidéos des personnes que vous suivez.<br><br><button class="btn hot" type="button" data-login>Se connecter</button></div></div>`;return}
       const ids=[...followSet]; if(!ids.length){feed.innerHTML=`<div class="empty"><div><b>Aucun abonnement</b>Abonnez-vous à des créateurs avec le bouton + sur leurs vidéos.</div></div>`;return}
       const L=[]; for(let i=0;i<ids.length&&i<90;i+=30){const s=await fdb.collection("videos").where("uid","in",ids.slice(i,i+30)).limit(60).get();s.docs.forEach(d=>L.push({id:d.id,...d.data()}))}
@@ -260,6 +294,9 @@ $("#feed").addEventListener("click",e=>{
 document.addEventListener("click",async e=>{
   const pc=e.target.closest("[data-pubclick]"); if(pc){const p=pubs.find(x=>x.id===pc.dataset.pubclick);if(p){fdb.doc("pubs/"+p.id).update({clics:inc(1)}).catch(()=>{});window.open(pubLink(p),"_blank","noopener")}return}
   const bo=e.target.closest("[data-boost]"); if(bo){e.preventDefault();return openBoost(bo.dataset.boost)}
+  const sh=e.target.closest("[data-shop]"); if(sh){const v=feedList.find(x=>x.id===sh.dataset.shop);if(v){const d=String(v.wa).replace(/\D/g,"");fdb.doc("videos/"+v.id).update({commandes:inc(1)}).catch(()=>{});bump(v,4);
+    window.open("https://wa.me/"+(d.length===10?"225"+d:d)+"?text="+encodeURIComponent(`Bonjour, je veux commander l'article de votre vidéo sur ${APP.nom} : « ${(v.legende||"").slice(0,60)} » (${v.prix} F).`),"_blank","noopener")}return}
+  const st=e.target.closest("[data-settings]"); if(st){return openSettings()}
   const tp=e.target.closest("[data-tip]"); if(tp){return openTip(tp.dataset.tip)}
   const rv=e.target.closest("[data-revenus]"); if(rv){return openRevenus()}
   const t=e.target.closest("[data-mute],[data-like],[data-com],[data-share],[data-report],[data-follow],[data-pseudo],[data-tag],[data-nav],[data-ff],[data-login],[data-reload],[data-close],[data-unfollow],[data-vid],[data-logout],[data-editprof],[data-del],[data-admin]");
@@ -291,7 +328,7 @@ async function toggleLike(id){
   const on=!likedSet.has(id), b=fdb.batch();
   b[on?"set":"delete"](fdb.doc(`videos/${id}/likes/${me.uid}`),...(on?[{le:new Date().toISOString()}]:[]));
   b.update(fdb.doc("videos/"+id),{likes:inc(on?1:-1)});
-  on?likedSet.add(id):likedSet.delete(id);
+  on?likedSet.add(id):likedSet.delete(id); bump(feedList.find(y=>y.id===id),on?3:-3);
   document.querySelectorAll(`[data-like="${id}"]`).forEach(x=>{x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on));const n=x.querySelector("[data-n]");const v=feedList.find(y=>y.id===id);if(v){v.likes=(+v.likes||0)+(on?1:-1);n.textContent=kfmt(v.likes)}});
   try{await b.commit()}catch(e){on?likedSet.delete(id):likedSet.add(id);toast(errMsg(e))}
 }
@@ -299,7 +336,7 @@ async function share(id){
   const v=feedList.find(x=>x.id===id)||{}; const url=location.origin+location.pathname+"?v="+id;
   const txt=`${(v.legende||"Regarde cette vidéo").slice(0,80)} · ${APP.nom}`;
   try{ if(navigator.share){await navigator.share({title:APP.nom,text:txt,url})} else {window.open("https://wa.me/?text="+encodeURIComponent(txt+" "+url),"_blank","noopener")}
-    fdb.doc("videos/"+id).update({partages:inc(1)}).catch(()=>{}) }catch(_){}
+    fdb.doc("videos/"+id).update({partages:inc(1)}).catch(()=>{}); bump(v,4) }catch(_){}
 }
 async function follow(uid,on){
   if(needLogin("Connectez-vous pour vous abonner.")) return;
@@ -307,7 +344,7 @@ async function follow(uid,on){
   const b=fdb.batch(), f=fdb.doc(`follows/${me.uid}_${uid}`);
   if(on) b.set(f,{de:me.uid,vers:uid,le:new Date().toISOString()}); else b.delete(f);
   b.update(fdb.doc("users/"+uid),{followers:inc(on?1:-1)}); b.update(fdb.doc("users/"+me.uid),{following:inc(on?1:-1)});
-  try{await b.commit();on?followSet.add(uid):followSet.delete(uid);if(users[uid]) users[uid].followers=(+users[uid].followers||0)+(on?1:-1);
+  try{await b.commit();on?followSet.add(uid):followSet.delete(uid);INT.u[uid]=(INT.u[uid]||0)+(on?8:-8);LS.set("k-int",INT);if(users[uid]) users[uid].followers=(+users[uid].followers||0)+(on?1:-1);
     document.querySelectorAll(`[data-follow="${uid}"]`).forEach(x=>{if(x.classList.contains("plus")) x.remove()});toast(on?"Abonné":"Abonnement retiré");
     if(!$("#p-profil").hidden&&profUid===uid) renderProfile(uid)}
   catch(e){toast(errMsg(e))}
@@ -328,7 +365,7 @@ function openComments(id){
   const f=$("#cm-f"); f.onsubmit=async e=>{e.preventDefault();const t=$("#cm-t");const txt=t.value.trim();if(!txt) return;
     if(meDoc.bloque){toast("Votre compte est suspendu.");return}
     const b=fdb.batch();b.set(fdb.collection(`videos/${id}/comments`).doc(),{uid:me.uid,texte:txt.slice(0,300),le:new Date().toISOString()});b.update(fdb.doc("videos/"+id),{comments:inc(1)});
-    t.value="";try{await b.commit();const v=feedList.find(x=>x.id===id);if(v){v.comments=(+v.comments||0)+1;document.querySelectorAll(`[data-com="${id}"] [data-n]`).forEach(n=>n.textContent=kfmt(v.comments))}}catch(e){toast(errMsg(e));t.value=txt}};
+    t.value="";try{await b.commit();const v=feedList.find(x=>x.id===id);bump(v,3);if(v){v.comments=(+v.comments||0)+1;document.querySelectorAll(`[data-com="${id}"] [data-n]`).forEach(n=>n.textContent=kfmt(v.comments))}}catch(e){toast(errMsg(e));t.value=txt}};
 }
 function report(id){
   if(needLogin("Connectez-vous pour signaler une vidéo.")) return;
@@ -432,7 +469,7 @@ async function renderProfile(uid){
   if(me&&!mine){try{const f=await fdb.doc(`follows/${me.uid}_${uid}`).get();f.exists?followSet.add(uid):followSet.delete(uid)}catch(_){}}
   let V=[]; try{const s=await fdb.collection("videos").where("uid","==",uid).limit(120).get();V=s.docs.map(d=>({id:d.id,...d.data()})).filter(v=>!v.supprime&&(!v.cache||mine||isAdm)).sort((a,b)=>b.le.localeCompare(a.le))}catch(_){}
   const totLikes=V.reduce((s,v)=>s+(+v.likes||0),0);
-  P.innerHTML=`<div class="wrap"><div class="row" style="justify-content:space-between">${!mine?`<button class="btn sm" type="button" data-nav="feed">‹ Retour</button>`:"<span></span>"}${mine?`<span class="row">${isAdm?`<button class="btn sm" type="button" data-revenus>💰 Revenus & pubs</button><button class="btn sm" type="button" data-admin>Modération</button>`:""}<button class="btn sm" type="button" data-logout>Se déconnecter</button></span>`:""}</div>
+  P.innerHTML=`<div class="wrap"><div class="row" style="justify-content:space-between">${!mine?`<button class="btn sm" type="button" data-nav="feed">‹ Retour</button>`:"<span></span>"}${mine?`<span class="row">${isAdm?`<button class="btn sm" type="button" data-revenus>💰 Revenus & pubs</button><button class="btn sm" type="button" data-admin>Modération</button>`:""}<button class="btn sm" type="button" data-settings>⚙ Réglages</button><button class="btn sm" type="button" data-logout>Se déconnecter</button></span>`:""}</div>
     <div class="prof">${avHTML(u)}<h2>@${esc(u.pseudo)}</h2>${u.nom?`<div>${esc(u.nom)}</div>`:""}
       <div class="stats"><div><b>${kfmt(u.following)}</b><span>Abonnements</span></div><div><b>${kfmt(u.followers)}</b><span>Abonnés</span></div><div><b>${kfmt(totLikes)}</b><span>J'aime</span></div></div>
       ${u.bio?`<p style="margin:0;max-width:420px;overflow-wrap:anywhere">${capHTML(u.bio)}</p>`:""}
@@ -477,10 +514,13 @@ function renderPublish(){
     <video id="pb-prev" playsinline controls hidden style="width:100%;max-height:50dvh;background:#000;border-radius:12px"></video>
     <p class="muted" id="pb-info" style="margin:0">Format vertical conseillé · 3 minutes maximum · 100 Mo maximum</p>
     <label class="lab">Légende<textarea class="in" id="pb-cap" maxlength="300" placeholder="Décrivez votre vidéo… #mankono #cacao"></textarea></label>
+    <label class="lab">Ville / localité<input class="in" id="pb-ville" maxlength="40" value="${esc(prefs.ville||meDoc.ville||"")}" placeholder="Ex. Mankono"></label>
+    <label class="chk"><input type="checkbox" id="pb-sell"> Je vends ce produit (bouton « Commander » sous la vidéo)</label>
+    <div id="pb-sellf" class="row" hidden><label class="lab" style="flex:1">Prix (FCFA)<input class="in" id="pb-prix" inputmode="numeric"></label><label class="lab" style="flex:1">WhatsApp pour commander<input class="in" id="pb-wa" type="tel" value="${esc(((meDoc.momo||{}).wa)||"")}"></label></div>
     <div class="bar" id="pb-bar" hidden><i></i></div>
     <p class="err" id="pb-err" role="alert"></p>
     <button class="btn hot" type="submit" id="pb-go" disabled>Publier</button></form></div>`;
-  let file=null,dur=0;
+  let file=null,dur=0; $("#pb-sell").onchange=e=>{$("#pb-sellf").hidden=!e.target.checked};
   $("#pb-file").onchange=e=>{file=e.target.files[0];const er=$("#pb-err");er.textContent="";if(!file) return;
     if(!/^video\//.test(file.type)){er.textContent="Ce fichier n'est pas une vidéo.";file=null;return}
     if(file.size>100*1024*1024){er.textContent="Vidéo trop lourde (100 Mo maximum).";file=null;return}
@@ -492,9 +532,12 @@ function renderPublish(){
     go_.disabled=true;go_.textContent="Envoi… ne fermez pas la page";bar.hidden=false;er.textContent="";
     try{
       const r=await uploadCld(file,p=>bar.firstElementChild.style.width=Math.round(p*100)+"%");
+      const vil=$("#pb-ville").value.trim(); if(vil&&vil!==prefs.ville){prefs.ville=vil;LS.set("k-prefs",prefs)}
       const legende=$("#pb-cap").value.trim().slice(0,300), b=fdb.batch(), ref=fdb.collection("videos").doc();
       b.set(ref,{uid:me.uid,url:cldVideo(r.public_id),poster:cldPoster(r.public_id),pid:r.public_id,duree:Math.round(r.duration||dur||0),largeur:r.width||0,hauteur:r.height||0,
-        legende,tags:tagsOf(legende),likes:0,comments:0,vues:0,partages:0,cache:false,supprime:false,le:new Date().toISOString()});
+        legende,tags:tagsOf(legende),ville:$("#pb-ville").value.trim().slice(0,40),
+        ...($("#pb-sell").checked&&+$("#pb-prix").value.replace(/\D/g,"")>0&&$("#pb-wa").value.replace(/\D/g,"").length>=8?{prix:+$("#pb-prix").value.replace(/\D/g,""),wa:$("#pb-wa").value.replace(/[^\d+]/g,"")}:{}),
+        likes:0,comments:0,vues:0,partages:0,cache:false,supprime:false,le:new Date().toISOString()});
       b.update(fdb.doc("users/"+me.uid),{videos:inc(1)});
       await b.commit(); P.dataset.done="1"; toast("Vidéo publiée !"); feedMode="pourtoi"; go("feed"); loadFeed();
     }catch(x){er.textContent=x&&x.cld?x.cld:errMsg(x);go_.disabled=false;go_.textContent="Réessayer";bar.hidden=true}};
@@ -507,6 +550,22 @@ function uploadCld(file,onp,kind){return new Promise((ok,ko)=>{
     if(x.status>=200&&x.status<300&&j.public_id) ok(j); else ko({cld:"Envoi refusé par l'hébergeur vidéo"+(j.error&&j.error.message?" : "+j.error.message:"")+"."})};
   x.onerror=()=>ko({cld:"Envoi interrompu (connexion). Réessayez avec un meilleur réseau."});
   x.send(fd)})}
+
+/* ================= RÉGLAGES (sur cet appareil) ================= */
+function openSettings(){
+  const ct=conn.effectiveType?` (réseau détecté : ${conn.effectiveType}${conn.saveData?", économie activée sur le téléphone":""})`:"";
+  openDlg(`<div class="sheet"><div class="hd"><h3>Réglages</h3><button class="x" type="button" data-close>×</button></div><form class="bd" id="st-f">
+    <label class="lab">Qualité vidéo / consommation de données${ct}<select class="in" id="st-eco"><option value="auto">Automatique selon le réseau</option><option value="on">Économie de données (480p, ~3 fois moins de Mo)</option><option value="off">Haute qualité (720p)</option></select></label>
+    <label class="lab">Ma ville (pour « Près de moi »)<input class="in" id="st-ville" maxlength="40" value="${esc(prefs.ville||"")}" placeholder="Ex. Mankono"></label>
+    <button class="btn hot" type="submit">Enregistrer</button>
+    <button class="btn" type="button" id="st-reset">Réinitialiser mes recommandations</button>
+    <p class="muted" style="margin:0;font-size:.8rem">Vos goûts (vidéos regardées en entier, j'aime, partages) restent sur votre téléphone et servent uniquement à classer le fil « Pour toi ».</p></form></div>`);
+  $("#st-eco").value=prefs.eco||"auto";
+  $("#st-f").onsubmit=async e=>{e.preventDefault();prefs={...prefs,eco:$("#st-eco").value,ville:$("#st-ville").value.trim().slice(0,40)};LS.set("k-prefs",prefs);
+    if(me&&meDoc&&prefs.ville!==meDoc.ville){fdb.doc("users/"+me.uid).update({ville:prefs.ville}).then(()=>meDoc.ville=prefs.ville).catch(()=>{})}
+    closeDlg();toast("Réglages enregistrés");loadFeed()};
+  $("#st-reset").onclick=()=>{INT={t:{},u:{},seen:{}};LS.set("k-int",INT);toast("Recommandations réinitialisées");closeDlg();loadFeed()};
+}
 
 /* ================= REVENUS ================= */
 const fc=n=>String(Math.round(+n||0)).replace(/\B(?=(\d{3})+(?!\d))/g," ")+" FCFA";
