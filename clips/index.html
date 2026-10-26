@@ -211,7 +211,7 @@ function activate(sl){
   const v=sl.querySelector("video"); if(!v) return; v.muted=muted; const p=v.play(); if(p&&p.catch) p.catch(()=>{v.muted=true;muted=true;v.play().catch(()=>{});updMute()});
   sl.querySelector(".pausei").hidden=true;
   trackWatch(sl,v);
-  const id=sl.dataset.id; if(id&&!viewed.has(id)){clearTimeout(activate.t);activate.t=setTimeout(()=>{if(!viewed.has(id)&&!v.paused){viewed.add(id);fdb.doc("videos/"+id).update({vues:inc(1)}).catch(()=>{})}},3000)}
+  const id=sl.dataset.id; if(id&&!viewed.has(id)){clearTimeout(activate.t);activate.t=setTimeout(()=>{if(!viewed.has(id)&&!v.paused){viewed.add(id);fdb.doc("videos/"+id).update({vues:inc(1)}).catch(()=>{});if(me) fdb.doc(`videos/${id}/vues/${me.uid}`).set({le:new Date().toISOString()}).catch(()=>{})}},3000)}
   if(i>=all.length-3) loadMore();
 }
 /* Suivi du visionnage : vidéo regardée à 80 % = signal fort ; zappée en moins de 2 s = signal négatif. */
@@ -316,6 +316,8 @@ document.addEventListener("click",async e=>{
   const st=e.target.closest("[data-settings]"); if(st){return openSettings()}
   const tp=e.target.closest("[data-tip]"); if(tp){return openTip(tp.dataset.tip)}
   const rv=e.target.closest("[data-revenus]"); if(rv){return openRevenus()}
+  const sx=e.target.closest("[data-stats]"); if(sx){e.preventDefault();e.stopPropagation();return openStats(sx.dataset.stats)}
+  const cx=e.target.closest("[data-connectes]"); if(cx){return openConnectes()}
   const t=e.target.closest("[data-mute],[data-like],[data-com],[data-share],[data-report],[data-follow],[data-pseudo],[data-tag],[data-nav],[data-ff],[data-login],[data-reload],[data-close],[data-unfollow],[data-vid],[data-logout],[data-editprof],[data-del],[data-admin]");
   if(!t) return;
   if(t.matches("a")) e.preventDefault();
@@ -353,7 +355,7 @@ async function share(id){
   const v=feedList.find(x=>x.id===id)||{}; const url=location.origin+location.pathname+"?v="+id;
   const txt=`${(v.legende||"Regarde cette vidéo").slice(0,80)} · ${APP.nom}`;
   try{ if(navigator.share){await navigator.share({title:APP.nom,text:txt,url})} else {window.open("https://wa.me/?text="+encodeURIComponent(txt+" "+url),"_blank","noopener")}
-    fdb.doc("videos/"+id).update({partages:inc(1)}).catch(()=>{}); bump(v,4) }catch(_){}
+    fdb.doc("videos/"+id).update({partages:inc(1)}).catch(()=>{}); if(me) fdb.doc(`videos/${id}/partages/${me.uid}`).set({le:new Date().toISOString()}).catch(()=>{}); bump(v,4) }catch(_){}
 }
 async function follow(uid,on){
   if(needLogin("Connectez-vous pour vous abonner.")) return;
@@ -486,14 +488,14 @@ async function renderProfile(uid){
   if(me&&!mine){try{const f=await fdb.doc(`follows/${me.uid}_${uid}`).get();f.exists?followSet.add(uid):followSet.delete(uid)}catch(_){}}
   let V=[]; try{const s=await fdb.collection("videos").where("uid","==",uid).limit(120).get();V=s.docs.map(d=>({id:d.id,...d.data()})).filter(v=>!v.supprime&&(!v.cache||mine||isAdm)).sort((a,b)=>b.le.localeCompare(a.le))}catch(_){}
   const totLikes=V.reduce((s,v)=>s+(+v.likes||0),0);
-  P.innerHTML=`<div class="wrap"><div class="row" style="justify-content:space-between">${!mine?`<button class="btn sm" type="button" data-nav="feed">‹ Retour</button>`:"<span></span>"}${mine?`<span class="row">${isAdm?`<button class="btn sm" type="button" data-revenus>💰 Revenus & pubs</button><button class="btn sm" type="button" data-admin>Modération</button>`:""}<button class="btn sm" type="button" data-settings>⚙ Réglages</button><button class="btn sm" type="button" data-logout>Se déconnecter</button></span>`:""}</div>
+  P.innerHTML=`<div class="wrap"><div class="row" style="justify-content:space-between">${!mine?`<button class="btn sm" type="button" data-nav="feed">‹ Retour</button>`:"<span></span>"}${mine?`<span class="row">${isAdm?`<button class="btn sm" type="button" data-revenus>💰 Revenus & pubs</button><button class="btn sm" type="button" data-connectes>👥 Connectés</button><button class="btn sm" type="button" data-admin>Modération</button>`:""}<button class="btn sm" type="button" data-settings>⚙ Réglages</button><button class="btn sm" type="button" data-logout>Se déconnecter</button></span>`:""}</div>
     <div class="prof">${avHTML(u)}<h2>@${esc(u.pseudo)}</h2>${u.nom?`<div>${esc(u.nom)}</div>`:""}
       <div class="stats"><div><b>${kfmt(u.following)}</b><span>Abonnements</span></div><div><b>${kfmt(u.followers)}</b><span>Abonnés</span></div><div><b>${kfmt(totLikes)}</b><span>J'aime</span></div></div>
       ${u.bio?`<p style="margin:0;max-width:420px;overflow-wrap:anywhere">${capHTML(u.bio)}</p>`:""}
       ${u.bloque?`<span class="pill" style="color:var(--bad)">Compte suspendu</span>`:""}
       <div class="row" style="justify-content:center">${mine?`<button class="btn" type="button" data-editprof>Modifier le profil</button>`:me&&followSet.has(uid)?`<button class="btn" type="button" data-unfollow="${uid}">Abonné ✓</button>`:`<button class="btn hot" type="button" data-follow="${uid}">S'abonner</button>`}
         ${!mine&&canCall(u)?`<a class="btn hot" href="${telHref(u)}" style="text-decoration:none;display:inline-grid;place-items:center">📞 Appeler</a>`:""}${u.momo&&["om","mtn","moov","wave"].some(k=>u.momo[k])?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
-    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0">🗑</button>`:""}</div>`).join("")}</div>`
+    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Supprimer">🗑</button><button class="btn sm" type="button" data-stats="${v.id}" style="position:absolute;top:4px;left:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Qui a vu, aimé, partagé">📊</button>`:""}</div>`).join("")}</div>`
       :`<p class="muted" style="text-align:center">${mine?"Vous n'avez pas encore publié. Touchez + pour commencer.":"Aucune vidéo pour le moment."}</p>`}</div>`;
   $("#pf-share").onclick=()=>{const url=location.origin+location.pathname+"?u="+u.pseudo;navigator.share?navigator.share({title:"@"+u.pseudo,url}).catch(()=>{}):window.open("https://wa.me/?text="+encodeURIComponent(`@${u.pseudo} sur ${APP.nom} : ${url}`),"_blank","noopener")};
   const ban=$("#pf-ban"); if(ban) ban.onclick=async()=>{try{await fdb.doc("users/"+uid).update({bloque:!u.bloque});toast(u.bloque?"Compte débloqué":"Compte bloqué");renderProfile(uid)}catch(e){toast(errMsg(e))}};
@@ -678,6 +680,44 @@ async function openAdmin(){
     try{await bb.commit();toast("Décision enregistrée");b.closest(".card").remove()}catch(e){toast(errMsg(e))}});
 }
 
+/* ================= QUI A VU / AIMÉ / PARTAGÉ ; QUI EST CONNECTÉ ================= */
+let presT=0;
+function presence(){if(!me||!meDoc) return;const now=Date.now();if(now-presT<120000) return;presT=now;
+  fdb.doc("users/"+me.uid).update({vu:new Date().toISOString()}).catch(()=>{})}
+setInterval(()=>{if(document.visibilityState==="visible") presence()},150000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") presence()});
+const enLigne=iso=>iso&&(Date.now()-new Date(iso))<5*60000;
+async function peopleRows(docs){
+  if(!docs.length) return `<p class="muted">Personne pour le moment.</p>`;
+  const rows=await Promise.all(docs.map(async d=>{const u=await getUser(d.id);const le=d.data().le;
+    return `<button class="urow" type="button" data-pseudo="${esc(u.pseudo)}">${avHTML(u)}<span><b>@${esc(u.pseudo)}</b>${u.nom?` · ${esc(u.nom)}`:""}<br><span class="muted">${le?ago(le):""}</span></span></button>`}));
+  return rows.join("")}
+async function openStats(id){
+  openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>Statistiques de la vidéo</h3><button class="x" type="button" data-close>×</button></div><div class="bd">
+    <div class="row" id="st-tabs" role="tablist" style="gap:6px"></div><p class="muted" id="st-note" style="margin:0;font-size:.8rem"></p><div id="st-l"><p class="muted">Chargement…</p></div></div></div>`);
+  let v={};try{const s=await fdb.doc("videos/"+id).get();v=s.exists?s.data():{}}catch(_){}
+  const T=[["vues","👁 Vues",v.vues],["likes","❤️ J'aime",v.likes],["partages","↗ Partages",v.partages]];
+  const tabs=$("#st-tabs");
+  tabs.innerHTML=T.map(([k,l,n],i)=>`<button class="btn sm${i?"":" hot"}" type="button" role="tab" aria-selected="${!i}" data-st="${k}">${l} · ${kfmt(+n||0)}</button>`).join("");
+  const show=async k=>{tabs.querySelectorAll("[data-st]").forEach(b=>{const on=b.dataset.st===k;b.classList.toggle("hot",on);b.setAttribute("aria-selected",on)});
+    $("#st-l").innerHTML=`<p class="muted">Chargement…</p>`;
+    $("#st-note").textContent=k==="likes"?"":"Seules les personnes connectées à leur compte apparaissent ici ; le total compte aussi les visiteurs sans compte.";
+    try{const s=await fdb.collection(`videos/${id}/${k}`).orderBy("le","desc").limit(150).get();$("#st-l").innerHTML=await peopleRows(s.docs)}
+    catch(e){$("#st-l").innerHTML=`<p class="muted">${esc(errMsg(e))}</p>`}};
+  tabs.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>show(b.dataset.st));
+  show("vues");
+}
+async function openConnectes(){
+  openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>Personnes connectées</h3><button class="x" type="button" data-close>×</button></div><div class="bd"><div id="cx-l"><p class="muted">Chargement…</p></div></div></div>`);
+  try{const since=new Date(Date.now()-864e5).toISOString();
+    const s=await fdb.collection("users").where("vu",">=",since).orderBy("vu","desc").limit(200).get();
+    const L=s.docs.map(d=>({id:d.id,...d.data()}));L.forEach(u=>users[u.id]=u);
+    const on=L.filter(u=>enLigne(u.vu)).length;
+    $("#cx-l").innerHTML=`<p style="margin:0 0 6px"><b>🟢 ${on} en ligne maintenant</b> · ${L.length} connecté(s) ces dernières 24 h</p>`+
+      (L.length?L.map(u=>`<button class="urow" type="button" data-pseudo="${esc(u.pseudo)}">${avHTML(u)}<span><b>@${esc(u.pseudo)}</b>${u.nom?` · ${esc(u.nom)}`:""}<br><span class="muted">${enLigne(u.vu)?"🟢 en ligne":"vu il y a "+ago(u.vu)}${u.ville?" · "+esc(u.ville):""}</span></span></button>`).join(""):`<p class="muted">Personne ces dernières 24 h.</p>`)}
+  catch(e){$("#cx-l").innerHTML=`<p class="muted">${esc(errMsg(e))}</p>`}
+}
+
 /* ================= DÉMARRAGE ================= */
 async function loadMe(){ if(!me){meDoc=null;return} try{const s=await fdb.doc("users/"+me.uid).get();meDoc=s.exists?{id:me.uid,...s.data()}:null;if(meDoc) users[me.uid]=meDoc}catch(_){meDoc=null} }
 async function loadFollows(){followSet.clear();if(!me) return;try{const s=await fdb.collection("follows").where("de","==",me.uid).limit(500).get();s.docs.forEach(d=>followSet.add(d.data().vers))}catch(_){}}
@@ -695,7 +735,7 @@ async function init(){
       openLogin("Choisissez votre pseudo pour terminer l'inscription.",true);}
     if(me&&meDoc&&!adminUid){ // le tout premier inscrit devient administrateur (modération)
       try{await fdb.doc("config/admin").set({uid:me.uid,le:new Date().toISOString()});adminUid=me.uid}catch(_){} }
-    await loadFollows();
+    await loadFollows(); presence();
     if(first){first=false;const q=new URLSearchParams(location.search);
       if(q.get("v")){await loadFeed();openSingle(q.get("v"))} else if(q.get("u")){await loadFeed();openProfileByPseudo(q.get("u"))} else loadFeed()}
     else if(!$("#p-profil").hidden&&me) renderProfile(profUid||me.uid);

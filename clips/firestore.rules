@@ -40,6 +40,7 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/pseudos/$(request.resource.data.pseudo));
       allow update: if (moi(uid) && seuls(['nom', 'bio', 'photo', 'momo', 'ville']))
         || (moi(uid) && seuls(['videos']))
+        || (moi(uid) && seuls(['vu']) && request.resource.data.vu is string)
         || (moi(uid) && seuls(['following']))
         || (connecte() && seuls(['followers']) && (
               (request.resource.data.followers == resource.data.followers + 1
@@ -83,6 +84,17 @@ service cloud.firestore {
         || (admin() && seuls(['cache', 'boostFin']));
       allow delete: if false;
 
+      // Qui a vu / partagé : chacun n'écrit que sa propre ligne ; seuls l'auteur de la vidéo et l'administrateur lisent la liste.
+      match /vues/{uid} {
+        allow read: if connecte() && (get(/databases/$(database)/documents/videos/$(id)).data.uid == request.auth.uid || admin());
+        allow create, update: if moi(uid) && request.resource.data.keys().hasOnly(['le']) && request.resource.data.le is string;
+        allow delete: if false;
+      }
+      match /partages/{uid} {
+        allow read: if connecte() && (get(/databases/$(database)/documents/videos/$(id)).data.uid == request.auth.uid || admin());
+        allow create, update: if moi(uid) && request.resource.data.keys().hasOnly(['le']) && request.resource.data.le is string;
+        allow delete: if false;
+      }
       match /likes/{uid} {
         allow read: if true;
         allow create, delete: if moi(uid);
