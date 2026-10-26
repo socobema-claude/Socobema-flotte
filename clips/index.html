@@ -316,6 +316,7 @@ document.addEventListener("click",async e=>{
   const st=e.target.closest("[data-settings]"); if(st){return openSettings()}
   const tp=e.target.closest("[data-tip]"); if(tp){return openTip(tp.dataset.tip)}
   const rv=e.target.closest("[data-revenus]"); if(rv){return openRevenus()}
+  const ab=e.target.closest("[data-askboost]"); if(ab){e.preventDefault();e.stopPropagation();return askBoost(ab.dataset.askboost)}
   const sx=e.target.closest("[data-stats]"); if(sx){e.preventDefault();e.stopPropagation();return openStats(sx.dataset.stats)}
   const cx=e.target.closest("[data-connectes]"); if(cx){return openConnectes()}
   const t=e.target.closest("[data-mute],[data-like],[data-com],[data-share],[data-report],[data-follow],[data-pseudo],[data-tag],[data-nav],[data-ff],[data-login],[data-reload],[data-close],[data-unfollow],[data-vid],[data-logout],[data-editprof],[data-del],[data-admin]");
@@ -495,7 +496,7 @@ async function renderProfile(uid){
       ${u.bloque?`<span class="pill" style="color:var(--bad)">Compte suspendu</span>`:""}
       <div class="row" style="justify-content:center">${mine?`<button class="btn" type="button" data-editprof>Modifier le profil</button>`:me&&followSet.has(uid)?`<button class="btn" type="button" data-unfollow="${uid}">Abonné ✓</button>`:`<button class="btn hot" type="button" data-follow="${uid}">S'abonner</button>`}
         ${!mine&&canCall(u)?`<a class="btn hot" href="${telHref(u)}" style="text-decoration:none;display:inline-grid;place-items:center">📞 Appeler</a>`:""}${u.momo&&["om","mtn","moov","wave"].some(k=>u.momo[k])?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
-    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Supprimer">🗑</button><button class="btn sm" type="button" data-stats="${v.id}" style="position:absolute;top:4px;left:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Qui a vu, aimé, partagé">📊</button>`:""}</div>`).join("")}</div>`
+    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Supprimer">🗑</button><button class="btn sm" type="button" data-stats="${v.id}" style="position:absolute;top:4px;left:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Qui a vu, aimé, partagé">📊</button><button class="btn sm" type="button" data-askboost="${v.id}" style="position:absolute;bottom:4px;left:4px;min-height:26px;padding:2px 8px;background:var(--hot);color:#fff;border:0">⚡ Booster</button>`:""}</div>`).join("")}</div>`
       :`<p class="muted" style="text-align:center">${mine?"Vous n'avez pas encore publié. Touchez + pour commencer.":"Aucune vidéo pour le moment."}</p>`}</div>`;
   $("#pf-share").onclick=()=>{const url=location.origin+location.pathname+"?u="+u.pseudo;navigator.share?navigator.share({title:"@"+u.pseudo,url}).catch(()=>{}):window.open("https://wa.me/?text="+encodeURIComponent(`@${u.pseudo} sur ${APP.nom} : ${url}`),"_blank","noopener")};
   const ban=$("#pf-ban"); if(ban) ban.onclick=async()=>{try{await fdb.doc("users/"+uid).update({bloque:!u.bloque});toast(u.bloque?"Compte débloqué":"Compte bloqué");renderProfile(uid)}catch(e){toast(errMsg(e))}};
@@ -628,7 +629,7 @@ async function openRevenus(){
       <div class="row"><button class="btn sm" type="button" data-pubrep="${p.id}">Envoyer le bilan</button>${on?`<button class="btn sm" type="button" data-pubstop="${p.id}">Arrêter</button>`:""}</div></div>`}).join(""):`<p class="muted">Aucune publicité. Proposez des annonces aux commerces de votre région : le fil affiche une annonce toutes les ${PUB_EVERY} vidéos.</p>`}
     <h3>Encaissements</h3>${R.length?`<div class="card" style="gap:6px">${R.slice(0,40).map(x=>`<div class="row" style="justify-content:space-between;font-size:.88rem"><span>${esc(x.jour)} · ${x.type==="pub"?"Publicité":x.type==="boost"?"Boost":"Autre"} ${esc(x.libelle||"")} <span class="muted">${esc(x.mode||"")}</span></span><b>${fc(x.montant)}</b></div>`).join("")}</div>`:`<p class="muted">Aucun encaissement.</p>`}
     <button class="btn" type="button" id="rv-add">+ Autre encaissement</button>`;
-  $("#rv-new").onclick=newPub;
+  $("#rv-new").onclick=newPub; boostAdmin();
   $("#rv-add").onclick=async()=>{const l=prompt("Libellé (ex. partenariat, soutien…)");if(!l) return;const mt=Math.round(+String(prompt("Montant (FCFA)")||"").replace(/\D/g,""));if(!mt) return;
     await fdb.collection("revenus").add({type:"autre",libelle:l.slice(0,60),montant:mt,jour:tday(),le:new Date().toISOString()});openRevenus()};
   document.querySelectorAll("[data-pubstop]").forEach(b=>b.onclick=async()=>{await fdb.doc("pubs/"+b.dataset.pubstop).update({actif:false});openRevenus()});
@@ -716,6 +717,66 @@ async function openConnectes(){
     $("#cx-l").innerHTML=`<p style="margin:0 0 6px"><b>🟢 ${on} en ligne maintenant</b> · ${L.length} connecté(s) ces dernières 24 h</p>`+
       (L.length?L.map(u=>`<button class="urow" type="button" data-pseudo="${esc(u.pseudo)}">${avHTML(u)}<span><b>@${esc(u.pseudo)}</b>${u.nom?` · ${esc(u.nom)}`:""}<br><span class="muted">${enLigne(u.vu)?"🟢 en ligne":"vu il y a "+ago(u.vu)}${u.ville?" · "+esc(u.ville):""}</span></span></button>`).join(""):`<p class="muted">Personne ces dernières 24 h.</p>`)}
   catch(e){$("#cx-l").innerHTML=`<p class="muted">${esc(errMsg(e))}</p>`}
+}
+
+/* ================= BOOST PAYANT : demande du créateur, validation par l'administrateur ================= */
+const DUREES=[["1","1 jour"],["3","3 jours"],["7","7 jours"],["30","30 jours"]];
+async function getPaiement(){try{const s=await fdb.doc("config/paiement").get();return s.exists?s.data():null}catch(_){return null}}
+async function askBoost(id){
+  if(!me||!meDoc) return openLogin("Connectez-vous pour booster votre vidéo.");
+  openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>⚡ Booster ma vidéo</h3><button class="x" type="button" data-close>×</button></div><div class="bd" id="ab-b"><p class="muted">Chargement…</p></div></div>`);
+  const P=await getPaiement(), B=$("#ab-b");
+  let mes=[];try{const s=await fdb.collection("demandes").where("uid","==",me.uid).limit(30).get();mes=s.docs.map(d=>d.data()).filter(d=>d.videoId===id).sort((a,b)=>(b.le||"").localeCompare(a.le||""))}catch(_){}
+  const enc=mes.find(d=>d.statut==="attente");
+  if(!P||!P.numero){B.innerHTML=`<p class="muted">Les boosts ne sont pas encore ouverts. Revenez bientôt.</p>`;return}
+  if(enc){B.innerHTML=`<div class="card"><b>⏳ Demande en cours de vérification</b><span class="muted">${esc(DUREES.find(x=>x[0]==String(enc.jours))?.[1]||enc.jours+" j")} · ${fc(enc.montant)} · réf. ${esc(enc.ref)}</span><span class="muted">Le boost démarre dès que le paiement est vérifié.</span></div>`;return}
+  const prix=P.prix||{};const opts=DUREES.filter(([k])=>+prix[k]>0);
+  B.innerHTML=`<form id="ab-f" style="display:grid;gap:12px" novalidate>
+    <p class="muted" style="margin:0">Votre vidéo passe en tête du fil « Pour toi » avec la mention « Sponsorisé ».</p>
+    <label class="lab">Durée<select class="in" id="ab-j">${opts.map(([k,l])=>`<option value="${k}"${k==="7"?" selected":""}>${l} · ${fc(prix[k])}</option>`).join("")}</select></label>
+    <div class="card" style="gap:6px"><span class="muted">1. Envoyez <b id="ab-m"></b> au numéro ${esc(APP.nom)} :</span>
+      <div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:1.25rem;font-variant-numeric:tabular-nums">${esc(P.numero)}</b><button class="btn sm" type="button" id="ab-copy">Copier</button></div>
+      ${P.nom?`<span class="muted">Nom du bénéficiaire : <b>${esc(P.nom)}</b></span>`:""}${P.services?`<span class="muted">Accepté : ${esc(P.services)}</span>`:""}</div>
+    <label class="lab">2. Payé avec<select class="in" id="ab-mode"><option>Wave</option><option>Orange Money</option><option>MTN MoMo</option><option>Moov Money</option></select></label>
+    <label class="lab">3. Référence de la transaction (dans le SMS de confirmation)<input class="in" id="ab-ref" maxlength="40" autocomplete="off"></label>
+    <p class="err" id="ab-err" role="alert"></p><button class="btn hot" type="submit">Envoyer ma demande</button>
+    ${mes.length?`<p class="muted" style="margin:0;font-size:.8rem">Dernière demande : ${mes[0].statut==="validee"?"✅ validée":"❌ refusée"} (${esc(mes[0].jour||"")})</p>`:""}</form>`;
+  const upd=()=>{$("#ab-m").textContent=fc(prix[$("#ab-j").value])};upd();$("#ab-j").onchange=upd;
+  $("#ab-copy").onclick=()=>navigator.clipboard.writeText(P.numero).then(()=>toast("Numéro copié"),()=>toast(P.numero));
+  $("#ab-f").onsubmit=async e=>{e.preventDefault();const ref=$("#ab-ref").value.trim();
+    if(ref.length<4){$("#ab-err").textContent="Entrez la référence reçue par SMS après le paiement.";return}
+    const j=$("#ab-j").value;
+    try{await fdb.collection("demandes").add({uid:me.uid,videoId:id,jours:+j,montant:+prix[j],mode:$("#ab-mode").value,ref,statut:"attente",jour:tday(),le:new Date().toISOString()});
+      closeDlg();toast("Demande envoyée. Le boost démarre dès que le paiement est vérifié.")}catch(x){$("#ab-err").textContent=errMsg(x)}};
+}
+async function boostAdmin(){
+  const box=document.createElement("div");box.style.cssText="display:grid;gap:12px";$("#rv-b").prepend(box);
+  const [P,ds]=await Promise.all([getPaiement(),fdb.collection("demandes").where("statut","==","attente").limit(100).get().catch(()=>({docs:[]}))]);
+  const D=ds.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.le||"").localeCompare(b.le||""));
+  const p=P||{},pr=p.prix||{1:1000,3:2500,7:5000,30:15000};
+  const rows=await Promise.all(D.map(async d=>{const u=await getUser(d.uid);return `<div class="card" style="gap:6px"><div class="row" style="justify-content:space-between"><b>@${esc(u.pseudo)} · ${fc(d.montant)}</b><span class="pill">${d.jours} j</span></div>
+    <span class="muted" style="font-size:.85rem">${esc(d.mode)} · réf. <b style="color:var(--ink)">${esc(d.ref)}</b> · ${ago(d.le)}</span>
+    <div class="row"><button class="btn sm hot" type="button" data-bv="${d.id}">✅ Paiement reçu : valider</button><button class="btn sm" type="button" data-bx="${d.id}">Refuser</button><button class="btn sm" type="button" data-vid="${esc(d.videoId)}">Voir la vidéo</button></div></div>`}));
+  box.innerHTML=`<h3>⚡ Demandes de boost${D.length?` (${D.length})`:""}</h3>${rows.join("")||`<p class="muted" style="margin:0">Aucune demande en attente.</p>`}
+    <details class="card"><summary><b>Réglages du paiement des boosts</b>${p.numero?"":` <span class="pill" style="color:var(--sun)">à remplir</span>`}</summary>
+      <form id="pp-f" style="display:grid;gap:10px;margin-top:10px" novalidate>
+      <label class="lab">Numéro qui reçoit l'argent<input class="in" id="pp-n" type="tel" maxlength="20" value="${esc(p.numero||"")}" placeholder="07 00 00 00 00"></label>
+      <label class="lab">Nom du bénéficiaire (affiché aux créateurs)<input class="in" id="pp-nom" maxlength="40" value="${esc(p.nom||"")}"></label>
+      <label class="lab">Services acceptés<input class="in" id="pp-s" maxlength="80" value="${esc(p.services||"Wave, Orange Money, MTN MoMo, Moov Money")}"></label>
+      <div class="row" style="gap:8px">${DUREES.map(([k,l])=>`<label class="lab" style="flex:1;min-width:120px">${l} (FCFA)<input class="in" id="pp-${k}" inputmode="numeric" value="${+pr[k]||""}"></label>`).join("")}</div>
+      <p class="muted" style="margin:0;font-size:.8rem">Laissez un prix vide pour ne pas proposer cette durée.</p>
+      <p class="err" id="pp-err"></p><button class="btn hot" type="submit">Enregistrer</button></form></details>`;
+  $("#pp-f").onsubmit=async e=>{e.preventDefault();const n=$("#pp-n").value.replace(/[^\d +]/g,"").trim();
+    if(n.replace(/\D/g,"").length<8){$("#pp-err").textContent="Entrez un numéro valide.";return}
+    const prix={};DUREES.forEach(([k])=>{const v=+$("#pp-"+k).value.replace(/\D/g,"");if(v>0) prix[k]=v});
+    try{await fdb.doc("config/paiement").set({numero:n,nom:$("#pp-nom").value.trim(),services:$("#pp-s").value.trim(),prix,le:new Date().toISOString()});toast("Réglages enregistrés")}catch(x){$("#pp-err").textContent=errMsg(x)}};
+  box.querySelectorAll("[data-bv]").forEach(b=>b.onclick=async()=>{const d=D.find(x=>x.id===b.dataset.bv);b.disabled=true;
+    try{const vs=await fdb.doc("videos/"+d.videoId).get();const v=vs.exists?vs.data():{};const start=boosted(v)?v.boostFin:tday(),fin=addD(start,d.jours),bb=fdb.batch();
+      bb.update(fdb.doc("videos/"+d.videoId),{boostFin:fin});
+      bb.set(fdb.collection("revenus").doc(),{type:"boost",videoId:d.videoId,uid:d.uid,montant:d.montant,jours:d.jours,mode:d.mode,ref:d.ref,jour:tday(),le:new Date().toISOString()});
+      bb.update(fdb.doc("demandes/"+d.id),{statut:"validee",par:me.uid,traiteLe:new Date().toISOString()});
+      await bb.commit();const f=feedList.find(x=>x.id===d.videoId);if(f) f.boostFin=fin;toast("Boost actif jusqu'au "+fin);openRevenus()}catch(x){b.disabled=false;toast(errMsg(x))}});
+  box.querySelectorAll("[data-bx]").forEach(b=>b.onclick=async()=>{try{await fdb.doc("demandes/"+b.dataset.bx).update({statut:"refusee",par:me.uid,traiteLe:new Date().toISOString()});toast("Demande refusée");b.closest(".card").remove()}catch(x){toast(errMsg(x))}});
 }
 
 /* ================= DÉMARRAGE ================= */

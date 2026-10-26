@@ -24,6 +24,23 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Réglages du paiement des boosts (numéro, prix) : lus par tous, modifiés par l'administrateur.
+    match /config/paiement {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Demandes de boost payées par les créateurs, validées par l'administrateur.
+    match /demandes/{id} {
+      allow create: if connecte() && pasBloque() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.statut == 'attente'
+        && request.resource.data.ref is string && request.resource.data.ref.size() <= 40
+        && get(/databases/$(database)/documents/videos/$(request.resource.data.videoId)).data.uid == request.auth.uid;
+      allow read: if connecte() && (resource.data.uid == request.auth.uid || admin());
+      allow update: if admin();
+      allow delete: if false;
+    }
+
     // Pseudos uniques (réservés à vie).
     match /pseudos/{p} {
       allow read: if true;
