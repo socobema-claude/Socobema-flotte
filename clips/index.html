@@ -110,6 +110,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .cta{position:absolute;left:14px;right:14px;bottom:18px;display:grid;gap:8px}
 .cta .btn{width:100%}
 .slide.ad img.adimg{width:100%;height:100%;object-fit:contain;background:#000}
+.shop.call{background:#fff;color:#0F1B33;text-decoration:none;margin-top:6px}
 .shop{display:inline-flex;gap:6px;align-items:center;background:var(--sun);color:#1a1200;border:0;border-radius:10px;padding:8px 12px;font-weight:800;font-size:.9rem;width:max-content}
 .pill{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 button:focus-visible,.in:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
@@ -223,13 +224,16 @@ function trackWatch(sl,v){
     if(!sessionStorage.getItem("c"+id)){try{sessionStorage.setItem("c"+id,"1")}catch(_){}fdb.doc("videos/"+id).update({vuesCompletes:inc(1)}).catch(()=>{})}}};
 }
 function updMute(){document.querySelectorAll(".mute").forEach(b=>b.textContent=muted?"🔇 Son coupé":"🔊 Son")}
+/* Appels : numéro et choix enregistrés dans le profil (momo.tel, momo.appel). */
+const canCall=u=>!!(u&&u.momo&&u.momo.appel==="1"&&String(u.momo.tel||"").replace(/\D/g,"").length>=8);
+function telHref(u){const d=String(u.momo.tel).replace(/\D/g,"");return "tel:"+(d.length===10?"+225"+d:(String(u.momo.tel).trim().startsWith("+")?"+":"")+d)}
 async function slideHTML(v){
   const u=await getUser(v.uid); const liked=likedSet.has(v.id), mine=me&&me.uid===v.uid, fol=followSet.has(v.uid);
   return `<section class="slide" data-id="${v.id}" data-uid="${v.uid}">
     <video data-src="${esc(vsrc(v))}" poster="${esc(v.poster||"")}" playsinline loop preload="none" muted aria-label="Vidéo de ${esc(u.pseudo)}"></video>
     <div class="shade"></div><div class="pausei" hidden>${IC.play}</div>
     <button type="button" class="mute" data-mute>${muted?"🔇 Son coupé":"🔊 Son"}</button>
-    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div>${v.prix&&v.wa?`<button type="button" class="shop" data-shop="${v.id}">🛒 Commander · ${String(v.prix).replace(/\B(?=(\d{3})+(?!\d))/g," ")} F</button>`:""}<div class="meta">${v.ville?`📍 ${esc(v.ville)} · `:""}${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
+    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div>${v.prix&&v.wa?`<button type="button" class="shop" data-shop="${v.id}">🛒 Commander · ${String(v.prix).replace(/\B(?=(\d{3})+(?!\d))/g," ")} F</button>`:""}${v.prix&&!mine&&canCall(u)?`<a class="shop call" href="${telHref(u)}">📞 Appeler le vendeur</a>`:""}<div class="meta">${v.ville?`📍 ${esc(v.ville)} · `:""}${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
     <div class="rail">
       <div class="fol"><button type="button" class="rb" data-pseudo="${esc(u.pseudo)}" aria-label="Profil de ${esc(u.pseudo)}">${avHTML(u)}</button>${!mine&&!fol?`<button type="button" class="plus" data-follow="${v.uid}" aria-label="S'abonner">+</button>`:""}</div>
       <button type="button" class="rb${liked?" on":""}" data-like="${v.id}" aria-pressed="${liked}"><span class="ic">${IC.heart}</span><span data-n="likes">${kfmt(v.likes)}</span></button>
@@ -488,7 +492,7 @@ async function renderProfile(uid){
       ${u.bio?`<p style="margin:0;max-width:420px;overflow-wrap:anywhere">${capHTML(u.bio)}</p>`:""}
       ${u.bloque?`<span class="pill" style="color:var(--bad)">Compte suspendu</span>`:""}
       <div class="row" style="justify-content:center">${mine?`<button class="btn" type="button" data-editprof>Modifier le profil</button>`:me&&followSet.has(uid)?`<button class="btn" type="button" data-unfollow="${uid}">Abonné ✓</button>`:`<button class="btn hot" type="button" data-follow="${uid}">S'abonner</button>`}
-        ${u.momo&&Object.values(u.momo).some(Boolean)?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
+        ${!mine&&canCall(u)?`<a class="btn hot" href="${telHref(u)}" style="text-decoration:none;display:inline-grid;place-items:center">📞 Appeler</a>`:""}${u.momo&&["om","mtn","moov","wave"].some(k=>u.momo[k])?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
     ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0">🗑</button>`:""}</div>`).join("")}</div>`
       :`<p class="muted" style="text-align:center">${mine?"Vous n'avez pas encore publié. Touchez + pour commencer.":"Aucune vidéo pour le moment."}</p>`}</div>`;
   $("#pf-share").onclick=()=>{const url=location.origin+location.pathname+"?u="+u.pseudo;navigator.share?navigator.share({title:"@"+u.pseudo,url}).catch(()=>{}):window.open("https://wa.me/?text="+encodeURIComponent(`@${u.pseudo} sur ${APP.nom} : ${url}`),"_blank","noopener")};
@@ -503,9 +507,12 @@ function editProfile(){
     <label class="lab">Bio<textarea class="in" id="ep-b" maxlength="160">${esc(meDoc.bio||"")}</textarea></label>
     <p class="muted" style="margin:6px 0 0">Recevoir des soutiens (facultatif) : vos numéros mobile money apparaîtront sur votre profil.</p>
     ${[["om","Orange Money"],["mtn","MTN MoMo"],["moov","Moov Money"],["wave","Wave"]].map(([k,l])=>`<label class="lab">${l}<input class="in" id="ep-${k}" type="tel" maxlength="20" value="${esc((meDoc.momo||{})[k]||"")}" placeholder="07 00 00 00 00"></label>`).join("")}
+    <p class="muted" style="margin:6px 0 0">Appels (facultatif) : les visiteurs pourront vous appeler depuis votre profil et vos articles à vendre.</p>
+    <label class="lab">Numéro pour être appelé<input class="in" id="ep-tel" type="tel" maxlength="20" value="${esc((meDoc.momo||{}).tel||"")}" placeholder="07 00 00 00 00"></label>
+    <label class="chk"><input type="checkbox" id="ep-appel"${(meDoc.momo||{}).appel==="1"?" checked":""}> Afficher le bouton « Appeler »</label>
     <p class="err" id="ep-err"></p><button class="btn hot" type="submit">Enregistrer</button></form></div>`);
   $("#ep-ph").onchange=async e=>{const f=e.target.files[0];if(!f) return;try{photo=await smallImg(f);$("#ep-av").innerHTML=avHTML({...meDoc,photo})}catch(_){toast("Image illisible")}};
-  $("#ep-f").onsubmit=async e=>{e.preventDefault();try{await fdb.doc("users/"+me.uid).update({nom:$("#ep-n").value.trim().slice(0,40),bio:$("#ep-b").value.trim().slice(0,160),photo,momo:Object.fromEntries(["om","mtn","moov","wave"].map(k=>[k,$("#ep-"+k).value.replace(/[^\d +]/g,"").trim().slice(0,20)]))});await loadMe();closeDlg();renderProfile(me.uid);toast("Profil mis à jour")}catch(x){$("#ep-err").textContent=errMsg(x)}};
+  $("#ep-f").onsubmit=async e=>{e.preventDefault();try{await fdb.doc("users/"+me.uid).update({nom:$("#ep-n").value.trim().slice(0,40),bio:$("#ep-b").value.trim().slice(0,160),photo,momo:{...(meDoc.momo||{}),...Object.fromEntries(["om","mtn","moov","wave","tel"].map(k=>[k,$("#ep-"+k).value.replace(/[^\d +]/g,"").trim().slice(0,20)])),appel:$("#ep-appel").checked&&$("#ep-tel").value.replace(/\D/g,"").length>=8?"1":""}});await loadMe();closeDlg();renderProfile(me.uid);toast("Profil mis à jour")}catch(x){$("#ep-err").textContent=errMsg(x)}};
 }
 async function delVideo(id){
   if(!confirmBox("Supprimer cette vidéo de votre profil ?")) return;
