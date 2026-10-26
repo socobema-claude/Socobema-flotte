@@ -100,7 +100,7 @@ service cloud.firestore {
                 && !existsAfter(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid)))))
         || (connecte() && seuls(['comments']) && (request.resource.data.comments - resource.data.comments) in [1, -1])
         || plusUn('vues') || plusUn('partages') || plusUn('vuesCompletes') || plusUn('commandes')
-        || (admin() && seuls(['cache', 'boostFin', 'venteOk']));
+        || (admin() && seuls(['cache', 'boostFin', 'venteOk', 'supprime']));
       allow delete: if false;
 
       // Qui a vu / partagé : chacun n'écrit que sa propre ligne ; seuls l'auteur de la vidéo et l'administrateur lisent la liste.
