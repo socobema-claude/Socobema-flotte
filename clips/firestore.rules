@@ -35,7 +35,9 @@ service cloud.firestore {
       allow create: if connecte() && pasBloque() && request.resource.data.uid == request.auth.uid
         && request.resource.data.statut == 'attente'
         && request.resource.data.ref is string && request.resource.data.ref.size() <= 40
-        && get(/databases/$(database)/documents/videos/$(request.resource.data.videoId)).data.uid == request.auth.uid;
+        && request.resource.data.type in ['boost', 'article', 'abonnement']
+        && (request.resource.data.type == 'abonnement'
+            || get(/databases/$(database)/documents/videos/$(request.resource.data.videoId)).data.uid == request.auth.uid);
       allow read: if connecte() && (resource.data.uid == request.auth.uid || admin());
       allow update: if admin();
       allow delete: if false;
@@ -66,7 +68,7 @@ service cloud.firestore {
            || (request.resource.data.followers == resource.data.followers - 1
                 && exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid))
                 && !existsAfter(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + uid)))))
-        || (admin() && seuls(['bloque']));
+        || (admin() && seuls(['bloque'])) || (admin() && seuls(['vendeurFin']));
       allow delete: if false;
     }
 
@@ -86,7 +88,7 @@ service cloud.firestore {
         && request.resource.data.likes == 0 && request.resource.data.comments == 0
         && request.resource.data.vues == 0 && request.resource.data.cache == false
         && (!('prix' in request.resource.data) || (request.resource.data.prix is number && request.resource.data.prix > 0))
-        && !('boostFin' in request.resource.data);
+        && !('boostFin' in request.resource.data) && !('venteOk' in request.resource.data);
       allow update: if
            (connecte() && resource.data.uid == request.auth.uid && seuls(['legende', 'supprime']))
         || (connecte() && seuls(['likes']) && (
@@ -98,7 +100,7 @@ service cloud.firestore {
                 && !existsAfter(/databases/$(database)/documents/videos/$(id)/likes/$(request.auth.uid)))))
         || (connecte() && seuls(['comments']) && (request.resource.data.comments - resource.data.comments) in [1, -1])
         || plusUn('vues') || plusUn('partages') || plusUn('vuesCompletes') || plusUn('commandes')
-        || (admin() && seuls(['cache', 'boostFin']));
+        || (admin() && seuls(['cache', 'boostFin', 'venteOk']));
       allow delete: if false;
 
       // Qui a vu / partagé : chacun n'écrit que sa propre ligne ; seuls l'auteur de la vidéo et l'administrateur lisent la liste.

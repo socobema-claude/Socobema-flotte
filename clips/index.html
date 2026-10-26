@@ -233,7 +233,7 @@ async function slideHTML(v){
     <video data-src="${esc(vsrc(v))}" poster="${esc(v.poster||"")}" playsinline loop preload="none" muted aria-label="Vidéo de ${esc(u.pseudo)}"></video>
     <div class="shade"></div><div class="pausei" hidden>${IC.play}</div>
     <button type="button" class="mute" data-mute>${muted?"🔇 Son coupé":"🔊 Son"}</button>
-    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div>${v.prix&&v.wa?`<button type="button" class="shop" data-shop="${v.id}">🛒 Commander · ${String(v.prix).replace(/\B(?=(\d{3})+(?!\d))/g," ")} F</button>`:""}${v.prix&&!mine&&canCall(u)?`<a class="shop call" href="${telHref(u)}">📞 Appeler le vendeur</a>`:""}<div class="meta">${v.ville?`📍 ${esc(v.ville)} · `:""}${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
+    <div class="cap"><button type="button" class="who" data-pseudo="${esc(u.pseudo)}">@${esc(u.pseudo)}</button><div class="txt">${capHTML(v.legende||"")}</div>${v.prix&&v.wa&&venteActive(v,u)?`<button type="button" class="shop" data-shop="${v.id}">🛒 Commander · ${String(v.prix).replace(/\B(?=(\d{3})+(?!\d))/g," ")} F</button>`:""}${v.prix&&!mine&&canCall(u)&&venteActive(v,u)?`<a class="shop call" href="${telHref(u)}">📞 Appeler le vendeur</a>`:""}<div class="meta">${v.ville?`📍 ${esc(v.ville)} · `:""}${boosted(v)?`<span class="spons">Sponsorisé</span>`:""}${ago(v.le)} · ${kfmt(v.vues)} vues${me&&me.uid===adminUid?` · <a href="#" data-boost="${v.id}">⚡ Booster</a>`:""}</div></div>
     <div class="rail">
       <div class="fol"><button type="button" class="rb" data-pseudo="${esc(u.pseudo)}" aria-label="Profil de ${esc(u.pseudo)}">${avHTML(u)}</button>${!mine&&!fol?`<button type="button" class="plus" data-follow="${v.uid}" aria-label="S'abonner">+</button>`:""}</div>
       <button type="button" class="rb${liked?" on":""}" data-like="${v.id}" aria-pressed="${liked}"><span class="ic">${IC.heart}</span><span data-n="likes">${kfmt(v.likes)}</span></button>
@@ -316,6 +316,7 @@ document.addEventListener("click",async e=>{
   const st=e.target.closest("[data-settings]"); if(st){return openSettings()}
   const tp=e.target.closest("[data-tip]"); if(tp){return openTip(tp.dataset.tip)}
   const rv=e.target.closest("[data-revenus]"); if(rv){return openRevenus()}
+  const av=e.target.closest("[data-askvente]"); if(av){e.preventDefault();e.stopPropagation();return askVente(av.dataset.askvente)}
   const ab=e.target.closest("[data-askboost]"); if(ab){e.preventDefault();e.stopPropagation();return askBoost(ab.dataset.askboost)}
   const sx=e.target.closest("[data-stats]"); if(sx){e.preventDefault();e.stopPropagation();return openStats(sx.dataset.stats)}
   const cx=e.target.closest("[data-connectes]"); if(cx){return openConnectes()}
@@ -496,7 +497,7 @@ async function renderProfile(uid){
       ${u.bloque?`<span class="pill" style="color:var(--bad)">Compte suspendu</span>`:""}
       <div class="row" style="justify-content:center">${mine?`<button class="btn" type="button" data-editprof>Modifier le profil</button>`:me&&followSet.has(uid)?`<button class="btn" type="button" data-unfollow="${uid}">Abonné ✓</button>`:`<button class="btn hot" type="button" data-follow="${uid}">S'abonner</button>`}
         ${!mine&&canCall(u)?`<a class="btn hot" href="${telHref(u)}" style="text-decoration:none;display:inline-grid;place-items:center">📞 Appeler</a>`:""}${u.momo&&["om","mtn","moov","wave"].some(k=>u.momo[k])?`<button class="btn" type="button" data-tip="${uid}" style="border-color:var(--sun);color:var(--sun)">💛 Soutenir</button>`:""}<button class="btn" type="button" id="pf-share">Partager le profil</button>${isAdm&&!mine?`<button class="btn" type="button" id="pf-ban">${u.bloque?"Débloquer":"Bloquer"} le compte</button>`:""}</div></div>
-    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Supprimer">🗑</button><button class="btn sm" type="button" data-stats="${v.id}" style="position:absolute;top:4px;left:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Qui a vu, aimé, partagé">📊</button><button class="btn sm" type="button" data-askboost="${v.id}" style="position:absolute;bottom:4px;left:4px;min-height:26px;padding:2px 8px;background:var(--hot);color:#fff;border:0">⚡ Booster</button>`:""}</div>`).join("")}</div>`
+    ${V.length?`<div class="grid3">${V.map(v=>`<div style="position:relative">${gridHTML([v])}${mine?`<button class="btn sm" type="button" data-del="${v.id}" style="position:absolute;top:4px;right:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Supprimer">🗑</button><button class="btn sm" type="button" data-stats="${v.id}" style="position:absolute;top:4px;left:4px;min-height:26px;padding:2px 8px;background:rgba(0,0,0,.6);border:0" aria-label="Qui a vu, aimé, partagé">📊</button>${v.prix&&!venteActive(v,meDoc)?`<button class="btn sm" type="button" data-askvente="${v.id}" style="position:absolute;bottom:4px;right:4px;min-height:26px;padding:2px 8px;background:var(--sun);color:#1a1200;border:0">🛒 Activer</button>`:""}<button class="btn sm" type="button" data-askboost="${v.id}" style="position:absolute;bottom:4px;left:4px;min-height:26px;padding:2px 8px;background:var(--hot);color:#fff;border:0">⚡ Booster</button>`:""}</div>`).join("")}</div>`
       :`<p class="muted" style="text-align:center">${mine?"Vous n'avez pas encore publié. Touchez + pour commencer.":"Aucune vidéo pour le moment."}</p>`}</div>`;
   $("#pf-share").onclick=()=>{const url=location.origin+location.pathname+"?u="+u.pseudo;navigator.share?navigator.share({title:"@"+u.pseudo,url}).catch(()=>{}):window.open("https://wa.me/?text="+encodeURIComponent(`@${u.pseudo} sur ${APP.nom} : ${url}`),"_blank","noopener")};
   const ban=$("#pf-ban"); if(ban) ban.onclick=async()=>{try{await fdb.doc("users/"+uid).update({bloque:!u.bloque});toast(u.bloque?"Compte débloqué":"Compte bloqué");renderProfile(uid)}catch(e){toast(errMsg(e))}};
@@ -539,7 +540,7 @@ function renderPublish(){
     <label class="lab">Légende<textarea class="in" id="pb-cap" maxlength="300" placeholder="Décrivez votre vidéo… #mankono #cacao"></textarea></label>
     <label class="lab">Ville / localité<input class="in" id="pb-ville" maxlength="40" value="${esc(prefs.ville||meDoc.ville||"")}" placeholder="Ex. Mankono"></label>
     <label class="chk"><input type="checkbox" id="pb-sell"> Je vends ce produit (bouton « Commander » sous la vidéo)</label>
-    <div id="pb-sellf" class="row" hidden><label class="lab" style="flex:1">Prix (FCFA)<input class="in" id="pb-prix" inputmode="numeric"></label><label class="lab" style="flex:1">WhatsApp pour commander<input class="in" id="pb-wa" type="tel" value="${esc(((meDoc.momo||{}).wa)||"")}"></label></div>
+    <div id="pb-sellf" class="row" style="flex-wrap:wrap" hidden><p class="muted" style="margin:0;width:100%;font-size:.8rem">${ventePayante()?`Le bouton « Commander » s'affiche après les frais de vente : ${+PAI.venteArticle?fc(PAI.venteArticle)+" par article":""}${+PAI.venteArticle&&+PAI.venteMois?" ou ":""}${+PAI.venteMois?fc(PAI.venteMois)+" par mois (articles illimités)":""}. Activez-la depuis votre profil (🛒 Activer).`:""}</p><label class="lab" style="flex:1">Prix (FCFA)<input class="in" id="pb-prix" inputmode="numeric"></label><label class="lab" style="flex:1">WhatsApp pour commander<input class="in" id="pb-wa" type="tel" value="${esc(((meDoc.momo||{}).wa)||"")}"></label></div>
     <div class="bar" id="pb-bar" hidden><i></i></div>
     <p class="err" id="pb-err" role="alert"></p>
     <button class="btn hot" type="submit" id="pb-go" disabled>Publier</button></form></div>`;
@@ -622,12 +623,12 @@ async function openRevenus(){
   const [rs,ps]=await Promise.all([fdb.collection("revenus").orderBy("le","desc").limit(300).get(),fdb.collection("pubs").limit(100).get()]);
   const R=rs.docs.map(d=>({id:d.id,...d.data()})), Pb=ps.docs.map(d=>({id:d.id,...d.data()})), t=tday(), m=t.slice(0,7), y=t.slice(0,4);
   const sum=f=>R.filter(f).reduce((s,x)=>s+(+x.montant||0),0);
-  $("#rv-b").innerHTML=`<div class="row" style="gap:10px">${[["Ce mois",sum(x=>(x.jour||"").startsWith(m))],["Cette année",sum(x=>(x.jour||"").startsWith(y))],["Publicités (année)",sum(x=>x.type==="pub"&&(x.jour||"").startsWith(y))],["Boosts (année)",sum(x=>x.type==="boost"&&(x.jour||"").startsWith(y))]].map(([l,v])=>`<div class="card" style="flex:1;min-width:130px;gap:2px"><span class="muted" style="font-size:.78rem">${l}</span><b style="font-size:1.2rem">${fc(v)}</b></div>`).join("")}</div>
+  $("#rv-b").innerHTML=`<div class="row" style="gap:10px">${[["Ce mois",sum(x=>(x.jour||"").startsWith(m))],["Cette année",sum(x=>(x.jour||"").startsWith(y))],["Publicités (année)",sum(x=>x.type==="pub"&&(x.jour||"").startsWith(y))],["Boosts (année)",sum(x=>x.type==="boost"&&(x.jour||"").startsWith(y))],["Ventes (année)",sum(x=>(x.type==="article"||x.type==="abonnement")&&(x.jour||"").startsWith(y))]].map(([l,v])=>`<div class="card" style="flex:1;min-width:130px;gap:2px"><span class="muted" style="font-size:.78rem">${l}</span><b style="font-size:1.2rem">${fc(v)}</b></div>`).join("")}</div>
     <div class="row" style="justify-content:space-between"><h3>Publicités</h3><button class="btn sm hot" type="button" id="rv-new">+ Nouvelle publicité</button></div>
     ${Pb.length?Pb.sort((a,b)=>(b.fin||"").localeCompare(a.fin||"")).map(p=>{const on=p.actif&&(!p.fin||p.fin>=t);return `<div class="card"><div class="row" style="justify-content:space-between"><b>${esc(p.annonceur)} · ${esc(p.titre)}</b><span class="pill" style="${on?"color:var(--ok)":""}">${on?"En ligne":"Terminée"}</span></div>
       <div class="muted" style="font-size:.85rem">${esc(p.debut||"")} → ${esc(p.fin||"")} · ${fc(p.prix)} · ${kfmt(p.impressions)} vues · ${kfmt(p.clics)} clics${p.impressions?` (${((+p.clics||0)/p.impressions*100).toFixed(1)} %)`:""}</div>
       <div class="row"><button class="btn sm" type="button" data-pubrep="${p.id}">Envoyer le bilan</button>${on?`<button class="btn sm" type="button" data-pubstop="${p.id}">Arrêter</button>`:""}</div></div>`}).join(""):`<p class="muted">Aucune publicité. Proposez des annonces aux commerces de votre région : le fil affiche une annonce toutes les ${PUB_EVERY} vidéos.</p>`}
-    <h3>Encaissements</h3>${R.length?`<div class="card" style="gap:6px">${R.slice(0,40).map(x=>`<div class="row" style="justify-content:space-between;font-size:.88rem"><span>${esc(x.jour)} · ${x.type==="pub"?"Publicité":x.type==="boost"?"Boost":"Autre"} ${esc(x.libelle||"")} <span class="muted">${esc(x.mode||"")}</span></span><b>${fc(x.montant)}</b></div>`).join("")}</div>`:`<p class="muted">Aucun encaissement.</p>`}
+    <h3>Encaissements</h3>${R.length?`<div class="card" style="gap:6px">${R.slice(0,40).map(x=>`<div class="row" style="justify-content:space-between;font-size:.88rem"><span>${esc(x.jour)} · ${x.type==="pub"?"Publicité":x.type==="boost"?"Boost":x.type==="article"?"Frais article":x.type==="abonnement"?"Abonnement vendeur":"Autre"} ${esc(x.libelle||"")} <span class="muted">${esc(x.mode||"")}</span></span><b>${fc(x.montant)}</b></div>`).join("")}</div>`:`<p class="muted">Aucun encaissement.</p>`}
     <button class="btn" type="button" id="rv-add">+ Autre encaissement</button>`;
   $("#rv-new").onclick=newPub; boostAdmin();
   $("#rv-add").onclick=async()=>{const l=prompt("Libellé (ex. partenariat, soutien…)");if(!l) return;const mt=Math.round(+String(prompt("Montant (FCFA)")||"").replace(/\D/g,""));if(!mt) return;
@@ -719,6 +720,40 @@ async function openConnectes(){
   catch(e){$("#cx-l").innerHTML=`<p class="muted">${esc(errMsg(e))}</p>`}
 }
 
+/* ================= VENTE : frais par article ou abonnement vendeur ================= */
+let PAI=null; // réglages chargés au démarrage
+const VENTE_DEBUT="2026-10-26T21:00:00"; // les articles publiés avant cette date restent visibles gratuitement
+const ventePayante=()=>!!(PAI&&PAI.numero&&((+PAI.venteArticle||0)>0||(+PAI.venteMois||0)>0));
+const abonneActif=u=>!!(u&&u.vendeurFin&&u.vendeurFin>=tday());
+const venteActive=(v,u)=>!ventePayante()||v.venteOk===true||abonneActif(u)||(v.le&&v.le<VENTE_DEBUT);
+async function askVente(id){
+  if(!me||!meDoc) return openLogin();
+  openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>🛒 Activer la vente</h3><button class="x" type="button" data-close>×</button></div><div class="bd" id="av-b"><p class="muted">Chargement…</p></div></div>`);
+  const P=await getPaiement(), B=$("#av-b"); PAI=P;
+  let mes=[];try{const s=await fdb.collection("demandes").where("uid","==",me.uid).limit(50).get();mes=s.docs.map(d=>d.data()).filter(d=>d.type==="abonnement"||(d.type==="article"&&d.videoId===id))}catch(_){}
+  const enc=mes.find(d=>d.statut==="attente");
+  if(enc){B.innerHTML=`<div class="card"><b>⏳ Paiement en cours de vérification</b><span class="muted">${enc.type==="abonnement"?"Abonnement vendeur 1 mois":"Cet article"} · ${fc(enc.montant)} · réf. ${esc(enc.ref)}</span><span class="muted">Le bouton « Commander » apparaît dès que le paiement est vérifié.</span></div>`;return}
+  const A=+P.venteArticle||0, M=+P.venteMois||0;
+  const choix=[A?["article",`Cet article seulement · ${fc(A)}`,A]:null,M?["abonnement",`Abonnement vendeur 1 mois · ${fc(M)} (tous vos articles)`,M]:null].filter(Boolean);
+  B.innerHTML=`<form id="av-f" style="display:grid;gap:12px" novalidate>
+    <p class="muted" style="margin:0">Pour afficher les boutons « 🛒 Commander » et « 📞 Appeler le vendeur », réglez les frais de vente une fois.${abonneActif(meDoc)?` Votre abonnement est actif jusqu'au ${esc(meDoc.vendeurFin)}.`:""}</p>
+    <fieldset class="card" style="gap:8px;border:1px solid var(--line)"><legend class="muted">Formule</legend>${choix.map(([k,l],i)=>`<label class="chk"><input type="radio" name="av-t" value="${k}"${i?"":" checked"}> ${l}</label>`).join("")}</fieldset>
+    <div class="card" style="gap:6px"><span class="muted">1. Envoyez <b id="av-m"></b> au numéro ${esc(APP.nom)} :</span>
+      <div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:1.25rem;font-variant-numeric:tabular-nums">${esc(P.numero)}</b><button class="btn sm" type="button" id="av-copy">Copier</button></div>
+      ${P.nom?`<span class="muted">Nom du bénéficiaire : <b>${esc(P.nom)}</b></span>`:""}${P.services?`<span class="muted">Accepté : ${esc(P.services)}</span>`:""}</div>
+    <label class="lab">2. Payé avec<select class="in" id="av-mode"><option>Wave</option><option>Orange Money</option><option>MTN MoMo</option><option>Moov Money</option></select></label>
+    <label class="lab">3. Référence de la transaction (dans le SMS de confirmation)<input class="in" id="av-ref" maxlength="40" autocomplete="off"></label>
+    <p class="err" id="av-err" role="alert"></p><button class="btn hot" type="submit">Envoyer ma demande</button></form>`;
+  const cur=()=>B.querySelector('[name="av-t"]:checked').value, mt=()=>cur()==="abonnement"?M:A;
+  const upd=()=>{$("#av-m").textContent=fc(mt())};upd();B.querySelectorAll('[name="av-t"]').forEach(r=>r.onchange=upd);
+  $("#av-copy").onclick=()=>navigator.clipboard.writeText(P.numero).then(()=>toast("Numéro copié"),()=>toast(P.numero));
+  $("#av-f").onsubmit=async e=>{e.preventDefault();const ref=$("#av-ref").value.trim();
+    if(ref.length<4){$("#av-err").textContent="Entrez la référence reçue par SMS après le paiement.";return}
+    const t=cur(),d={type:t,uid:me.uid,montant:mt(),mode:$("#av-mode").value,ref,statut:"attente",jour:tday(),le:new Date().toISOString()};
+    if(t==="article") d.videoId=id; else d.jours=30;
+    try{await fdb.collection("demandes").add(d);closeDlg();toast("Demande envoyée. La vente s'active dès que le paiement est vérifié.")}catch(x){$("#av-err").textContent=errMsg(x)}};
+}
+
 /* ================= BOOST PAYANT : demande du créateur, validation par l'administrateur ================= */
 const DUREES=[["1","1 jour"],["3","3 jours"],["7","7 jours"],["30","30 jours"]];
 async function getPaiement(){try{const s=await fdb.doc("config/paiement").get();return s.exists?s.data():null}catch(_){return null}}
@@ -726,7 +761,7 @@ async function askBoost(id){
   if(!me||!meDoc) return openLogin("Connectez-vous pour booster votre vidéo.");
   openDlg(`<div class="sheet" style="max-height:92dvh"><div class="hd"><h3>⚡ Booster ma vidéo</h3><button class="x" type="button" data-close>×</button></div><div class="bd" id="ab-b"><p class="muted">Chargement…</p></div></div>`);
   const P=await getPaiement(), B=$("#ab-b");
-  let mes=[];try{const s=await fdb.collection("demandes").where("uid","==",me.uid).limit(30).get();mes=s.docs.map(d=>d.data()).filter(d=>d.videoId===id).sort((a,b)=>(b.le||"").localeCompare(a.le||""))}catch(_){}
+  let mes=[];try{const s=await fdb.collection("demandes").where("uid","==",me.uid).limit(30).get();mes=s.docs.map(d=>d.data()).filter(d=>d.videoId===id&&(d.type||"boost")==="boost").sort((a,b)=>(b.le||"").localeCompare(a.le||""))}catch(_){}
   const enc=mes.find(d=>d.statut==="attente");
   if(!P||!P.numero){B.innerHTML=`<p class="muted">Les boosts ne sont pas encore ouverts. Revenez bientôt.</p>`;return}
   if(enc){B.innerHTML=`<div class="card"><b>⏳ Demande en cours de vérification</b><span class="muted">${esc(DUREES.find(x=>x[0]==String(enc.jours))?.[1]||enc.jours+" j")} · ${fc(enc.montant)} · réf. ${esc(enc.ref)}</span><span class="muted">Le boost démarre dès que le paiement est vérifié.</span></div>`;return}
@@ -746,7 +781,7 @@ async function askBoost(id){
   $("#ab-f").onsubmit=async e=>{e.preventDefault();const ref=$("#ab-ref").value.trim();
     if(ref.length<4){$("#ab-err").textContent="Entrez la référence reçue par SMS après le paiement.";return}
     const j=$("#ab-j").value;
-    try{await fdb.collection("demandes").add({uid:me.uid,videoId:id,jours:+j,montant:+prix[j],mode:$("#ab-mode").value,ref,statut:"attente",jour:tday(),le:new Date().toISOString()});
+    try{await fdb.collection("demandes").add({type:"boost",uid:me.uid,videoId:id,jours:+j,montant:+prix[j],mode:$("#ab-mode").value,ref,statut:"attente",jour:tday(),le:new Date().toISOString()});
       closeDlg();toast("Demande envoyée. Le boost démarre dès que le paiement est vérifié.")}catch(x){$("#ab-err").textContent=errMsg(x)}};
 }
 async function boostAdmin(){
@@ -754,10 +789,10 @@ async function boostAdmin(){
   const [P,ds]=await Promise.all([getPaiement(),fdb.collection("demandes").where("statut","==","attente").limit(100).get().catch(()=>({docs:[]}))]);
   const D=ds.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.le||"").localeCompare(b.le||""));
   const p=P||{},pr=p.prix||{1:1000,3:2500,7:5000,30:15000};
-  const rows=await Promise.all(D.map(async d=>{const u=await getUser(d.uid);return `<div class="card" style="gap:6px"><div class="row" style="justify-content:space-between"><b>@${esc(u.pseudo)} · ${fc(d.montant)}</b><span class="pill">${d.jours} j</span></div>
+  const rows=await Promise.all(D.map(async d=>{const u=await getUser(d.uid);return `<div class="card" style="gap:6px"><div class="row" style="justify-content:space-between"><b>@${esc(u.pseudo)} · ${fc(d.montant)}</b><span class="pill">${d.type==="article"?"🛒 Article":d.type==="abonnement"?"🛒 Abonnement 1 mois":"⚡ Boost "+d.jours+" j"}</span></div>
     <span class="muted" style="font-size:.85rem">${esc(d.mode)} · réf. <b style="color:var(--ink)">${esc(d.ref)}</b> · ${ago(d.le)}</span>
-    <div class="row"><button class="btn sm hot" type="button" data-bv="${d.id}">✅ Paiement reçu : valider</button><button class="btn sm" type="button" data-bx="${d.id}">Refuser</button><button class="btn sm" type="button" data-vid="${esc(d.videoId)}">Voir la vidéo</button></div></div>`}));
-  box.innerHTML=`<h3>⚡ Demandes de boost${D.length?` (${D.length})`:""}</h3>${rows.join("")||`<p class="muted" style="margin:0">Aucune demande en attente.</p>`}
+    <div class="row"><button class="btn sm hot" type="button" data-bv="${d.id}">✅ Paiement reçu : valider</button><button class="btn sm" type="button" data-bx="${d.id}">Refuser</button>${d.videoId?`<button class="btn sm" type="button" data-vid="${esc(d.videoId)}">Voir la vidéo</button>`:""}</div></div>`}));
+  box.innerHTML=`<h3>Demandes de paiement${D.length?` (${D.length})`:""}</h3>${rows.join("")||`<p class="muted" style="margin:0">Aucune demande en attente.</p>`}
     <details class="card"><summary><b>Réglages du paiement des boosts</b>${p.numero?"":` <span class="pill" style="color:var(--sun)">à remplir</span>`}</summary>
       <form id="pp-f" style="display:grid;gap:10px;margin-top:10px" novalidate>
       <label class="lab">Numéro qui reçoit l'argent<input class="in" id="pp-n" type="tel" maxlength="20" value="${esc(p.numero||"")}" placeholder="07 00 00 00 00"></label>
@@ -765,12 +800,23 @@ async function boostAdmin(){
       <label class="lab">Services acceptés<input class="in" id="pp-s" maxlength="80" value="${esc(p.services||"Wave, Orange Money, MTN MoMo, Moov Money")}"></label>
       <div class="row" style="gap:8px">${DUREES.map(([k,l])=>`<label class="lab" style="flex:1;min-width:120px">${l} (FCFA)<input class="in" id="pp-${k}" inputmode="numeric" value="${+pr[k]||""}"></label>`).join("")}</div>
       <p class="muted" style="margin:0;font-size:.8rem">Laissez un prix vide pour ne pas proposer cette durée.</p>
+      <b>Frais de vente des articles</b>
+      <div class="row" style="gap:8px"><label class="lab" style="flex:1;min-width:140px">Par article (FCFA)<input class="in" id="pp-va" inputmode="numeric" value="${p.numero?(+p.venteArticle||""):500}"></label><label class="lab" style="flex:1;min-width:140px">Abonnement 1 mois (FCFA)<input class="in" id="pp-vm" inputmode="numeric" value="${p.numero?(+p.venteMois||""):2000}"></label></div>
+      <p class="muted" style="margin:0;font-size:.8rem">Laissez les deux vides pour laisser la vente gratuite.</p>
       <p class="err" id="pp-err"></p><button class="btn hot" type="submit">Enregistrer</button></form></details>`;
   $("#pp-f").onsubmit=async e=>{e.preventDefault();const n=$("#pp-n").value.replace(/[^\d +]/g,"").trim();
     if(n.replace(/\D/g,"").length<8){$("#pp-err").textContent="Entrez un numéro valide.";return}
     const prix={};DUREES.forEach(([k])=>{const v=+$("#pp-"+k).value.replace(/\D/g,"");if(v>0) prix[k]=v});
-    try{await fdb.doc("config/paiement").set({numero:n,nom:$("#pp-nom").value.trim(),services:$("#pp-s").value.trim(),prix,le:new Date().toISOString()});toast("Réglages enregistrés")}catch(x){$("#pp-err").textContent=errMsg(x)}};
+    try{await fdb.doc("config/paiement").set({numero:n,nom:$("#pp-nom").value.trim(),services:$("#pp-s").value.trim(),prix,venteArticle:+$("#pp-va").value.replace(/\D/g,"")||0,venteMois:+$("#pp-vm").value.replace(/\D/g,"")||0,le:new Date().toISOString()});PAI=await getPaiement();toast("Réglages enregistrés")}catch(x){$("#pp-err").textContent=errMsg(x)}};
   box.querySelectorAll("[data-bv]").forEach(b=>b.onclick=async()=>{const d=D.find(x=>x.id===b.dataset.bv);b.disabled=true;
+    const typ=d.type||"boost";
+    if(typ!=="boost"){try{const bb=fdb.batch(),now=new Date().toISOString();let msg="";
+      if(typ==="article"){bb.update(fdb.doc("videos/"+d.videoId),{venteOk:true});msg="Vente activée pour cet article";const f=feedList.find(x=>x.id===d.videoId);if(f) f.venteOk=true}
+      else{const us=await fdb.doc("users/"+d.uid).get();const cur=us.exists&&us.data().vendeurFin>=tday()?us.data().vendeurFin:tday();const fin=addD(cur,30);
+        bb.update(fdb.doc("users/"+d.uid),{vendeurFin:fin});if(users[d.uid]) users[d.uid].vendeurFin=fin;msg="Abonnement actif jusqu'au "+fin}
+      bb.set(fdb.collection("revenus").doc(),{type:typ,videoId:d.videoId||"",uid:d.uid,montant:d.montant,mode:d.mode,ref:d.ref,jour:tday(),le:now});
+      bb.update(fdb.doc("demandes/"+d.id),{statut:"validee",par:me.uid,traiteLe:now});
+      await bb.commit();toast(msg);openRevenus()}catch(x){b.disabled=false;toast(errMsg(x))}return}
     try{const vs=await fdb.doc("videos/"+d.videoId).get();const v=vs.exists?vs.data():{};const start=boosted(v)?v.boostFin:tday(),fin=addD(start,d.jours),bb=fdb.batch();
       bb.update(fdb.doc("videos/"+d.videoId),{boostFin:fin});
       bb.set(fdb.collection("revenus").doc(),{type:"boost",videoId:d.videoId,uid:d.uid,montant:d.montant,jours:d.jours,mode:d.mode,ref:d.ref,jour:tday(),le:new Date().toISOString()});
@@ -788,6 +834,7 @@ async function init(){
   firebase.initializeApp(C); fdb=firebase.firestore(); auth=firebase.auth();
   try{fdb.settings({experimentalForceLongPolling:true,merge:true})}catch(_){}
   fdb.doc("config/admin").get().then(s=>{adminUid=s.exists?s.data().uid:null}).catch(()=>{});
+  getPaiement().then(P=>{PAI=P});
   let first=true;
   auth.onAuthStateChanged(async u=>{
     me=u; if(signingUp) return;
