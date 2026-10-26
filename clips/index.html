@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Vidéos courtes</title>
+<title>Djassa Clip</title>
 <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
@@ -50,7 +50,8 @@ a{color:var(--sun)}
 .ftabs{position:fixed;top:0;left:0;right:0;z-index:4;display:flex;justify-content:center;gap:18px;padding:calc(env(safe-area-inset-top,0px) + 12px) 12px 10px;background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none}
 .ftabs button{pointer-events:auto;background:none;border:0;color:rgba(255,255,255,.7);font-weight:700;font-size:1rem;padding:4px 2px;border-bottom:2px solid transparent}
 .ftabs button[aria-pressed="true"]{color:#fff;border-bottom-color:#fff}
-.ftabs .brandn{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 12px);font-family:var(--f-disp);font-weight:800;font-size:1.1rem;color:#fff;pointer-events:none}
+.ftabs .brandn{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 12px);font-family:var(--f-disp);font-weight:800;font-size:1.1rem;color:#fff;pointer-events:none;display:flex;align-items:center;gap:8px}
+.ftabs .brandn img{width:26px;height:26px;border-radius:7px;display:block}
 @media (max-width:540px){.ftabs .brandn{display:none}.ftabs{gap:14px}}
 .empty{height:calc(100dvh - var(--nav));display:grid;place-items:center;text-align:center;padding:30px;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:1.15rem;margin-bottom:6px;font-family:var(--f-disp)}
@@ -115,7 +116,7 @@ button:focus-visible,.in:focus-visible{outline:2px solid var(--sun);outline-offs
 </style>
 </head>
 <body>
-<div class="ftabs" id="ftabs"><span class="brandn" id="appname"></span><button type="button" data-ff="pres" aria-pressed="false">Près de moi</button><button type="button" data-ff="abo" aria-pressed="false">Abonnements</button><button type="button" data-ff="pourtoi" aria-pressed="true">Pour toi</button></div>
+<div class="ftabs" id="ftabs"><span class="brandn"><img src="icon-192.png" alt="" width="26" height="26"><span id="appname"></span></span><button type="button" data-ff="pres" aria-pressed="false">Près de moi</button><button type="button" data-ff="abo" aria-pressed="false">Abonnements</button><button type="button" data-ff="pourtoi" aria-pressed="true">Pour toi</button></div>
 <main id="feed" aria-label="Fil de vidéos"></main>
 <section class="page" id="p-decouvrir" hidden></section>
 <section class="page" id="p-publier" hidden></section>

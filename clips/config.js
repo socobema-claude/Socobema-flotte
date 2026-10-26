@@ -1,5 +1,5 @@
 /* ===== Configuration du site de vidéos ===== */
-window.APP = { nom: "Kôrô" };                       // nom affiché du site (modifiable)
+window.APP = { nom: "Djassa Clip" };                       // nom affiché du site (modifiable)
 window.FIREBASE_CONFIG = {                           // configuration Firebase du projet koro-videos
   apiKey: "AIzaSyDyyOZZx2uh_clBWX4FfY5-65Ak5LOVIXM",
   authDomain: "koro-videos.firebaseapp.com",
