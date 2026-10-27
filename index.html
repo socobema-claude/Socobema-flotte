@@ -865,6 +865,27 @@ document.addEventListener("click",e=>{
 },true);
 
 
+
+/* ---------- Fichiers : PDF réel, téléchargement et envoi (WhatsApp…) ---------- */
+function loadScript(src){return new Promise((ok,ko)=>{const ex=document.querySelector(`script[data-src="${src}"]`);if(ex){if(ex.dataset.ok)ok();else{ex.addEventListener("load",()=>ok());ex.addEventListener("error",()=>ko(new Error("lib")))}return}
+  const sc=document.createElement("script");sc.src=src;sc.dataset.src=src;sc.onload=()=>{sc.dataset.ok="1";ok()};sc.onerror=()=>ko(new Error("Connexion nécessaire pour créer le PDF."));document.head.appendChild(sc)})}
+async function htmlToPdf(html,name){
+  if(!window.html2pdf){try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js")}catch(e){}}
+  if(!window.html2pdf){try{await loadScript("https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js")}catch(e){}}
+  if(!window.html2pdf) throw new Error("Connexion internet nécessaire pour créer le PDF.");
+  const host=document.createElement("div");host.style.cssText="position:absolute;left:0;top:0;width:760px;background:#fff;z-index:-1;pointer-events:none";
+  host.innerHTML=html;document.body.appendChild(host);
+  try{
+    return await window.html2pdf().set({margin:[10,10,12,10],filename:name,image:{type:"jpeg",quality:.95},html2canvas:{scale:2,backgroundColor:"#ffffff",windowWidth:760,scrollY:0},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(host.firstElementChild||host).outputPdf("blob");
+  }finally{host.remove()}
+}
+function saveBlob(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000)}
+const canShareFiles=()=>{try{return !!(navigator.canShare&&navigator.canShare({files:[new File(["x"],"t.pdf",{type:"application/pdf"})]}))}catch(e){return false}};
+async function shareBlob(blob,name,title){const f=new File([blob],name,{type:blob.type||"application/octet-stream"});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title});return true}catch(e){if(e&&e.name==="AbortError")return true;throw e}}
+  return false}
+const fileSafe=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9-]+/g,"_").replace(/^_|_$/g,"");
+
 /* ---------- Reçus des dépenses (photo ou PDF) ---------- */
 const depById=id=>state.depenses.find(x=>x.id===id);
 const recuKey=did=>"recu_"+did;
@@ -910,14 +931,18 @@ async function openRecuView(did){
     if(!p||!p.data){box.innerHTML=`<p class="confirm">Reçu introuvable. Joignez-le de nouveau.</p>`;return}
     const ty=p.ptype||p.type, base=`Recu_${(c?c.immat:"camion").replace(/[^A-Za-z0-9-]+/g,"-")}_${d.date||""}_${(d.categorie||"depense").replace(/[^A-Za-zÀ-ÿ0-9]+/g,"-")}`;
     const info=`<div class="pj-meta">${fdate(d.date)} · ${esc(d.categorie||"")} · <b>${fcfa(d.montant)}</b>${m.num?" · n° "+esc(m.num):""} · joint le ${fdt(m.le||p.majLe)}${(m.par||p.gest)?" par "+esc(m.par||p.gest):""}</div>`;
-    let href,ext;
-    if(ty==="image"){href=p.data;ext="jpg";box.innerHTML=info+`<img src="${p.data}" alt="Reçu de la dépense du ${esc(fdate(d.date))}">`}
-    else{const bin=atob(p.data.split(",")[1]||"");const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);href=URL.createObjectURL(new Blob([u],{type:"application/pdf"}));ext="pdf";
-      box.innerHTML=info+`<a class="btn" href="${href}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;display:block;line-height:24px">Ouvrir le PDF</a>`}
-    $("#dlg-f").innerHTML=`<a class="btn primary" href="${href}" download="${esc(base)}.${ext}" style="text-decoration:none">Télécharger</a>${canWrite?`<button type="button" class="btn" data-rc-add="${did}">Remplacer</button>`:""}${isOwner?`<button type="button" class="btn ghost" data-rc-del="${did}">Supprimer</button>`:""}<button type="button" class="btn" data-close>Fermer</button>`;
+    const bin=atob(p.data.split(",")[1]||"");const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    const ext=ty==="image"?"jpg":"pdf", blob=new Blob([u],{type:ty==="image"?"image/jpeg":"application/pdf"}), href=URL.createObjectURL(blob);
+    rcFile={blob,name:fileSafe(base)+"."+ext};
+    if(ty==="image") box.innerHTML=info+`<img src="${p.data}" alt="Reçu de la dépense du ${esc(fdate(d.date))}">`;
+    else box.innerHTML=info+`<a class="btn" href="${href}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;display:block;line-height:24px">Ouvrir le PDF</a>`;
+    $("#dlg-f").innerHTML=`<button type="button" class="btn primary" data-rc-dl>Télécharger</button>${canShareFiles()?`<button type="button" class="btn" data-rc-share>Envoyer (WhatsApp…)</button>`:""}${canWrite?`<button type="button" class="btn" data-rc-add="${did}">Remplacer</button>`:""}${isOwner?`<button type="button" class="btn ghost" data-rc-del="${did}">Supprimer</button>`:""}<button type="button" class="btn" data-close>Fermer</button>`;
   }catch(e){const box=$("#dlg-b .pj-view"); if(box) box.innerHTML=`<p class="confirm">${esc(errMsg(e))}</p>`}
 }
+let rcFile=null;
 document.addEventListener("click",e=>{
+  if(e.target.closest("[data-rc-dl]")){e.stopPropagation();if(rcFile){saveBlob(rcFile.blob,rcFile.name);toast("Reçu téléchargé : voir le dossier Téléchargements")}return}
+  if(e.target.closest("[data-rc-share]")){e.stopPropagation();if(rcFile)shareBlob(rcFile.blob,rcFile.name,"Reçu").then(ok=>{if(!ok){saveBlob(rcFile.blob,rcFile.name);toast("Reçu téléchargé")}}).catch(()=>toast("Envoi impossible. Utilisez « Télécharger »."));return}
   const a=e.target.closest("[data-rc-add]"); if(a){e.stopPropagation();openRecuUpload(a.dataset.rcAdd);return}
   const v=e.target.closest("[data-rc-view]"); if(v){e.stopPropagation();openRecuView(v.dataset.rcView);return}
   const x=e.target.closest("[data-rc-del]"); if(x){const did=x.dataset.rcDel,d=depById(did);
@@ -1483,13 +1508,23 @@ function showInvoice(mid,kind){
   const html=invoiceHTML(mid,kind); if(!html) return;
   $("#dlg-t").textContent=kind==="facture"?"Facture":"Décompte de mission";
   $("#dlg-b").innerHTML=`<div class="msgs" id="dlg-msgs"></div><div class="inv-prev">${html}</div>
-    <p class="trace" style="grid-column:1/-1;margin:0">« Imprimer / PDF » ouvre l'impression du téléphone : choisissez <b>Enregistrer au format PDF</b> pour l'envoyer par WhatsApp.</p>`;
-  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button><button type="button" class="btn" data-inv="${mid}" data-kind="${kind==="facture"?"decompte":"facture"}">${kind==="facture"?"Voir le décompte":"Voir la facture"}</button>${canWrite?`<button type="button" class="btn" data-clo="${mid}">Modifier</button>`:""}<button type="button" class="btn primary" data-print="${mid}" data-kind="${kind}">Imprimer / PDF</button>`;
+    <p class="trace" style="grid-column:1/-1;margin:0">« Télécharger le PDF » enregistre le fichier dans les téléchargements du téléphone. « Envoyer » l'ouvre directement dans WhatsApp, Gmail ou une autre application.</p>`;
+  $("#dlg-f").innerHTML=`<button type="button" class="btn" data-close>Fermer</button><button type="button" class="btn" data-inv="${mid}" data-kind="${kind==="facture"?"decompte":"facture"}">${kind==="facture"?"Voir le décompte":"Voir la facture"}</button>${canWrite?`<button type="button" class="btn" data-clo="${mid}">Modifier</button>`:""}<button type="button" class="btn" data-print="${mid}" data-kind="${kind}">Imprimer</button>${canShareFiles()?`<button type="button" class="btn" data-invpdf="${mid}" data-kind="${kind}" data-share="1">Envoyer (WhatsApp…)</button>`:""}<button type="button" class="btn primary" data-invpdf="${mid}" data-kind="${kind}">Télécharger le PDF</button>`;
   ctx={kind:"inv"}; if(!$("#dlg").open) $("#dlg").showModal();
 }
 document.addEventListener("click",e=>{
   const c=e.target.closest("[data-clo]"); if(c){e.stopPropagation();openCloture(c.dataset.clo);return}
   const v=e.target.closest("[data-inv]"); if(v){e.stopPropagation();showInvoice(v.dataset.inv,v.dataset.kind);return}
+  const ip=e.target.closest("[data-invpdf]"); if(ip){e.stopPropagation();
+    if(ip.dataset.busy)return; const mid=ip.dataset.invpdf,kind=ip.dataset.kind,m=state.missions.find(x=>x.id===mid);
+    const name=`${kind==="facture"?"Facture":"Decompte"}_${fileSafe((m&&m.facture&&m.facture.num)||(m&&m.date)||"mission")}.pdf`;
+    const lbl=ip.textContent; ip.dataset.busy="1"; ip.textContent="Création du PDF…";
+    (async()=>{try{const blob=await htmlToPdf(invoiceHTML(mid,kind),name);
+        if(ip.dataset.share){const ok=await shareBlob(blob,name,name.replace(/_/g," ").replace(".pdf",""));if(!ok){saveBlob(blob,name);toast("PDF téléchargé")}}
+        else{saveBlob(blob,name);toast("PDF téléchargé : voir le dossier Téléchargements")}}
+      catch(err){toast(err&&err.message?err.message:"Création du PDF impossible. Réessayez.")}
+      finally{delete ip.dataset.busy;ip.textContent=lbl}})();
+    return}
   const p=e.target.closest("[data-print]"); if(p){e.stopPropagation();
     const m=state.missions.find(x=>x.id===p.dataset.print);
     $("#print-zone").innerHTML=invoiceHTML(p.dataset.print,p.dataset.kind);
