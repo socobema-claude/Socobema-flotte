@@ -1,0 +1,57 @@
+rules_version = '2';
+// Règles de sécurité – SOCOBEMA Gestion
+// À coller dans Firebase (projet gestion-socobema) > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function adminExiste() { return exists(/databases/$(database)/documents/config/admin); }
+    function estPca() {
+      return connecte() && adminExiste()
+        && get(/databases/$(database)/documents/config/admin).data.uid == request.auth.uid;
+    }
+    // Compte actif = fiche dans « comptes », active et non remplacée par un nouveau code.
+    function compteActif() {
+      let p = /databases/$(database)/documents/comptes/$(request.auth.uid);
+      return connecte() && exists(p)
+        && get(p).data.actif == true
+        && get(p).data.get('remplace', false) == false;
+    }
+    function role() { return get(/databases/$(database)/documents/comptes/$(request.auth.uid)).data.get('role', 'lecture'); }
+    // Toute écriture est signée par son véritable auteur.
+    function signe() { return request.resource.data.majPar == request.auth.uid; }
+    function donnees() { return ['membres', 'achats', 'ventes', 'mouvements', 'dirigeants', 'pisteurs', 'contrats', 'convocations', 'appels']; }
+    // PCA : tout. Gestionnaire : toutes les saisies. Peseur : pesées, membres, appels, convocations. Consultation : rien.
+    function peutEcrire(col) {
+      return estPca() || (compteActif() && (role() == 'gestionnaire'
+        || (role() == 'peseur' && col in ['achats', 'membres', 'appels', 'convocations'])));
+    }
+
+    // PCA : créé une seule fois, à la première installation, puis verrouillé.
+    match /config/admin {
+      allow read: if true;
+      allow create: if connecte() && !adminExiste() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    // Paramètres (campagne, prix, liens) : lus par tous les comptes actifs, modifiés par le PCA.
+    match /config/params {
+      allow read: if compteActif();
+      allow write: if estPca();
+    }
+    // Liste des personnes qui peuvent se connecter (nom, rôle, identifiant technique ; jamais de code).
+    match /comptes/{uid} {
+      allow read: if true;
+      allow create: if estPca()
+        || (connecte() && !adminExiste() && uid == request.auth.uid && request.resource.data.role == 'pca');
+      allow update: if estPca();
+      allow delete: if false;
+    }
+    // Données de la coopérative : lecture par les comptes actifs, saisie selon le rôle,
+    // suppression réservée au PCA.
+    match /{col}/{id} {
+      allow read: if col in donnees() && compteActif();
+      allow create, update: if col in donnees() && peutEcrire(col) && signe();
+      allow delete: if col in donnees() && estPca();
+    }
+  }
+}

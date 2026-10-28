@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2E5E37">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:inherit}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>SOCOBEMA Gestion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout : progiciel de gestion — barre latérale vert forêt groupée par métier, barre supérieure avec actions, contenu en panneaux blancs et tableaux denses */
+:root{
+  --bg:#EEF1EE; --surface:#ffffff; --surface-2:#F4F6F4; --ink:#17201C; --muted:#5A6862; --faint:#8A968F; --line:#D3DBD6;
+  --primary:#2E5E37; --primary-ink:#ffffff; --gold:#E2A410;
+  --cocoa:#7a4a2e; --coffee:#3f2d22; --cashew:#d29b2c;
+  --blue:#234E8C; --good:#1E7A45; --good-bg:#DDEFE3; --warn:#9A6400; --warn-bg:#F6EBD2; --bad:#B3261E; --bad-bg:#F7DEDA;
+  --shadow:none;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#19211E; --surface-2:#1E2824; --ink:#E7EEEA; --muted:#97A59F; --faint:#6F7D77; --line:#2E3A35;
+  --primary:#4F9A5E; --primary-ink:#06140a; --gold:#E9B43A;
+  --cocoa:#d29a76; --coffee:#c9a68d; --cashew:#e8b65a;
+  --blue:#7FA8E6; --good:#6CC79A; --good-bg:#183327; --warn:#E7B24C; --warn-bg:#352a12; --bad:#F0857A; --bad-bg:#3a1b18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#19211E; --surface-2:#1E2824; --ink:#E7EEEA; --muted:#97A59F; --faint:#6F7D77; --line:#2E3A35;
+  --primary:#4F9A5E; --primary-ink:#06140a; --gold:#E9B43A;
+  --cocoa:#d29a76; --coffee:#c9a68d; --cashew:#e8b65a;
+  --blue:#7FA8E6; --good:#6CC79A; --good-bg:#183327; --warn:#E7B24C; --warn-bg:#352a12; --bad:#F0857A; --bad-bg:#3a1b18; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+body{display:flex;flex-direction:column;min-height:100%}main{flex:1}
+button{font:inherit;color:inherit}
+/* En-tête façon suite SOCOBEMA */
+.hd{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:20}
+.hd .btn.sec{min-height:44px;padding:9px 20px;font-size:16px;border-radius:10px}
+.hd-in{max-width:1180px;margin:0 auto;padding-block:18px 4px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.brandrow{display:flex;align-items:center;gap:14px}
+.logo{width:52px;height:52px;flex:none}
+.bt{min-width:0;display:flex;flex-direction:column}
+.bt b{font-family:var(--f-display);font-weight:700;font-size:34px;letter-spacing:.02em;line-height:1}
+.bt>span{font-size:16px;color:var(--muted);display:flex;gap:4px 12px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.role{font-weight:600;color:var(--ink)}
+.hd-act{margin-left:auto;display:flex;gap:10px;align-items:center}
+.status{display:inline-flex;align-items:center;gap:6px;color:var(--good);font-weight:600;white-space:nowrap}
+.status i{width:9px;height:9px;border-radius:50%;background:currentColor}
+.status.local{color:var(--warn)}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs-in{max-width:1180px;margin:0 auto;display:flex;gap:4px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.tabs button{all:unset;cursor:pointer;white-space:nowrap;font-family:var(--f-display);font-weight:700;font-size:19px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:14px 15px 12px;border-bottom:4px solid transparent;display:flex;align-items:center;gap:7px}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--gold)}
+.tabs button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.tabs .badge{font-family:var(--f-num);font-size:11px;background:var(--bad);color:#fff;border-radius:99px;padding:0 6px;letter-spacing:0}
+.menu{position:relative}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.14);padding:6px;min-width:250px;display:flex;flex-direction:column;z-index:25}
+.menu-pop button{all:unset;cursor:pointer;padding:10px 12px;border-radius:6px}
+.menu-pop .mh{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:10px 12px 4px}
+.lock{position:fixed;inset:0;z-index:70;background:var(--bg);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px;width:min(380px,100%);display:flex;flex-direction:column;gap:14px;text-align:center}
+.lockbox input{text-align:center;font-family:var(--f-num);font-size:26px;letter-spacing:.4em}
+.menu-pop button:hover,.menu-pop button:focus-visible{background:var(--surface-2)}
+.ph{display:flex;flex-direction:column;gap:4px}
+.ph h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(30px,4.4vw,40px);letter-spacing:.03em;text-transform:uppercase;line-height:1.05;text-wrap:balance}
+.ph p{margin:0;color:var(--muted);font-size:17px;max-width:80ch}
+.ft{border-top:1px solid var(--line);background:var(--surface)}
+.ft-in{max-width:1180px;margin:0 auto;font-size:12px;color:var(--faint);padding-block:16px calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+main{min-width:0}
+.content{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px;padding-block:22px 48px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0;letter-spacing:.05em;text-transform:uppercase}
+.lbl{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin:0;max-width:72ch}
+
+/* Boutons */
+.btn{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:14px;cursor:pointer;border-radius:8px;padding:9px 16px;border:1px solid transparent;background:var(--primary);color:var(--primary-ink);white-space:nowrap;line-height:1.3}
+.btn:hover{filter:brightness(1.07)}
+.btn svg{width:16px;height:16px}
+.btn.sec{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.out{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.chipsf{display:flex;gap:10px;flex-wrap:wrap}.chipsf button{font:inherit;font-size:16px;font-weight:500;padding:9px 20px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}.chipsf button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.sec:hover{background:var(--surface-2);filter:none}
+.btn.sm{padding:4px 10px;font-size:12.5px}
+.btn.icon{padding:5px;border-color:transparent;background:transparent;color:var(--muted)}
+.btn.icon:hover{background:var(--surface-2);color:var(--ink)}
+.btn.danger{background:var(--bad);color:#fff}
+.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .top{display:flex;justify-content:space-between;align-items:center}
+.kpi .ic{display:none}
+.kpi .ic svg{width:17px;height:17px}
+.kpi .v{font-family:var(--f-display);font-weight:700;font-size:clamp(32px,4.6vw,48px);line-height:1.05;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.kpi .v small{font-size:13px;color:var(--muted);font-weight:500;margin-left:3px}
+.kpi .s{font-size:15px;color:var(--muted)}
+.kpi .v.g{color:var(--good)}.kpi .v.w{color:var(--warn)}.kpi .v.r,.kpi .v .out{color:var(--bad)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-b{padding:16px 18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card-b.flush{padding:0}
+
+/* Stock */
+.srow{display:grid;grid-template-columns:96px minmax(0,1fr) 110px;gap:14px;align-items:center}
+.bar{height:10px;background:var(--surface-2);border-radius:2px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.q{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:13px;text-align:right;font-weight:600}
+.q small{display:block;font-weight:500;color:var(--faint);font-size:11px}
+.prod{display:inline-flex;align-items:center;gap:7px;font-weight:500;white-space:nowrap}
+.prod i{width:8px;height:8px;border-radius:2px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* Alertes */
+.alerts{display:flex;flex-direction:column}
+.alert{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.alert:last-child{border-bottom:0}
+.alert .dot{width:8px;height:8px;border-radius:50%}
+.alert b{font-weight:600;display:block}
+.alert span{font-size:12.5px;color:var(--muted)}
+
+/* Tableaux */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.search{position:relative;flex:1 1 220px;min-width:0}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--faint)}
+.search input{padding-left:34px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:600;padding:14px 16px;border-bottom:1px solid var(--line);white-space:nowrap;background:transparent}
+td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover td{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}
+tfoot td{background:var(--surface-2);font-weight:600;border-top:1px solid var(--line);border-bottom:0}
+.num{text-align:right!important;font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ref{font-family:var(--f-num);font-size:12px;color:var(--muted);white-space:nowrap}
+td .sub{display:block;font-size:12px;color:var(--muted)}
+.tag{display:inline-flex;align-items:center;font-size:14px;font-weight:600;padding:5px 14px;border-radius:9px;white-space:nowrap;border:0;cursor:pointer}
+.tag.ok{color:var(--good);background:var(--good-bg)}
+.tag.wait{color:var(--warn);background:var(--warn-bg)}
+.tag.no{color:var(--bad);background:var(--bad-bg)}
+.in{color:var(--good)} .out{color:var(--bad)}
+.acts{display:flex;gap:4px;justify-content:flex-end;white-space:nowrap}
+.empty{padding:40px 18px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty svg{width:34px;height:34px;color:var(--faint)}
+.empty b{color:var(--ink);font-size:15px}
+
+/* Formulaires */
+.grid-f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid-f .full{grid-column:1/-1}
+label.fl{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink);min-width:0}
+label.fl em{font-style:normal;color:var(--faint);font-weight:400}
+input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+.sumline{display:flex;justify-content:space-between;align-items:baseline;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.sumline b{font-family:var(--f-num);font-size:18px}
+
+/* Fenêtres */
+.overlay{position:fixed;inset:0;background:rgba(8,20,14,.45);z-index:50;display:flex;justify-content:flex-end}
+.overlay.center{justify-content:center;align-items:flex-start;padding:max(40px,env(safe-area-inset-top,0px)) 16px 16px}
+.sheet{background:var(--surface);width:min(540px,100%);height:100%;display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.18);padding-right:env(safe-area-inset-right,0px)}
+.overlay.center .sheet{height:auto;max-height:calc(100% - 20px);border-radius:10px;width:min(560px,100%);padding-right:0}
+.overlay.center .sheet.wide{width:min(760px,100%)}
+.art{padding:0 16px 6px}.art h3{font-family:var(--f-display);font-size:13px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}.art p{margin:0 0 6px;line-height:1.6;text-align:justify;max-width:none}.parties{padding:12px 16px;line-height:1.65}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);padding-top:max(16px,env(safe-area-inset-top,0px))}
+.overlay.center .sheet-h{padding-top:16px}
+.sheet-h h2{font-size:18px}
+.sheet-b{padding:20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px}
+.sheet-f{padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+.dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+.dl div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dl dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.dl dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+
+/* Reçu */
+.doc{border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden;font-size:13px}
+.doc-h{display:flex;gap:12px;align-items:center;padding:16px;border-bottom:2px solid var(--ink)}
+.doc-h b{font-family:var(--f-display);font-size:15px;display:block;letter-spacing:.02em}
+.doc-h small{color:var(--muted);font-size:11.5px;display:block}
+.doc-t{display:flex;justify-content:space-between;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);font-weight:600}
+.doc table td{padding:7px 16px}
+.doc .total td{font-weight:700;font-size:15px;border-top:2px solid var(--ink)}
+.doc-sig{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:26px 16px 14px;font-size:11.5px;color:var(--muted)}
+.doc-sig div{border-top:1px solid var(--line);padding-top:6px}
+
+/* Graphique */
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
+.chart .gl{stroke:var(--line);stroke-width:1}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-size:12.5px;cursor:pointer;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);font-weight:600}
+.toast{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:7px;font-weight:500;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;gap:10px;align-items:center}
+.toast::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.scrim{display:none}
+body.r-lecture [data-form],body.r-lecture .tag[data-pay],body.r-lecture .tag[data-enc],body.r-lecture .tag[data-part],body.r-lecture .tag[data-joint],body.r-lecture .tag[data-csign],body.r-lecture .tag[data-pact],body.r-lecture #fCall{pointer-events:none}
+body.r-lecture [data-form],body.r-lecture #fCall,body.r-lecture .sheet-f [form="fCall"]{display:none!important}
+body.r-peseur [data-form="vente"],body.r-peseur [data-form="mvt"],body.r-peseur [data-form="contrat"],body.r-peseur [data-form="pisteur"],body.r-peseur [data-form="dirigeant"],body.r-peseur [data-form="avance"],body.r-peseur [data-form="glink"]{display:none!important}
+body.r-nonpca [data-askdel],body.r-nonpca #demo,body.r-nonpca [data-plink]{display:none!important}
+.who-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.who-row:last-child{border-bottom:0}
+/* Répertoire d'appel */
+.ct-list{display:flex;flex-direction:column}
+.ct-sec{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:14px 18px 6px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.ct{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+.ct:last-child{border-bottom:0}
+.ct:hover{background:var(--surface-2)}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:.03em;flex:none;--c:var(--primary);background:color-mix(in srgb,var(--c) 16%,var(--surface));color:var(--c);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.av.t-Conseil{--c:var(--gold)}.av.t-Pisteur{--c:var(--blue)}.av.t-Personnel{--c:var(--muted)}
+.av.xl{width:76px;height:76px;font-size:28px}
+.ct-m{min-width:0;display:flex;flex-direction:column}
+.ct-m .nm{all:unset;cursor:pointer;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-m .nm:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:3px}
+.ct-m span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-tel{font-family:var(--f-num);font-size:14px;color:var(--ink);white-space:nowrap}
+.ct-a{display:flex;gap:8px;align-items:center}
+.rb{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none;flex:none;cursor:pointer}
+.rb:hover{background:var(--surface-2)}
+.rb.call{background:var(--good);border-color:var(--good);color:#fff}
+.rb svg{width:19px;height:19px}
+.rb.off{opacity:.35;pointer-events:none}
+.quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.qc{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:16px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.qc:hover{background:var(--surface-2)}.qc:focus-visible{outline:2px solid var(--primary)}
+.qc b{font-size:14px;line-height:1.25}.qc span{font-size:12px;color:var(--muted);line-height:1.3}
+.dialer{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding-bottom:6px}
+.dialer h3{margin:4px 0 0;font-family:var(--f-display);font-size:28px;letter-spacing:.02em}
+.dialer .num{font-family:var(--f-num);font-size:22px;font-weight:600;letter-spacing:.04em}
+.dial-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:6px 0 4px}
+.da{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--ink);text-decoration:none}
+.da i{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line)}
+.da i svg{width:24px;height:24px}
+.da.main i{background:var(--good);border-color:var(--good);color:#fff}
+.da:focus-visible i{outline:2px solid var(--primary);outline-offset:2px}
+.da.off{opacity:.35;pointer-events:none}
+.respick{display:flex;flex-wrap:wrap;gap:8px}
+.respick label{position:relative}
+.respick input{position:absolute;opacity:0;pointer-events:none}
+.respick span{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:500;cursor:pointer}
+.respick input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.respick input:focus-visible+span{outline:2px solid var(--primary);outline-offset:2px}
+.tl{display:flex;flex-direction:column}
+.tl-i{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--line)}
+.tl-i:last-child{border-bottom:0}
+.tl-dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center}
+.tl-dot svg{width:16px;height:16px}
+.tl-dot.ok{background:var(--good-bg);color:var(--good)}.tl-dot.wait{background:var(--warn-bg);color:var(--warn)}.tl-dot.no{background:var(--bad-bg);color:var(--bad)}
+.tl-h{font-family:var(--f-num);font-size:13px;color:var(--muted);white-space:nowrap}
+@media (max-width:620px){.ct{grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:12px 14px}.ct-tel{display:none}.dial-acts{gap:4px}.da i{width:52px;height:52px}}
+.plats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.plat .card-b{height:100%}
+.pic{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;color:#fff;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+a.btn{text-decoration:none}
+@media (max-width:980px){.plats{grid-template-columns:1fr}.plats.compact{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:620px){.plats.compact{grid-template-columns:1fr}.brandrow{flex-wrap:wrap}.hd-act{margin-left:0;width:100%;justify-content:flex-end}}
+
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:1fr}}
+@media (max-width:820px){
+  .btn .t-hide{display:none}
+  .bt b{font-size:26px}
+  .logo{width:42px;height:42px}
+  .hd .btn.sec{padding:8px 12px;font-size:14px;min-height:40px}
+  .grid-f,.dl{grid-template-columns:1fr}
+  .srow{grid-template-columns:80px minmax(0,1fr) 92px;gap:10px}
+}
+
+</style>
+
+</head>
+<body>
+<header class="hd">
+  <div class="hd-in">
+    <div class="brandrow">
+      <svg class="logo" viewBox="0 0 52 52" aria-hidden="true"><path d="M14 16c-4 6-6 13-5 21 1 6 6 10 16 10s15-4 16-10c1-8-1-15-5-21z" fill="#D9A21B"/><path d="M14 16h22l-3-6H17z" fill="#B9841A"/><path d="M15 16c4 2 16 2 20 0" stroke="#8a5f12" stroke-width="2" fill="none"/><path d="M19 28h12M19 34h9" stroke="#8a5f12" stroke-width="2.2" stroke-linecap="round"/><path d="M32 12c4-8 13-9 17-7-1 6-7 12-15 11z" fill="#2E7D3E"/><path d="M33 15c4-3 8-6 13-8" stroke="#1d5a2a" stroke-width="1.6" fill="none"/></svg>
+      <div class="bt"><b>SOCOBEMA GESTION</b><span>Gestion de la coopérative · Mankono <span class="status" id="status"><i></i><span>À jour</span></span> <span class="role" id="role"></span></span></div>
+      <div class="hd-act">
+        <button class="btn sec" id="lockBtn">Verrouiller</button>
+        <div class="menu">
+          <button class="btn sec" id="newBtn" aria-haspopup="true" aria-expanded="false">Outils</button>
+          <div class="menu-pop" id="newMenu" hidden>
+            <span class="mh">Nouvelle opération</span>
+            <button data-form="achat">Pesée / achat producteur</button>
+            <button data-form="vente">Vente à un acheteur</button>
+            <button data-form="mvt">Entrée ou dépense de caisse</button>
+            <button data-form="membre">Inscription d'un membre</button>
+            <button data-form="contrat">Rédaction d'un contrat</button>
+            <button data-form="pisteur">Enregistrement d'un pisteur</button>
+            <button data-form="dirigeant">Ajout d'un dirigeant</button>
+            <button data-form="convoc">Convocation (Conseil ou membres)</button>
+            <button data-appgo="individuel">Appel individuel</button>
+            <span class="mh">Exports et réglages</span>
+            <button data-go="rapports">Rapports et exports Excel</button>
+            <button data-go="reglages">Gestionnaires et codes d'accès</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Sections"><div class="tabs-in" id="nav"></div></nav>
+</header>
+<main><div class="content" id="view"></div></main>
+<footer class="ft"><div class="ft-in">SOCOBEMA-COOP-CA · Société Coopérative avec Conseil d'Administration Bengueleman de Mankono · Code SNT SC061082 · NCC 1656303L · BP 87 Mankono · 07 07 64 41 06</div></footer>
+<div id="modal"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+const PRODUITS={cacao:{n:"Cacao",c:"var(--cocoa)"},cafe:{n:"Café",c:"var(--coffee)"},anacarde:{n:"Anacarde",c:"var(--cashew)"}};
+const COLS=["membres","achats","ventes","mouvements","dirigeants","pisteurs","contrats","convocations","appels"];
+const S={membres:[],achats:[],ventes:[],mouvements:[],dirigeants:[],pisteurs:[],contrats:[],convocations:[],appels:[],gestionnaires:[],comptes:[],params:{campagne:"2026-2027",prix_cacao:"",prix_cafe:"",prix_anacarde:"",ristourne:"",lien_pisteurs:"https://socobema-claude.github.io/Socobema-flotte/pisteurs/",lien_flotte:"https://socobema-claude.github.io/Socobema-flotte/",lien_compta:"https://socobema-claude.github.io/Socobema-flotte/comptabilite/"}};
+let db=null,mode="db",view="accueil",confirmDel=null,modal=null,q="",fProd="",fStat="",period="6";
+
+const I={
+  accueil:'<path d="M3 13h4v7H3zM10 9h4v11h-4zM17 4h4v16h-4z"/>',
+  rapports:'<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  achats:'<path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  ventes:'<path d="M2 7h12v9H2z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+  caisse:'<rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3 10h18M15 15h3"/>',
+  membres:'<circle cx="9" cy="8" r="3.3"/><path d="M3 20c.7-3.4 3.1-5.3 6-5.3s5.3 1.9 6 5.3"/><path d="M16 4.6a3.3 3.3 0 0 1 0 6.6M18 14.9c1.8.5 3 2 3.4 4.1"/>',
+  reglages:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  gouvernance:'<path d="M3 21h18M4 10h16M12 3l9 5H3zM6 10v8M10 10v8M14 10v8M18 10v8"/>',
+  pisteurs:'<circle cx="12" cy="6" r="3"/><path d="M8 21l1.5-7L7 12l3-3h4l3 3-2.5 2L16 21M12 14v7"/>',
+  contrats:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h4"/><path d="M15 19l1.5-1.5 2 2"/>',
+  plateformes:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  camion:'<path d="M2 6h11v10H2z"/><path d="M13 9h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  compta:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  chat:'<path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5z"/><path d="M9 10.5h6M9 13.5h4"/>',
+  msg:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  check:'<path d="m5 12 5 5 9-10"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  wallet:'<path d="M3 7h16v12H3z"/><path d="M16 12h5v4h-5zM3 7l12-4v4"/>',
+  scale:'<path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  doc:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  dl:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
+};
+const ic=(k,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
+const NAV=[["Pilotage",[["accueil","Tableau de bord"],["rapports","Rapports"],["plateformes","Plateformes liées"]]],["Opérations",[["achats","Achats producteurs"],["ventes","Ventes"],["caisse","Caisse"],["contrats","Contrats"]]],["Référentiel",[["membres","Membres"],["pisteurs","Pisteurs"],["gouvernance","Conseil et comités"],["reglages","Paramètres"]]]];
+const TABS=[["accueil","Tableau de bord"],["membres","Membres"],["achats","Achats"],["ventes","Ventes"],["caisse","Caisse"],["pisteurs","Pisteurs"],["contrats","Contrats"],["gouvernance","Conseil"],["appels","Appels"],["rapports","Rapports"],["plateformes","Plateformes"]];
+const DESC={accueil:()=>"Campagne "+esc(S.params.campagne)+" · situation au "+new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+".",membres:()=>"Registre des producteurs adhérents : identité, section, culture, superficie et part sociale.",achats:()=>"Pesées et achats aux producteurs. Chaque pesée produit un reçu numéroté.",ventes:()=>"Livraisons aux exportateurs, usiniers et acheteurs agréés.",caisse:()=>"Toutes les entrées et sorties d'argent, avec le solde après chaque opération.",pisteurs:()=>"Volumes apportés, commissions, avances et reste à payer de chaque pisteur.",contrats:()=>"Contrats des pisteurs, engagements des producteurs et contrats de vente.",gouvernance:()=>"Composition des organes et suivi des mandats.",appels:()=>"Appel individuel, appel de groupe et convocations du Conseil d'administration et des membres.",rapports:()=>"Synthèses de la campagne et exports pour la comptabilité.",plateformes:()=>"Accès aux plateformes spécialisées de la coopérative.",reglages:()=>"Campagne, barème des prix et identité de la coopérative."};
+const TITLES={accueil:"Tableau de bord",rapports:"Rapports de campagne",achats:"Achats aux producteurs",ventes:"Ventes",caisse:"Journal de caisse",membres:"Registre des membres",pisteurs:"Pisteurs",plateformes:"Plateformes liées",contrats:"Contrats",gouvernance:"Conseil et comités",appels:"Espace d'appel",reglages:"Paramètres"};
+
+const nf=new Intl.NumberFormat("fr-FR");
+const fmt=n=>nf.format(Math.round(n||0));
+const F=n=>fmt(n)+" F";
+const kg=n=>Math.abs(n)>=1000?new Intl.NumberFormat("fr-FR",{maximumFractionDigits:2}).format(n/1000)+" t":fmt(n)+" kg";
+const today=()=>new Date().toISOString().slice(0,10);
+const dfr=d=>d?new Date(d+"T12:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=v=>parseFloat(String(v??"").replace(/\s/g,"").replace(",","."))||0;
+const prodTag=p=>`<span class="prod"><i style="background:${PRODUITS[p]?.c}"></i>${PRODUITS[p]?.n||esc(p)}</span>`;
+const membre=id=>S.membres.find(m=>m.id===id);
+const pisteur=id=>S.pisteurs.find(m=>m.id===id);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const mt=a=>num(a.kg)*num(a.prix);
+const yr=()=>new Date().getFullYear();
+function nextRef(col,prefix){let n=0;S[col].forEach(x=>{const m=/(\d+)$/.exec(x.ref||"");if(m)n=Math.max(n,+m[1])});return `${prefix}-${yr()}-${String(n+1).padStart(4,"0")}`}
+function nextCode(){let n=0;S.membres.forEach(m=>{const r=/(\d+)$/.exec(m.code||"");if(r)n=Math.max(n,+r[1])});return "SCB-"+String(n+1).padStart(4,"0")}
+function toast(t){const e=document.getElementById("toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
+
+/* ---------- Stockage ---------- */
+function saveLocal(){try{localStorage.setItem("socobema",JSON.stringify(S))}catch(e){}}
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem("socobema")||"null");if(d)Object.assign(S,d)}catch(e){}}
+function errMsg(e){const fc=(e&&e.code)||"";if(fc==="permission-denied")return "Accès refusé : votre accès ne le permet pas, ou il a été suspendu.";if(fc==="unavailable"||fc==="auth/network-request-failed")return "Pas de connexion internet. Réessayez quand le réseau revient.";if(fc==="resource-exhausted")return "Limite gratuite Firebase du jour atteinte. Réessayez demain.";if(fc==="auth/requires-recent-login")return "Par sécurité, verrouillez puis reconnectez-vous avec votre code actuel, et réessayez.";if(fc==="auth/weak-password")return "Le code doit contenir 6 chiffres.";if(e?.code==="invalid_argument")return"Vous n'avez pas le droit de modifier ces données.";if(e?.code==="quota_exceeded")return"Espace de stockage plein : supprimez d'anciennes opérations.";return"Enregistrement impossible pour le moment. Réessayez."}
+async function add(col,data){if(!peut(col,"w")){toast(REFUS);return false}data.id=data.id||uid();data.cree=new Date().toISOString();data.par=moi?moi.nom:"";data.majPar=auth&&auth.currentUser?auth.currentUser.uid:null;
+  if(db){try{await db.collection(col).doc(data.id).set(data)}catch(e){toast(errMsg(e));return false}}else{S[col].push(data);saveLocal();render()}return true}
+async function patch(col,id,data){if(!peut(col,"w")){toast(REFUS);return}data={...data,modPar:moi?moi.nom:"",majPar:auth&&auth.currentUser?auth.currentUser.uid:null};if(db){try{await db.collection(col).doc(id).update(data)}catch(e){toast(errMsg(e))}}else{Object.assign(S[col].find(x=>x.id===id)||{},data);saveLocal();render()}}
+async function remove(col,id){if(!peut(col,"d")){toast("Seul le PCA peut supprimer.");return}if(db){try{await db.collection(col).doc(id).delete()}catch(e){toast(errMsg(e))}}else{S[col]=S[col].filter(x=>x.id!==id);saveLocal();render()}}
+
+/* ---------- Calculs ---------- */
+function totals(){
+  const t={achKg:{},venKg:{},stock:{},achF:0,venF:0,dette:0,creance:0,entrees:0,sorties:0,depenses:0};
+  for(const p in PRODUITS){t.achKg[p]=0;t.venKg[p]=0}
+  for(const a of S.achats){t.achKg[a.produit]=(t.achKg[a.produit]||0)+num(a.kg);t.achF+=mt(a);if(a.paye)t.sorties+=mt(a);else t.dette+=mt(a)}
+  for(const v of S.ventes){t.venKg[v.produit]=(t.venKg[v.produit]||0)+num(v.kg);t.venF+=mt(v);if(v.encaisse)t.entrees+=mt(v);else t.creance+=mt(v)}
+  for(const p in PRODUITS)t.stock[p]=t.achKg[p]-t.venKg[p];
+  for(const m of S.mouvements){if(m.sens==="entree")t.entrees+=num(m.montant);else{t.sorties+=num(m.montant);t.depenses+=num(m.montant)}}
+  t.solde=t.entrees-t.sorties;t.kgTot=Object.values(t.achKg).reduce((a,b)=>a+b,0);
+  return t;
+}
+function journal(){
+  const j=[];
+  S.achats.filter(a=>a.paye).forEach(a=>j.push({date:a.date,ref:a.ref,lib:"Paiement pesée · "+(membre(a.membre)?.nom||"Producteur"),cat:"Achat "+(PRODUITS[a.produit]?.n||"").toLowerCase(),m:-mt(a)}));
+  S.ventes.filter(v=>v.encaisse).forEach(v=>j.push({date:v.date,ref:v.ref,lib:"Encaissement vente · "+v.acheteur,cat:"Vente "+(PRODUITS[v.produit]?.n||"").toLowerCase(),m:mt(v)}));
+  S.mouvements.forEach(m=>j.push({id:m.id,date:m.date,ref:m.ref,lib:m.libelle,cat:m.categorie,m:(m.sens==="entree"?1:-1)*num(m.montant)}));
+  j.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  let s=0;j.forEach(r=>{s+=r.m;r.solde=s});
+  return j.reverse();
+}
+
+/* ---------- Composants ---------- */
+const kpi=(icon,l,v,s,c)=>`<div class="kpi"><span class="lbl">${l}</span><span class="v ${c||""}">${v}</span><span class="s">${s}</span></div>`;
+const tag=(ok,a,b,attr)=>`<button class="tag ${ok?"ok":"wait"}" ${attr} title="Changer le statut">${ok?a:b}</button>`;
+function delBtn(col,id){return confirmDel===col+":"+id?`<button class="btn danger sm" data-del="${col}:${id}">Confirmer</button><button class="btn sec sm" data-nodel>Annuler</button>`:`<button class="btn icon" data-askdel="${col}:${id}" aria-label="Supprimer" title="Supprimer">${ic("trash",16)}</button>`}
+const empty=(icon,t,s,act)=>`<div class="empty">${ic(icon,34)}<b>${t}</b><span class="note">${s}</span>${act||""}</div>`;
+const prodOpts=sel=>Object.entries(PRODUITS).map(([k,v])=>`<option value="${k}" ${sel===k?"selected":""}>${v.n}</option>`).join("");
+
+/* ---------- Vues ---------- */
+function vAccueil(){
+  const t=totals(),vide=!S.membres.length&&!S.achats.length;
+  const max=Math.max(1,...Object.keys(PRODUITS).map(p=>t.achKg[p]));
+  const alerts=[];
+  const nPay=S.achats.filter(a=>!a.paye).length;
+  if(nPay)alerts.push(["var(--warn)",`${nPay} pesée${nPay>1?"s":""} à payer aux producteurs`,F(t.dette),"achats"]);
+  const nEnc=S.ventes.filter(v=>!v.encaisse).length;
+  if(nEnc)alerts.push(["var(--warn)",`${nEnc} vente${nEnc>1?"s":""} en attente d'encaissement`,F(t.creance),"ventes"]);
+  for(const p in PRODUITS)if(t.stock[p]<0)alerts.push(["var(--bad)",`Stock ${PRODUITS[p].n.toLowerCase()} négatif`,"Vérifiez les pesées et les ventes","achats"]);
+  if(t.solde<0)alerts.push(["var(--bad)","Solde de caisse négatif",F(t.solde),"caisse"]);
+  const nPart=S.membres.filter(m=>!m.part).length;
+  if(nPart)alerts.push(["var(--faint)",`${nPart} membre${nPart>1?"s":""} sans part sociale réglée`,"Relance à prévoir","membres"]);
+  if(!S.params.prix_cacao&&!S.params.prix_anacarde&&!S.params.prix_cafe)alerts.push(["var(--faint)","Prix de campagne non renseignés","Saisissez-les dans les paramètres","reglages"]);
+  const nCt=S.contrats.filter(c=>cStatut(c).c==="wait").length;if(nCt)alerts.push(["var(--warn)",`${nCt} contrat${nCt>1?"s":""} à faire signer`,"Registre des contrats","contrats"]);
+  const recent=journal().slice(0,7);
+  return `
+  ${vide?`<div class="card">${empty("membres","Démarrez la campagne "+esc(S.params.campagne),"Inscrivez vos membres, puis enregistrez chaque pesée. Stock, caisse, dettes producteurs et ristournes se calculent automatiquement.",`<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="btn" data-form="membre">Inscrire un membre</button><button class="btn sec" id="demo">Charger des données d'exemple</button></div>`)}</div>`:""}
+  <div class="plats compact">${PLATS.map(p=>platCard(p,true)).join("")}</div>
+  <section class="kpis">
+    ${kpi("membres","Membres actifs",fmt(S.membres.length),`${S.membres.filter(m=>m.part).length} parts sociales réglées`)}
+    ${kpi("scale","Volume collecté",kg(t.kgTot),`${S.achats.length} pesées · ${F(t.achF)}`)}
+    ${kpi("ventes","Chiffre d'affaires",F(t.venF),`Marge brute ${F(t.venF-t.achF)}`,"g")}
+    ${kpi("wallet","Trésorerie",F(t.solde),`${F(t.entrees)} entrées · ${F(t.sorties)} sorties`,t.solde<0?"r":"g")}
+  </section>
+  <div class="cols">
+    <section class="card"><div class="card-h"><h2>Collecte mensuelle</h2>${legendP()}</div><div class="card-b chart">${chartMonths(6)}</div></section>
+    <section class="card"><div class="card-h"><h2>Points d'attention</h2><span class="lbl">${alerts.length}</span></div>
+      ${alerts.length?`<div class="alerts">${alerts.map(a=>`<div class="alert"><span class="dot" style="background:${a[0]}"></span><div><b>${a[1]}</b><span>${a[2]}</span></div><button class="btn sec sm" data-go="${a[3]}">Voir</button></div>`).join("")}</div>`:`<div class="card-b"><p class="note">Aucun point en suspens. Toutes les pesées sont payées et les ventes encaissées.</p></div>`}
+    </section>
+  </div>
+  <div class="cols">
+    <section class="card"><div class="card-h"><h2>Mouvements récents</h2><button class="btn sec sm" data-go="caisse">Journal complet</button></div>
+      <div class="card-b flush">${recent.length?`<div class="tbl"><table><thead><tr><th>Date</th><th>Libellé</th><th class="num">Montant</th></tr></thead><tbody>${recent.map(r=>`<tr><td style="white-space:nowrap">${dfr(r.date)}</td><td>${esc(r.lib)}<span class="sub">${esc(r.cat)}</span></td><td class="num ${r.m<0?"out":"in"}">${r.m<0?"−":"+"}${F(Math.abs(r.m))}</td></tr>`).join("")}</tbody></table></div>`:empty("caisse","Aucun mouvement","Les paiements et encaissements apparaîtront ici.")}</div>
+    </section>
+    <section class="card"><div class="card-h"><h2>Stock magasin</h2><div class="legend"><span><i style="background:var(--ink)"></i>Disponible</span><span><i style="background:var(--line)"></i>Vendu</span></div></div>
+      <div class="card-b">${Object.keys(PRODUITS).map(p=>{const a=t.achKg[p],s=Math.max(0,t.stock[p]);return `<div class="srow"><span>${prodTag(p)}</span><div class="bar" title="Acheté : ${kg(a)}"><i style="width:${s/max*100}%;background:${PRODUITS[p].c}"></i><i style="width:${Math.min(a,t.venKg[p])/max*100}%;background:var(--line)"></i></div><span class="q ${t.stock[p]<0?"out":""}">${kg(t.stock[p])}<small>sur ${kg(a)}</small></span></div>`}).join("")}</div>
+    </section>
+  </div>`;
+}
+const legendP=()=>`<div class="legend">${Object.values(PRODUITS).map(p=>`<span><i style="background:${p.c}"></i>${p.n}</span>`).join("")}</div>`;
+function monthKeys(n){const out=[],d=new Date();d.setDate(1);for(let i=n-1;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);out.push(x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0"))}return out}
+function chartMonths(n){
+  const keys=monthKeys(n),data=keys.map(k=>{const o={};for(const p in PRODUITS)o[p]=0;S.achats.forEach(a=>{if((a.date||"").startsWith(k))o[a.produit]=(o[a.produit]||0)+num(a.kg)});return o});
+  const tot=data.map(o=>Object.values(o).reduce((a,b)=>a+b,0)),mx=Math.max(...tot);
+  if(!mx)return `<p class="note">Aucune pesée sur les ${n} derniers mois.</p>`;
+  const step=niceStep(mx/4),top=Math.ceil(mx/step)*step;
+  const W=620,H=230,L=58,B=26,T=10,R=8,ch=H-B-T,cw=(W-L-R)/n,bw=Math.min(46,cw*.56);
+  let g="";for(let v=0;v<=top+1e-9;v+=step){const y=T+ch-(v/top)*ch;g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-8}" y="${y+4}" text-anchor="end">${kg(v)}</text>`}
+  let bars="";data.forEach((o,i)=>{let y=T+ch;const x=L+i*cw+(cw-bw)/2;Object.keys(PRODUITS).forEach(p=>{const h=o[p]/top*ch;if(h>0){y-=h;bars+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${PRODUITS[p].c}"><title>${PRODUITS[p].n} : ${kg(o[p])}</title></rect>`}});
+    const lab=new Date(keys[i]+"-15").toLocaleDateString("fr-FR",{month:"short"});
+    bars+=`<text x="${x+bw/2}" y="${H-8}" text-anchor="middle">${lab}</text>`;
+    if(tot[i])bars+=`<text x="${x+bw/2}" y="${y-5}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${kg(tot[i])}</text>`});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Volumes collectés par mois">${g}${bars}</svg>`;
+}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+
+function vMembres(){
+  const liv={},val={};S.achats.forEach(a=>{liv[a.membre]=(liv[a.membre]||0)+num(a.kg);val[a.membre]=(val[a.membre]||0)+mt(a)});
+  const list=S.membres.filter(m=>(!q||[m.nom,m.section,m.code,m.tel].join(" ").toLowerCase().includes(q.toLowerCase()))&&(!fProd||(fProd==="sanspart"?!m.part:m.produit===fProd))).sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+  const sections=new Set(S.membres.map(m=>m.section)).size;
+  return `<section class="kpis">
+    ${kpi("membres","Membres inscrits",fmt(S.membres.length),`${sections} section${sections>1?"s":""} / village${sections>1?"s":""}`)}
+    ${kpi("doc","Parts sociales",`${fmt(S.membres.filter(m=>m.part).length)}<small>/ ${fmt(S.membres.length)}</small>`,"réglées","g")}
+    ${kpi("scale","Superficie déclarée",`${new Intl.NumberFormat("fr-FR",{maximumFractionDigits:1}).format(S.membres.reduce((s,m)=>s+num(m.ha),0))}<small>ha</small>`,"toutes cultures")}
+    ${kpi("achats","Livreurs actifs",fmt(Object.keys(liv).length),"ont livré cette campagne")}
+  </section>
+  <div class="chipsf"><button data-fpm="" aria-pressed="${!fProd}">Tous les membres</button>${Object.entries(PRODUITS).map(([k,v])=>`<button data-fpm="${k}" aria-pressed="${fProd===k}">${v.n}</button>`).join("")}<button data-fpm="sanspart" aria-pressed="${fProd==="sanspart"}">À traiter</button></div>
+  <section class="card">
+    <div class="toolbar"><div class="search">${ic("search",16)}<input id="q" type="search" placeholder="Rechercher par nom, code, village, téléphone" value="${esc(q)}" aria-label="Rechercher"></div>
+      <button class="btn" data-form="membre">${ic("membres",16)}Inscrire</button></div>
+    ${list.length?`<div class="tbl"><table><thead><tr><th>Code</th><th>Membre</th><th>Section</th><th>Culture</th><th class="num">Superficie</th><th class="num">Livré</th><th class="num">Valeur</th><th>Part sociale</th><th></th></tr></thead><tbody>
+    ${list.map(m=>`<tr class="click" data-fiche="${m.id}"><td class="ref">${esc(m.code||"—")}</td><td><b>${esc(m.nom)}</b>${m.tel?`<span class="sub">${esc(m.tel)}</span>`:""}</td><td>${esc(m.section)}</td><td>${prodTag(m.produit)}</td><td class="num">${m.ha?esc(m.ha)+" ha":"—"}</td><td class="num">${kg(liv[m.id]||0)}</td><td class="num">${F(val[m.id]||0)}</td>
+    <td>${m.part?`<button class="tag ok" data-part="${m.id}">Réglée</button>`:`<button class="tag no" data-part="${m.id}">Non réglée</button>`}</td><td><div class="acts">${delBtn("membres",m.id)}</div></td></tr>`).join("")}</tbody></table></div>`
+    :empty("membres",q||fProd?"Aucun résultat":"Registre vide",q||fProd?"Aucun membre ne correspond à ces critères.":"Inscrivez le premier membre de la coopérative.")}
+  </section>`;
+}
+
+function vAchats(){
+  const t=totals();
+  const list=S.achats.filter(a=>(!fProd||a.produit===fProd)&&(!fStat||(fStat==="paye"?a.paye:!a.paye))&&(!q||[(membre(a.membre)?.nom||""),a.ref].join(" ").toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.cree||"").localeCompare(a.cree||""));
+  const sK=list.reduce((s,a)=>s+num(a.kg),0),sF=list.reduce((s,a)=>s+mt(a),0);
+  return `<section class="kpis">
+    ${Object.keys(PRODUITS).map(p=>kpi("scale","Collecte "+PRODUITS[p].n.toLowerCase(),kg(t.achKg[p]),`Stock : ${kg(t.stock[p])}`)).join("")}
+    ${kpi("wallet","Reste à payer",F(t.dette),`${S.achats.filter(a=>!a.paye).length} pesée(s) en attente`,t.dette?"w":"g")}
+  </section>
+  <div class="chipsf"><button data-fs="" aria-pressed="${!fStat}">Toutes les pesées</button><button data-fs="apayer" aria-pressed="${fStat==="apayer"}">À payer</button><button data-fs="paye" aria-pressed="${fStat==="paye"}">Payées</button></div>
+  <section class="card">
+    <div class="toolbar"><div class="search">${ic("search",16)}<input id="q" type="search" placeholder="Producteur ou n° de reçu" value="${esc(q)}" aria-label="Rechercher"></div>
+      <select id="fp" style="width:auto" aria-label="Produit"><option value="">Tous produits</option>${prodOpts(fProd)}</select>
+      <button class="btn" data-form="achat">${ic("achats",16)}Nouvelle pesée</button></div>
+    ${list.length?`<div class="tbl"><table><thead><tr><th>N° reçu</th><th>Date</th><th>Producteur</th><th>Produit</th><th class="num">Sacs</th><th class="num">Poids net</th><th class="num">Prix/kg</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${list.map(a=>`<tr><td class="ref">${esc(a.ref||"—")}</td><td style="white-space:nowrap">${dfr(a.date)}</td><td>${esc(membre(a.membre)?.nom||"—")}<span class="sub">${esc(membre(a.membre)?.section||"")}${a.pisteur&&pisteur(a.pisteur)?" · via "+esc(pisteur(a.pisteur).nom):""}</span></td><td>${prodTag(a.produit)}</td><td class="num">${esc(a.sacs||"—")}</td><td class="num">${fmt(a.kg)} kg</td><td class="num">${fmt(a.prix)}</td><td class="num"><b>${F(mt(a))}</b></td>
+    <td>${tag(a.paye,"Payé","À payer",`data-pay="${a.id}"`)}</td><td><div class="acts"><button class="btn icon" data-recu="${a.id}" title="Reçu" aria-label="Reçu">${ic("doc",16)}</button>${delBtn("achats",a.id)}</div></td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="5">Total (${list.length} pesées)</td><td class="num">${kg(sK)}</td><td></td><td class="num">${F(sF)}</td><td colspan="2"></td></tr></tfoot></table></div>`
+    :empty("achats","Aucune pesée",S.membres.length?"Enregistrez la première pesée de la campagne.":"Inscrivez d'abord un membre.",`<button class="btn" data-form="${S.membres.length?"achat":"membre"}">${S.membres.length?"Nouvelle pesée":"Inscrire un membre"}</button>`)}
+  </section>`;
+}
+
+function vVentes(){
+  const t=totals(),list=S.ventes.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const kV=list.reduce((s,v)=>s+num(v.kg),0);
+  return `<section class="kpis">
+    ${kpi("ventes","Chiffre d'affaires",F(t.venF),`${list.length} livraison(s)`)}
+    ${kpi("scale","Volume vendu",kg(kV),`Prix moyen ${kV?fmt(t.venF/kV):0} F/kg`)}
+    ${kpi("wallet","À encaisser",`<span class="${t.creance?"out":""}">${F(t.creance)}</span>`,"créances acheteurs")}
+    ${kpi("achats","Marge brute",F(t.venF-t.achF),"ventes − achats")}
+  </section>
+  <section class="card"><div class="card-h"><h2>Livraisons aux acheteurs</h2><button class="btn" data-form="vente">${ic("ventes",16)}Nouvelle vente</button></div>
+    ${list.length?`<div class="tbl"><table><thead><tr><th>N° bon</th><th>Date</th><th>Acheteur</th><th>Produit</th><th class="num">Poids</th><th class="num">Prix/kg</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${list.map(v=>`<tr><td class="ref">${esc(v.ref||"—")}${v.connaissement?`<span class="sub">${esc(v.connaissement)}</span>`:""}</td><td style="white-space:nowrap">${dfr(v.date)}</td><td><b>${esc(v.acheteur)}</b></td><td>${prodTag(v.produit)}</td><td class="num">${kg(num(v.kg))}</td><td class="num">${fmt(v.prix)}</td><td class="num"><b>${F(mt(v))}</b></td>
+    <td>${tag(v.encaisse,"Encaissé","En attente",`data-enc="${v.id}"`)}</td><td><div class="acts">${delBtn("ventes",v.id)}</div></td></tr>`).join("")}</tbody></table></div>`
+    :empty("ventes","Aucune vente","Enregistrez une livraison à un exportateur ou un acheteur agréé.")}
+  </section>`;
+}
+
+const CATS={entree:["Parts sociales","Cotisations","Prime / ristourne reçue","Subvention","Remboursement d'avance","Autre recette"],sortie:["Transport et carburant","Salaires et manœuvres","Sacs et matériel","Ristournes versées","Frais de fonctionnement","Avance aux producteurs","Avances et commissions pisteurs","Frais bancaires","Autre dépense"]};
+function vCaisse(){
+  const t=totals(),j=journal();
+  const byCat={};S.mouvements.filter(m=>m.sens!=="entree").forEach(m=>byCat[m.categorie]=(byCat[m.categorie]||0)+num(m.montant));
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]),cm=Math.max(1,...cats.map(c=>c[1]));
+  return `<section class="kpis">
+    ${kpi("wallet","Solde de caisse",`<span class="${t.solde<0?"out":""}">${F(t.solde)}</span>`,"au "+dfr(today()))}
+    ${kpi("ventes","Total entrées",F(t.entrees),"ventes encaissées et recettes")}
+    ${kpi("achats","Total sorties",F(t.sorties),"paiements et dépenses")}
+    ${kpi("doc","Frais de fonctionnement",F(t.depenses),"hors achats de produits")}
+  </section>
+  <div class="cols">
+  <section class="card"><div class="card-h"><h2>Journal de caisse</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec sm" data-export="caisse">${ic("dl",15)}Exporter</button><button class="btn sm" data-form="mvt">Nouvelle écriture</button></div></div>
+    ${j.length?`<div class="tbl"><table><thead><tr><th>Date</th><th>Libellé</th><th class="num">Entrée</th><th class="num">Sortie</th><th class="num">Solde</th><th></th></tr></thead><tbody>
+    ${j.map(r=>`<tr><td style="white-space:nowrap">${dfr(r.date)}${r.ref?`<span class="sub ref">${esc(r.ref)}</span>`:""}</td><td>${esc(r.lib)}<span class="sub">${esc(r.cat)}</span></td><td class="num in">${r.m>0?fmt(r.m):""}</td><td class="num out">${r.m<0?fmt(-r.m):""}</td><td class="num"><b class="${r.solde<0?"out":""}">${fmt(r.solde)}</b></td><td><div class="acts">${r.id?delBtn("mouvements",r.id):""}</div></td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="2">Totaux (FCFA)</td><td class="num in">${fmt(t.entrees)}</td><td class="num out">${fmt(t.sorties)}</td><td class="num">${fmt(t.solde)}</td><td></td></tr></tfoot></table></div>`
+    :empty("caisse","Journal vide","Les paiements de pesées et les ventes encaissées y sont reportés automatiquement.")}
+  </section>
+  <section class="card"><div class="card-h"><h2>Dépenses par poste</h2></div><div class="card-b">
+    ${cats.length?cats.map(([c,v])=>`<div style="display:flex;flex-direction:column;gap:5px"><div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(c)}</span><span class="num">${F(v)}</span></div><div class="bar"><i style="width:${v/cm*100}%;background:var(--primary)"></i></div></div>`).join(""):`<p class="note">Aucune dépense saisie.</p>`}
+  </div></section></div>`;
+}
+
+function vRapports(){
+  const t=totals();
+  const sec={};S.membres.forEach(m=>{sec[m.section]=sec[m.section]||{m:0,kg:0,f:0};sec[m.section].m++});
+  S.achats.forEach(a=>{const s=membre(a.membre)?.section||"Non affecté";sec[s]=sec[s]||{m:0,kg:0,f:0};sec[s].kg+=num(a.kg);sec[s].f+=mt(a)});
+  const rows=Object.entries(sec).sort((a,b)=>b[1].kg-a[1].kg);
+  const r=num(S.params.ristourne),by={};S.achats.forEach(a=>by[a.membre]=(by[a.membre]||0)+num(a.kg));
+  const rist=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  return `<section class="card"><div class="card-h"><h2>Collecte par mois</h2><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${legendP()}<div class="seg">${["6","12"].map(p=>`<button data-period="${p}" aria-pressed="${period===p}">${p} mois</button>`).join("")}</div></div></div><div class="card-b chart">${chartMonths(+period)}</div></section>
+  <section class="card"><div class="card-h"><h2>Synthèse par produit</h2><button class="btn sec sm" data-export="synthese">${ic("dl",15)}Exporter</button></div><div class="tbl"><table><thead><tr><th>Produit</th><th class="num">Acheté</th><th class="num">Valeur achats</th><th class="num">Prix moyen achat</th><th class="num">Vendu</th><th class="num">Valeur ventes</th><th class="num">Prix moyen vente</th><th class="num">Stock</th></tr></thead><tbody>
+  ${Object.keys(PRODUITS).map(p=>{const aF=S.achats.filter(a=>a.produit===p).reduce((s,a)=>s+mt(a),0),vF=S.ventes.filter(v=>v.produit===p).reduce((s,v)=>s+mt(v),0);return `<tr><td>${prodTag(p)}</td><td class="num">${kg(t.achKg[p])}</td><td class="num">${F(aF)}</td><td class="num">${t.achKg[p]?fmt(aF/t.achKg[p]):"—"}</td><td class="num">${kg(t.venKg[p])}</td><td class="num">${F(vF)}</td><td class="num">${t.venKg[p]?fmt(vF/t.venKg[p]):"—"}</td><td class="num"><b>${kg(t.stock[p])}</b></td></tr>`}).join("")}
+  </tbody><tfoot><tr><td>Total</td><td class="num">${kg(t.kgTot)}</td><td class="num">${F(t.achF)}</td><td></td><td class="num">${kg(Object.values(t.venKg).reduce((a,b)=>a+b,0))}</td><td class="num">${F(t.venF)}</td><td></td><td></td></tr></tfoot></table></div></section>
+  <div class="cols">
+  <section class="card"><div class="card-h"><h2>Performance par section</h2></div>${rows.length?`<div class="tbl"><table><thead><tr><th>Section / village</th><th class="num">Membres</th><th class="num">Volume</th><th class="num">Valeur</th><th class="num">Part</th></tr></thead><tbody>${rows.map(([s,o])=>`<tr><td>${esc(s)}</td><td class="num">${o.m}</td><td class="num">${kg(o.kg)}</td><td class="num">${F(o.f)}</td><td class="num">${t.kgTot?Math.round(o.kg/t.kgTot*100):0} %</td></tr>`).join("")}</tbody></table></div>`:`<div class="card-b"><p class="note">Pas encore de données.</p></div>`}</section>
+  <section class="card"><div class="card-h"><h2>Ristournes à distribuer</h2>${r?`<button class="btn sec sm" data-export="ristournes">${ic("dl",15)}Exporter</button>`:""}</div>
+    ${!r?`<div class="card-b"><p class="note">Renseignez le montant de ristourne par kilo dans les paramètres pour calculer la part de chaque membre.</p><div><button class="btn sec sm" data-go="reglages">Ouvrir les paramètres</button></div></div>`:rist.length?`<div class="tbl"><table><thead><tr><th>Membre</th><th class="num">Livré</th><th class="num">Ristourne</th></tr></thead><tbody>${rist.map(([id,k])=>`<tr><td>${esc(membre(id)?.nom||"—")}<span class="sub ref">${esc(membre(id)?.code||"")}</span></td><td class="num">${fmt(k)} kg</td><td class="num">${F(k*r)}</td></tr>`).join("")}</tbody><tfoot><tr><td>Total à ${fmt(r)} F/kg</td><td class="num">${kg(rist.reduce((s,x)=>s+x[1],0))}</td><td class="num">${F(rist.reduce((s,x)=>s+x[1]*r,0))}</td></tr></tfoot></table></div>`:`<div class="card-b"><p class="note">Aucune livraison enregistrée.</p></div>`}
+  </section></div>
+  <section class="card"><div class="card-h"><h2>Exports pour la comptabilité</h2></div><div class="card-b"><p class="note">Fichiers CSV à ouvrir dans Excel (séparateur point-virgule).</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sec" data-export="membres">${ic("dl",16)}Registre des membres</button><button class="btn sec" data-export="achats">${ic("dl",16)}Pesées</button><button class="btn sec" data-export="ventes">${ic("dl",16)}Ventes</button><button class="btn sec" data-export="caisse">${ic("dl",16)}Journal de caisse</button><button class="btn sec" data-export="pisteurs">${ic("dl",16)}Pisteurs et commissions</button><button class="btn sec" data-export="dirigeants">${ic("dl",16)}Organes dirigeants</button></div></div></section>`;
+}
+
+function vReglages(){
+  const p=S.params;
+  return `<section class="card"><div class="card-h"><h2>Campagne et barème</h2></div><div class="card-b">
+    <p class="note">Les prix renseignés ici pré-remplissent les pesées. Saisissez les prix officiels fixés pour la campagne.</p>
+    <form id="fParams" class="grid-f">
+      <label class="fl">Campagne<input id="p_c" value="${esc(p.campagne)}"></label>
+      <label class="fl">Ristourne aux membres <em>(FCFA/kg)</em><input id="p_r" inputmode="numeric" value="${esc(p.ristourne)}"></label>
+      <label class="fl">Prix cacao <em>(FCFA/kg)</em><input id="p_cacao" inputmode="numeric" value="${esc(p.prix_cacao)}"></label>
+      <label class="fl">Prix café <em>(FCFA/kg)</em><input id="p_cafe" inputmode="numeric" value="${esc(p.prix_cafe)}"></label>
+      <label class="fl">Prix anacarde <em>(FCFA/kg)</em><input id="p_anacarde" inputmode="numeric" value="${esc(p.prix_anacarde)}"></label>
+      <div class="full"><button class="btn">Enregistrer les paramètres</button></div>
+    </form></div></section>
+  <section class="card"><div class="card-h"><h2>Identité de la coopérative</h2></div><div class="card-b"><dl class="dl">
+    <div><dt>Raison sociale</dt><dd>Société Coopérative avec Conseil d'Administration Bengueleman de Mankono</dd></div>
+    <div><dt>Sigle</dt><dd>SOCOBEMA-COOP-CA</dd></div><div><dt>Code SNT</dt><dd class="ref">SC061082</dd></div><div><dt>N° compte contribuable</dt><dd class="ref">1656303L</dd></div>
+    <div><dt>Siège</dt><dd>BP 87 Mankono</dd></div><div><dt>Contact</dt><dd>07 07 64 41 06</dd></div><div><dt>Filières</dt><dd>Café, cacao, anacarde</dd></div>
+  </dl></div></section>
+  ${role()==="pca"?accesCard():`<section class="card"><div class="card-h"><h2>Mon accès</h2></div><div class="card-b"><p class="note">Connecté : <b>${esc(moi?moi.nom:"")}</b> · ${esc(ROLES[role()]||"")}. ${esc(ROLE_DESC[role()]||"")}</p><p class="note">Pour changer de code, demandez un nouveau code au PCA.</p></div></section>`}`;
+}
+function accesCard(){const G=S.gestionnaires.slice().sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+  return `<section class="card"><div class="card-h"><h2>Gestionnaires et codes d'accès</h2><button class="btn sm" data-form="gest">Ajouter un gestionnaire</button></div>
+  <div class="who-row"><span class="av t-Conseil">PCA</span><div class="ct-m"><b style="font-weight:600">PCA · administrateur</b><span>Code personnel actif · tous les droits</span></div><div class="acts"><button class="btn sec sm" data-form="pcacode">Changer mon code</button></div></div>
+  ${G.map(g=>`<div class="who-row"><span class="av t-${g.role==="lecture"?"Personnel":g.role==="peseur"?"Pisteur":"Membre"}">${esc(initiales(g.nom))}</span><div class="ct-m"><b style="font-weight:600">${esc(g.nom)}</b><span>${esc(ROLES[g.role]||"Gestionnaire")}${g.tel?" · "+esc(g.tel):""} · code créé le ${dfr((g.codeLe||g.cree||"").slice(0,10))}</span></div>
+    <div class="acts"><button class="tag ${g.actif!==false?"ok":"no"}" data-gact="${g.id}" title="Suspendre ou réactiver">${g.actif!==false?"Actif":"Suspendu"}</button><button class="btn sec sm" data-gcode="${g.id}">Nouveau code</button></div></div>`).join("")}
+  <div class="card-b"><p class="note">Chaque gestionnaire ouvre la plateforme avec <b>son nom et son code à 6 chiffres</b>. Ses saisies portent son nom. La plateforme se verrouille seule après 15 minutes sans activité. Un gestionnaire suspendu ne peut plus entrer.</p>
+  <p class="note">Rôles : <b>Gestionnaire</b> — ${ROLE_DESC.gestionnaire} <b>Peseur / magasinier</b> — ${ROLE_DESC.peseur} <b>Consultation</b> — ${ROLE_DESC.lecture}</p>
+  <p class="note">Envoyez aussi à chaque gestionnaire l'adresse de la plateforme : <b class="ref" style="color:var(--ink)">socobema-claude.github.io/Socobema-flotte/gestion/</b>. Aucun compte Claude n'est nécessaire.</p></div></section>`}
+
+
+/* ---------- Pisteurs ---------- */
+function pStats(x){const L=S.achats.filter(a=>a.pisteur===x.id);const k=L.reduce((s,a)=>s+num(a.kg),0);const av=S.mouvements.filter(m=>m.pisteur===x.id&&m.sens!=="entree").reduce((s,m)=>s+num(m.montant),0);return{n:L.length,kg:k,val:L.reduce((s,a)=>s+mt(a),0),com:k*num(x.commission),av,prods:[...new Set(L.map(a=>a.produit))]}}
+function vPisteurs(){
+  const list=S.pisteurs.filter(x=>!q||[x.nom,x.zone,x.code,x.tel].join(" ").toLowerCase().includes(q.toLowerCase())).sort((a,b)=>pStats(b).kg-pStats(a).kg);
+  const all=S.pisteurs.map(pStats),kT=all.reduce((s,o)=>s+o.kg,0),cT=all.reduce((s,o)=>s+o.com,0),aT=all.reduce((s,o)=>s+o.av,0);
+  const t=totals();
+  return `<section class="kpis">
+    ${kpi("pisteurs","Pisteurs actifs",fmt(S.pisteurs.filter(x=>x.actif!==false).length),`${S.pisteurs.length} enregistrés`)}
+    ${kpi("scale","Volume via pisteurs",kg(kT),t.kgTot?Math.round(kT/t.kgTot*100)+" % de la collecte":"—")}
+    ${kpi("wallet","Commissions dues",F(cT),"selon le taux de chaque pisteur")}
+    ${kpi("caisse","Reste à payer",`<span class="${cT-aT>0?"out":""}">${F(cT-aT)}</span>`,`${F(aT)} déjà avancés`)}
+  </section>
+  <section class="card">
+    <div class="toolbar"><div class="search">${ic("search",16)}<input id="q" type="search" placeholder="Nom, zone, code, téléphone" value="${esc(q)}" aria-label="Rechercher"></div>
+      <button class="btn sec" data-export="pisteurs">${ic("dl",16)}Exporter</button><button class="btn" data-form="pisteur">${ic("pisteurs",16)}Nouveau pisteur</button></div>
+    ${list.length?`<div class="tbl"><table><thead><tr><th>Code</th><th>Pisteur</th><th>Zone de collecte</th><th class="num">Apports</th><th class="num">Volume</th><th class="num">Taux</th><th class="num">Commission</th><th class="num">Avancé</th><th class="num">Reste</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${list.map(x=>{const o=pStats(x),re=o.com-o.av;return `<tr class="click" data-pfiche="${x.id}"><td class="ref">${esc(x.code||"—")}</td><td><b>${esc(x.nom)}</b>${x.tel?`<span class="sub">${esc(x.tel)}</span>`:""}</td><td>${esc(x.zone)}<span class="sub">${o.prods.map(p=>PRODUITS[p]?.n).join(", ")}</span></td><td class="num">${o.n}</td><td class="num">${kg(o.kg)}</td><td class="num">${fmt(x.commission)} F</td><td class="num">${F(o.com)}</td><td class="num">${F(o.av)}</td><td class="num"><b class="${re>0?"out":""}">${F(re)}</b></td>
+    <td><button class="tag ${x.actif!==false?"ok":"no"}" data-pact="${x.id}">${x.actif!==false?"Actif":"Suspendu"}</button></td><td><div class="acts"><button class="btn sec sm" data-form="avance" data-for="${x.id}">Avance</button>${delBtn("pisteurs",x.id)}</div></td></tr>`}).join("")}</tbody></table></div>`
+    :empty("pisteurs",q?"Aucun résultat":"Aucun pisteur",q?"Aucun pisteur ne correspond.":"Enregistrez les pisteurs qui collectent pour la coopérative. Rattachez ensuite chaque pesée à son pisteur pour calculer ses commissions.")}
+  </section>`;
+}
+/* ---------- Gouvernance ---------- */
+const ORGANES=["Conseil d'administration","Comité de gestion","Comité de surveillance","Direction"];
+const FONCTIONS={"Conseil d'administration":["Président du Conseil d'administration (PCA)","Vice-président","Secrétaire","Secrétaire adjoint","Trésorier","Trésorier adjoint","Administrateur"],"Comité de gestion":["Président du comité de gestion","Vice-président","Secrétaire","Trésorier","Membre"],"Comité de surveillance":["Président du comité de surveillance","Membre","Commissaire aux comptes"],"Direction":["Directeur / gérant","Comptable","Magasinier","Peseur","Chauffeur","Agent de terrain"]};
+function mandat(d){if(!d.fin)return{t:"En cours",c:"ok"};const j=(new Date(d.fin+"T12:00")-new Date())/864e5;return j<0?{t:"Mandat expiré",c:"no"}:j<90?{t:"Expire bientôt",c:"wait"}:{t:"En cours",c:"ok"}}
+function dirSorted(){return S.dirigeants.slice().sort((a,b)=>ORGANES.indexOf(a.organe)-ORGANES.indexOf(b.organe)||((FONCTIONS[a.organe]||[]).indexOf(a.fonction)+99)%99-((FONCTIONS[b.organe]||[]).indexOf(b.fonction)+99)%99)}
+function vGouvernance(){
+  const D=dirSorted(),exp=D.filter(d=>mandat(d).c!=="ok").length;
+  const ca=D.filter(d=>d.organe==="Conseil d'administration");
+  return `<section class="kpis">
+    ${kpi("gouvernance","Conseil d'administration",fmt(ca.length),"administrateurs en fonction")}
+    ${kpi("membres","Comités",fmt(D.filter(d=>d.organe==="Comité de gestion"||d.organe==="Comité de surveillance").length),"gestion et surveillance")}
+    ${kpi("doc","Direction et personnel",fmt(D.filter(d=>d.organe==="Direction").length),"salariés et agents")}
+    ${kpi("caisse","Mandats à renouveler",`<span class="${exp?"out":""}">${fmt(exp)}</span>`,exp?"expirés ou sous 90 jours":"tous en cours")}
+  </section>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sec" data-appgo="conseil">Appeler le Conseil</button><button class="btn sec" data-export="dirigeants">${ic("dl",16)}Exporter la liste</button><button class="btn" data-form="dirigeant">${ic("gouvernance",16)}Ajouter un dirigeant</button></div>
+  ${D.length?ORGANES.filter(o=>D.some(d=>d.organe===o)).map(o=>`<section class="card"><div class="card-h"><h2>${o}</h2><span class="lbl">${D.filter(d=>d.organe===o).length} personne(s)</span></div><div class="tbl"><table><thead><tr><th>Fonction</th><th>Nom et prénoms</th><th>Téléphone</th><th>Mandat</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${D.filter(d=>d.organe===o).map(d=>{const m=mandat(d);return `<tr><td><b>${esc(d.fonction)}</b></td><td>${esc(d.nom)}${d.membre&&membre(d.membre)?`<span class="sub ref">Membre ${esc(membre(d.membre).code||"")}</span>`:""}</td><td>${esc(d.tel||"—")}</td><td style="white-space:nowrap">${d.debut?dfr(d.debut):"—"} → ${d.fin?dfr(d.fin):"…"}</td><td><span class="tag ${m.c}">${m.t}</span></td><td><div class="acts">${delBtn("dirigeants",d.id)}</div></td></tr>`}).join("")}</tbody></table></div></section>`).join("")
+  :`<div class="card">${empty("gouvernance","Organes non renseignés","Ajoutez le Président du Conseil d'administration, les administrateurs, les membres du comité de gestion et du comité de surveillance, ainsi que le personnel de direction.",`<button class="btn" data-form="dirigeant">Ajouter un dirigeant</button>`)}</div>`}`;
+}
+
+
+/* ---------- Contrats ---------- */
+const CTYPES={pisteur:"Contrat de prestation de pistage et de collecte",producteur:"Contrat d'engagement de livraison",vente:"Contrat de vente de produits agricoles"};
+const CSHORT={pisteur:"Pisteur",producteur:"Producteur",vente:"Vente"};
+function representant(){const d=S.dirigeants.find(x=>/PCA|Président du Conseil/.test(x.fonction||""))||S.dirigeants.find(x=>/Président du comité de gestion/.test(x.fonction||""));return d?{nom:d.nom,f:d.fonction.replace(/ \(PCA\)/,"")}:{nom:"",f:"Président du Conseil d'administration"}}
+function cPartie(c){if(c.type==="pisteur")return pisteur(c.partie)?.nom||"Pisteur supprimé";if(c.type==="producteur")return membre(c.partie)?.nom||"Membre supprimé";return c.acheteur||""}
+function cStatut(c){if(c.fin&&new Date(c.fin+"T23:59")<new Date())return{t:"Expiré",c:"no"};return c.signe?{t:"Signé",c:"ok"}:{t:"À signer",c:"wait"}}
+function vContrats(){
+  const L=S.contrats.slice().sort((a,b)=>(b.cree||"").localeCompare(a.cree||""));
+  const pSans=S.pisteurs.filter(x=>x.actif!==false&&!S.contrats.some(c=>c.type==="pisteur"&&c.partie===x.id&&cStatut(c).c!=="no")).length;
+  return `<section class="kpis">
+    ${kpi("contrats","Contrats",fmt(L.length),"tous types")}
+    ${kpi("doc","Signés et en cours",fmt(L.filter(c=>cStatut(c).c==="ok").length),"")}
+    ${kpi("caisse","À signer",`<span class="${L.some(c=>cStatut(c).c==="wait")?"out":""}">${fmt(L.filter(c=>cStatut(c).c==="wait").length)}</span>`,"brouillons à faire signer")}
+    ${kpi("pisteurs","Pisteurs sans contrat",`<span class="${pSans?"out":""}">${fmt(pSans)}</span>`,"pisteurs actifs")}
+  </section>
+  <section class="card"><div class="card-h"><h2>Registre des contrats</h2><button class="btn" data-form="contrat">${ic("contrats",16)}Nouveau contrat</button></div>
+  ${L.length?`<div class="tbl"><table><thead><tr><th>N°</th><th>Type</th><th>Cocontractant</th><th>Période</th><th>Objet</th><th>Statut</th><th></th></tr></thead><tbody>
+  ${L.map(c=>{const st=cStatut(c);return `<tr class="click" data-cview="${c.id}"><td class="ref">${esc(c.ref)}</td><td>${CSHORT[c.type]}</td><td><b>${esc(cPartie(c))}</b></td><td style="white-space:nowrap">${dfr(c.debut)} → ${dfr(c.fin)}</td><td>${c.produit?prodTag(c.produit):"—"}</td><td><button class="tag ${st.c}" data-csign="${c.id}" title="Marquer signé / non signé">${st.t}</button></td><td><div class="acts"><button class="btn icon" data-cview="${c.id}" title="Voir" aria-label="Voir">${ic("doc",16)}</button>${delBtn("contrats",c.id)}</div></td></tr>`}).join("")}</tbody></table></div>`
+  :empty("contrats","Aucun contrat","Rédigez un contrat pour un pisteur, un engagement de livraison pour un producteur ou un contrat de vente avec un acheteur. Le texte est généré à partir des fiches enregistrées.",`<button class="btn" data-form="contrat">Rédiger un contrat</button>`)}
+  </section>
+  <p class="note">Les contrats générés sont des modèles. Faites-les relire par un conseiller juridique ou l'union de coopératives avant la première utilisation.</p>`;
+}
+function contratHTML(c){
+  const rep=representant(),A=[];let partie="";
+  const art=(t,p)=>A.push([t,p]);const ligne="……………………………………";
+  const coop=`<b>SOCOBEMA-COOP-CA</b>, Société Coopérative avec Conseil d'Administration Bengueleman de Mankono, code SNT SC061082, siège BP 87 Mankono, représentée par ${rep.nom?"<b>"+esc(rep.nom)+"</b>, ":ligne+", "}${esc(rep.f)}, dûment habilité, ci-après « la Coopérative »`;
+  const per=`du <b>${dfr(c.debut)}</b> au <b>${dfr(c.fin)}</b>`;
+  if(c.type==="pisteur"){const x=pisteur(c.partie)||{};
+    partie=`M./Mme <b>${esc(x.nom||ligne)}</b>, titulaire de la pièce d'identité n° ${esc(x.cni||ligne)}, téléphone ${esc(x.tel||ligne)}, demeurant à ${esc(x.zone||ligne)}, ci-après « le Pisteur »`;
+    art("Objet",`Le présent contrat a pour objet de confier au Pisteur la collecte de ${esc(c.produits||"café, cacao et anacarde")} auprès des producteurs membres de la Coopérative dans la zone de ${esc(c.zone||x.zone||ligne)}, ainsi que l'acheminement des produits jusqu'au magasin de la Coopérative.`);
+    art("Durée",`Le contrat est conclu ${per}. Il peut être renouvelé par écrit d'accord parties.`);
+    art("Rémunération",`Le Pisteur perçoit une commission de <b>${fmt(c.commission??x.commission)} FCFA par kilogramme net</b> livré et accepté au magasin, après pesée contradictoire. Les commissions sont réglées ${esc(c.periodicite||"à la fin de chaque quinzaine")}, sur présentation du relevé des apports.`);
+    art("Préfinancement",`La Coopérative peut consentir au Pisteur des avances de préfinancement dans la limite de <b>${fmt(c.plafond)} FCFA</b>. Chaque avance fait l'objet d'une pièce de caisse signée et est déduite des commissions dues.`);
+    art("Obligations du Pisteur",`Le Pisteur s'engage à : appliquer les prix officiels en vigueur ; utiliser des balances contrôlées ; remettre un reçu à chaque producteur ; livrer des produits secs, triés et conformes aux normes de qualité ; ne collecter que des produits dont l'origine est connue et traçable ; refuser tout produit issu du travail des enfants ou de zones protégées ; ne pas livrer à un autre acheteur les produits préfinancés par la Coopérative.`);
+    art("Obligations de la Coopérative",`La Coopérative s'engage à réceptionner et peser les produits en présence du Pisteur, à lui remettre un relevé de ses apports, à payer les commissions aux échéances prévues et à fournir, si possible, sacs et fiches de collecte.`);
+    art("Résiliation",`Chaque partie peut mettre fin au contrat par écrit avec un préavis de quinze (15) jours. Le contrat est résilié sans préavis en cas de faute grave, notamment fraude sur les poids, détournement d'avance ou de produits, ou atteinte à l'image de la Coopérative. Les avances non justifiées deviennent immédiatement exigibles.`);
+  }
+  if(c.type==="producteur"){const m=membre(c.partie)||{};
+    partie=`M./Mme <b>${esc(m.nom||ligne)}</b>, membre de la Coopérative sous le code ${esc(m.code||ligne)}, carte producteur n° ${esc(m.carte||ligne)}, section de ${esc(m.section||ligne)}, téléphone ${esc(m.tel||ligne)}, ci-après « le Producteur »`;
+    art("Objet",`Le Producteur s'engage à livrer à la Coopérative sa production de <b>${PRODUITS[c.produit]?.n.toLowerCase()||ligne}</b> issue de ses parcelles d'une superficie déclarée de ${esc(m.ha||ligne)} hectare(s), pour un volume prévisionnel de <b>${fmt(c.volume)} kg</b>.`);
+    art("Durée",`Le présent engagement couvre la campagne ${esc(S.params.campagne)}, ${per}.`);
+    art("Prix et paiement",`La Coopérative achète les produits au prix officiel bord champ en vigueur à la date de livraison. Le paiement intervient ${esc(c.paiement||"à la livraison, contre reçu de pesée")}.`);
+    art("Ristourne et avantages",`Conformément aux décisions de l'Assemblée générale, le Producteur bénéficie d'une ristourne proportionnelle aux volumes livrés${num(S.params.ristourne)?`, fixée à titre indicatif à ${fmt(S.params.ristourne)} FCFA/kg pour la présente campagne`:""}, ainsi que des services de la Coopérative (formation, encadrement, accès aux intrants).`);
+    art("Qualité et traçabilité",`Le Producteur s'engage à livrer des produits bien séchés, triés et exempts de corps étrangers, à respecter les bonnes pratiques agricoles, à ne pas employer d'enfants à des travaux dangereux et à permettre l'identification de ses parcelles.`);
+    art("Engagements statutaires",`Le Producteur s'engage à respecter les statuts et le règlement intérieur de la Coopérative, et à ne pas vendre à des tiers la production couverte par le présent engagement, sauf accord écrit de la Coopérative.`);
+  }
+  if(c.type==="vente"){
+    partie=`<b>${esc(c.acheteur||ligne)}</b>${c.rccm?", RCCM "+esc(c.rccm):""}${c.adresse?", "+esc(c.adresse):""}, représenté par ${esc(c.repAcheteur||ligne)}, ci-après « l'Acheteur »`;
+    art("Objet",`La Coopérative vend à l'Acheteur, qui accepte, <b>${fmt(c.quantite)} kg de ${PRODUITS[c.produit]?.n.toLowerCase()||ligne}</b>, qualité ${esc(c.qualiteV||"marchande")}.`);
+    art("Prix",`Le prix est fixé à <b>${fmt(c.prixV)} FCFA par kilogramme</b>, soit un montant total de <b>${fmt(num(c.quantite)*num(c.prixV))} FCFA</b> (${enLettres(Math.round(num(c.quantite)*num(c.prixV)))} francs CFA), sous réserve du poids constaté à la livraison.`);
+    art("Livraison",`La livraison a lieu à ${esc(c.lieu||"Mankono")} au plus tard le ${dfr(c.fin)}. Une pesée contradictoire est effectuée en présence des deux parties et donne lieu à un bon de livraison signé. Le transfert de propriété et des risques intervient à la signature de ce bon.`);
+    art("Paiement",`L'Acheteur règle le prix ${esc(c.paiementV||"par virement bancaire")} dans un délai de <b>${fmt(c.delai)} jour(s)</b> à compter de la livraison. Tout retard de paiement autorise la Coopérative à suspendre les livraisons suivantes.`);
+    art("Qualité et réclamations",`L'Acheteur dispose de quarante-huit (48) heures après la livraison pour formuler par écrit toute réclamation sur la qualité. Passé ce délai, la marchandise est réputée acceptée.`);
+    art("Durée",`Le présent contrat est valable ${per}.`);
+  }
+  art("Règlement des litiges",`Les parties s'efforcent de régler à l'amiable tout différend né de l'exécution du présent contrat. À défaut d'accord dans un délai de trente (30) jours, le litige est porté devant les juridictions compétentes de Côte d'Ivoire.`);
+  if(c.clauses)art("Clauses particulières",esc(c.clauses));
+  return `<div class="doc">${enTete()}
+  <div class="doc-t"><span>${CTYPES[c.type].toUpperCase()}</span><span class="ref" style="color:var(--ink)">${esc(c.ref)}</span></div>
+  <div class="parties">Entre les soussignés :<br>${coop},<br>d'une part,<br>Et ${partie},<br>d'autre part.<br><br>Il a été convenu ce qui suit :</div>
+  <div class="art">${A.map(([t,p],i)=>`<h3>Article ${i+1} — ${t}</h3><p>${p}</p>`).join("")}</div>
+  <div class="parties">Fait à ${esc(c.lieuSign||"Mankono")}, le ${dfr(c.dateSign||c.debut)}, en deux exemplaires originaux.</div>
+  <div class="doc-sig"><div>Pour la Coopérative<br>${esc(rep.f)}${rep.nom?"<br><b>"+esc(rep.nom)+"</b>":""}<br>(signature et cachet)</div><div>${c.type==="pisteur"?"Le Pisteur":c.type==="producteur"?"Le Producteur":"Pour l'Acheteur"}<br><b>${esc(cPartie(c))}</b><br>(lu et approuvé, signature${c.type==="producteur"?" ou empreinte":""})</div></div></div>`;
+}
+function contratTexte(c){const t=document.createElement("div");t.innerHTML=contratHTML(c).replace(/<br>/g,"\n").replace(/<\/(h3|p|div|tr)>/g,"$&\n");return t.textContent.replace(/\n{3,}/g,"\n\n").trim()}
+
+
+/* ---------- Plateformes liées ---------- */
+const PLATS=[
+ {k:"lien_pisteurs",n:"Pisteurs Bengueleman",i:"pisteurs",c:"var(--primary)",d:"Commercialisation de terrain : achats bord champ, livraisons au magasin, magasins secondaires, sacs, transferts, avances et remboursements des pisteurs.",m:["Achats bord champ","Livraisons","Magasins","Remboursements","Argent chez les pisteurs"]},
+ {k:"lien_compta",n:"Comptabilité SOCOBEMA",i:"compta",c:"#234E8C",d:"Comptabilité officielle de la coopérative : factures normalisées FNE, recettes et dépenses, paie, déclarations fiscales et sociales, bilan et états financiers.",m:["Factures","Recettes & dépenses","Paie","Déclarations","Bilan & états"]},
+ {k:"lien_flotte",n:"Flotte SOCOBEMA",i:"camion",c:"var(--gold)",d:"Camions de ramassage et de transport : missions, documents (assurance, visite technique, vignette, carte de stationnement), dépenses, suivi GPS et rapports.",m:["Camions","Missions","Documents","Dépenses","Carte GPS"]}];
+const okUrl=u=>/^https:\/\/[^\s"'<>]+$/.test(u||"");
+function platCard(p,compact){const u=S.params[p.k];return `<section class="card plat"><div class="card-b">
+  <div style="display:flex;gap:12px;align-items:center"><span class="pic" style="background:${p.c}">${ic(p.i,20)}</span><div style="min-width:0"><h2>${p.n}</h2><span class="lbl">${okUrl(u)?"Lien enregistré":"Lien à renseigner"}</span></div></div>
+  ${compact?"":`<p class="note">${p.d}</p><div class="chips">${p.m.map(x=>`<span>${x}</span>`).join("")}</div>`}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto">${okUrl(u)?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Ouvrir la plateforme</a>`:""}<button class="btn sec sm" data-plink="${p.k}">${okUrl(u)?"Modifier le lien":"Ajouter le lien"}</button></div>
+</div></section>`}
+function vPlateformes(){return `
+  <div class="plats">${PLATS.map(p=>platCard(p)).join("")}</div>
+  <section class="card"><div class="card-h"><h2>Répartition du travail</h2></div><div class="tbl"><table><thead><tr><th>Besoin</th><th>Où le faire</th></tr></thead><tbody>
+  <tr><td>Inscrire un membre, gérer le conseil d'administration, rédiger un contrat</td><td><b>SOCOBEMA Gestion</b> (ici)</td></tr>
+  <tr><td>Achat bord champ par un pisteur, livraison au magasin, transfert entre magasins</td><td><b>Pisteurs Bengueleman</b></td></tr>
+  <tr><td>Facture FNE, salaires, déclarations e-impôts et CNPS, bilan</td><td><b>Comptabilité SOCOBEMA</b></td></tr>
+  <tr><td>Mission d'un camion, carburant, renouvellement de l'assurance ou de la visite technique</td><td><b>Flotte SOCOBEMA</b></td></tr>
+  </tbody></table></div></section>`}
+
+
+/* ---------- Accès : comptes Firebase (un code par personne, sans compte Claude) ---------- */
+const ROLES={pca:"PCA (administrateur)",gestionnaire:"Gestionnaire",peseur:"Peseur / magasinier",lecture:"Consultation"};
+const ROLE_DESC={gestionnaire:"Toutes les saisies (pesées, ventes, caisse, membres, contrats, pisteurs, appels). Pas de suppression ni de paramètres.",peseur:"Pesées et reçus, inscription des membres, appels et convocations.",lecture:"Consultation seulement : aucune saisie."};
+const REFUS="Votre accès ne permet pas cette action.";
+const DOMAIN="gestion.socobema.app",INACTIF=15*60*1000;
+let auth=null,moi=null,adminUid=null,adminOk=false,comptesOk=false,authOk=false,setupBusy=false,lastAct=Date.now(),lockSig="",unsubs=[],slow=false;
+const isPcaCompte=g=>g.role==="pca"||g.id===adminUid;
+const gActifs=()=>S.comptes.filter(g=>g.actif!==false&&!g.remplace).sort((a,b)=>(isPcaCompte(b)-isPcaCompte(a))||(a.nom||"").localeCompare(b.nom||""));
+function syncGest(){S.gestionnaires=S.comptes.filter(g=>!isPcaCompte(g)&&!g.remplace)}
+const lockNeeded=()=>true;
+function role(){return moi?moi.role:"lecture"}
+function peut(col,op){const r=role();if(r==="pca")return true;if(col==="comptes"||col==="gestionnaires"||col==="params"||op==="d")return false;if(r==="gestionnaire")return true;if(r==="peseur")return ["achats","membres","appels","convocations"].includes(col);return false}
+function genCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);return String(100000+a[0]%900000)}
+function genSalt(){const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function lockIcon(){return `<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" style="margin:0 auto;color:var(--primary)" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`}
+function lockMode(){if(!window.FIREBASE_CONFIG||!window.FIREBASE_CONFIG.apiKey)return "nocfg";if(!authOk||!comptesOk||!adminOk||(auth&&auth.currentUser&&!moi&&!setupBusy))return "loading";if(!adminUid)return "setup";return "login"}
+function showLock(){let el=document.getElementById("lock");if(!el){el=document.createElement("div");el.id="lock";el.className="lock";document.body.appendChild(el)}
+  const m=lockMode(),G=gActifs(),sig=m+"|"+slow+"|"+G.map(g=>g.id+":"+g.nom).join(",");el.hidden=false;if(sig===lockSig)return;lockSig=sig;
+  const head=`${lockIcon()}<h2>SOCOBEMA GESTION</h2>`;
+  if(m==="nocfg"){el.innerHTML=`<div class="lockbox">${head}<p class="note" style="margin:0 auto">Installation en cours : la plateforme n'est pas encore reliée à sa base Firebase. Revenez dans quelques minutes.</p></div>`;return}
+  if(m==="loading"){el.innerHTML=`<div class="lockbox">${head}<p class="note" style="margin:0 auto">${slow?"Le chargement prend plus de temps que prévu. Vérifiez la connexion internet.":"Chargement… La première ouverture demande une connexion internet."}</p>${slow?`<button type="button" class="btn" style="justify-content:center" onclick="location.reload()">Réessayer</button>`:""}</div>`;return}
+  if(m==="setup"){el.innerHTML=`<form class="lockbox" id="fSetup" novalidate>${head}<p class="note" style="margin:0 auto"><b>Première installation.</b> Créez l'accès du PCA. Cet écran n'apparaît qu'une seule fois.</p>
+    <label class="fl" style="text-align:left">Votre adresse Gmail<input id="su-mail" type="email" autocomplete="email" placeholder="exemple@gmail.com" style="letter-spacing:0;font-size:16px;text-align:left;font-family:var(--f-body)"></label>
+    <label class="fl" style="text-align:left">Choisissez votre code à 6 chiffres<input id="su-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>
+    <label class="fl" style="text-align:left">Retapez le code<input id="su-pin2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>
+    <p id="lkerr" class="note" style="color:var(--bad);margin:0 auto;min-height:1.2em" role="alert"></p>
+    <button class="btn" id="lk-ok" style="justify-content:center;min-height:48px;font-size:16px">Créer l'accès du PCA</button><p class="note" style="margin:0 auto">L'adresse Gmail sert seulement si vous oubliez votre code.</p></form>`;return}
+  const last=(()=>{try{return localStorage.getItem("sg-last")||""}catch(e){return""}})();
+  el.innerHTML=`<form class="lockbox" id="fLock" novalidate>${head}<p class="note" style="margin:0 auto">Coopérative Bengueleman de Mankono · Choisissez votre nom et tapez votre code à 6 chiffres.</p>
+    <select id="lk-who" aria-label="Qui êtes-vous ?" style="font-size:16px;min-height:46px">${G.length!==1?`<option value="">Choisir votre nom…</option>`:""}${G.map(g=>`<option value="${g.id}" ${g.id===last?"selected":""}>${esc(isPcaCompte(g)?"PCA (administrateur)":g.nom+" · "+(ROLES[g.role]||"Gestionnaire"))}</option>`).join("")}</select>
+    <input id="lk" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" aria-label="Code d'accès">
+    <p id="lkerr" class="note" style="color:var(--bad);margin:0 auto;min-height:1.2em" role="alert"></p>
+    <button class="btn" id="lk-ok" style="justify-content:center;min-height:48px;font-size:16px">Entrer</button>
+    <button type="button" class="btn sec" id="lkForgot" style="justify-content:center">Code oublié ?</button><p class="note" id="lkhelp" style="margin:0 auto" hidden></p></form>`;
+  setTimeout(()=>document.getElementById(document.getElementById("lk-who")?.value?"lk":"lk-who")?.focus(),30)}
+function hideLock(){const el=document.getElementById("lock");if(el){el.hidden=true;lockSig=""}}
+function enforceLock(){if(moi)hideLock();else showLock()}
+function lockNow(){if(auth&&auth.currentUser)auth.signOut()}
+function checkLock(){enforceLock()}
+document.addEventListener("submit",async e=>{
+  if(e.target.id==="fSetup"){e.preventDefault();e.stopImmediatePropagation();const err=document.getElementById("lkerr"),ok=document.getElementById("lk-ok");
+    const mail=document.getElementById("su-mail").value.trim(),p1=document.getElementById("su-pin").value.trim(),p2=document.getElementById("su-pin2").value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){err.textContent="Adresse e-mail invalide.";return}
+    if(!/^\d{6}$/.test(p1)){err.textContent="Le code doit contenir exactement 6 chiffres.";return}
+    if(p1!==p2){err.textContent="Les deux codes ne sont pas identiques.";return}
+    ok.disabled=true;ok.textContent="Création…";setupBusy=true;
+    try{const cred=await auth.createUserWithEmailAndPassword(mail,p1),uid=cred.user.uid,now=new Date().toISOString();const bt=db.batch();
+      bt.set(db.collection("comptes").doc(uid),{nom:"PCA",role:"pca",actif:true,email:mail,codeLe:now,majPar:uid});bt.set(db.doc("config/admin"),{uid,creeLe:now});await bt.commit();
+      setupBusy=false;resolveMoi()}
+    catch(x){setupBusy=false;ok.disabled=false;ok.textContent="Créer l'accès du PCA";err.textContent=x&&x.code==="auth/email-already-in-use"?"Cette adresse a déjà un accès. Utilisez une autre adresse Gmail.":x&&x.code==="permission-denied"?"Refusé : un PCA existe déjà, ou les règles Firestore ne sont pas publiées.":x&&x.code==="auth/operation-not-allowed"?"La connexion par e-mail/mot de passe n'est pas activée dans Firebase.":errMsg(x);if(auth.currentUser&&!adminUid)try{await auth.currentUser.delete()}catch(_){}}
+    return}
+  if(e.target.id!=="fLock")return;e.preventDefault();e.stopImmediatePropagation();
+  const err=document.getElementById("lkerr"),ok=document.getElementById("lk-ok"),who=document.getElementById("lk-who").value,c=document.getElementById("lk").value.replace(/\D/g,"");
+  if(!who){err.textContent="Choisissez d'abord votre nom dans la liste.";return}
+  if(c.length!==6){err.textContent="Le code doit contenir 6 chiffres.";return}
+  const g=gActifs().find(x=>x.id===who);if(!g)return;ok.disabled=true;ok.textContent="Vérification…";
+  try{await auth.signInWithEmailAndPassword(g.email,c);try{localStorage.setItem("sg-last",g.id)}catch(_){}}
+  catch(x){const cd=x&&x.code||"";err.textContent=/wrong-password|invalid-credential|invalid-login|user-not-found/.test(cd)?"Code incorrect.":cd==="auth/too-many-requests"?"Trop d'essais. Attendez quelques minutes avant de réessayer.":cd==="auth/user-disabled"?"Cet accès a été désactivé.":errMsg(x);const pin=document.getElementById("lk");if(pin)pin.value=""}
+  finally{if(ok){ok.disabled=false;ok.textContent="Entrer"}}
+},true);
+document.addEventListener("click",async e=>{if(e.target.id!=="lkForgot")return;const h=document.getElementById("lkhelp"),who=document.getElementById("lk-who").value,g=gActifs().find(x=>x.id===who);h.hidden=false;
+  if(!g){h.textContent="Choisissez d'abord votre nom dans la liste.";return}
+  if(isPcaCompte(g)){try{await auth.sendPasswordResetEmail(g.email);h.textContent=`Un e-mail vient d'être envoyé à ${g.email.replace(/^(.{2}).*(@.*)$/,"$1•••$2")}. Ouvrez-le et choisissez un nouveau code à 6 chiffres.`}catch(x){h.textContent="L'e-mail n'a pas pu être envoyé. Vérifiez la connexion internet."}}
+  else h.textContent="Appelez le PCA de la coopérative au 07 07 64 41 06 : il vous donnera un nouveau code.";});
+["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,()=>{lastAct=Date.now()},{passive:true}));
+setInterval(()=>{if(moi&&Date.now()-lastAct>INACTIF){toast("Verrouillé après 15 minutes d'inactivité");lockNow()}},30000);
+async function newAuthUser(code){const app=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(window.FIREBASE_CONFIG,"sec");const a=app.auth(),email=`g-${genSalt()}@${DOMAIN}`;const cred=await a.createUserWithEmailAndPassword(email,code);await a.signOut();return{uid:cred.user.uid,email}}
+async function creerGest(d){if(role()!=="pca")return toast(REFUS);const code=genCode();try{const u=await newAuthUser(code),now=new Date().toISOString();
+  await db.collection("comptes").doc(u.uid).set({nom:d.nom,tel:d.tel||"",role:d.role,actif:true,email:u.email,codeLe:now,cree:now,majPar:auth.currentUser.uid});openModal("gcode",{nom:d.nom,tel:d.tel,code,role:d.role})}catch(x){toast(errMsg(x))}}
+async function nouveauCode(g){if(role()!=="pca")return toast(REFUS);const code=genCode();try{const u=await newAuthUser(code),now=new Date().toISOString(),bt=db.batch();
+  bt.set(db.collection("comptes").doc(u.uid),{nom:g.nom,tel:g.tel||"",role:g.role||"gestionnaire",actif:true,email:u.email,codeLe:now,cree:g.cree||now,majPar:auth.currentUser.uid});
+  bt.update(db.collection("comptes").doc(g.id),{actif:false,remplace:true,remplacePar:u.uid,majPar:auth.currentUser.uid});await bt.commit();openModal("gcode",{nom:g.nom,tel:g.tel,code,role:g.role,nouveau:true})}catch(x){toast(errMsg(x))}}
+function stopData(){unsubs.forEach(f=>{try{f()}catch(_){}});unsubs=[];for(const k of ["membres","achats","ventes","mouvements","dirigeants","pisteurs","contrats","convocations","appels"])S[k]=[]}
+function startData(){if(unsubs.length)return;for(const c of COLS)unsubs.push(db.collection(c).onSnapshot(s=>{S[c]=s.docs.map(x=>({...x.data(),id:x.id}));render()},e=>toast(errMsg(e))));
+  unsubs.push(db.doc("config/params").onSnapshot(s=>{if(s.exists)S.params={...S.params,...s.data()};render()},()=>{}))}
+function resolveMoi(){const u=auth&&auth.currentUser;if(!u){if(moi){moi=null;stopData()}return}if(setupBusy||!comptesOk)return;
+  const g=S.comptes.find(x=>x.id===u.uid);
+  if(!g){if(adminOk&&adminUid!==u.uid){moi=null;stopData();auth.signOut()}return}
+  if(g.actif===false||g.remplace){const was=!!moi;moi=null;stopData();auth.signOut();toast(was?"Votre accès a été suspendu ou remplacé.":"Cet accès n'est plus actif. Demandez un nouveau code au PCA.");return}
+  const nouveau=!moi;moi={id:g.id,nom:isPcaCompte(g)?"PCA":g.nom,role:isPcaCompte(g)?"pca":(g.role||"gestionnaire")};if(nouveau){lastAct=Date.now();startData();toast(moi.role==="pca"?"Bienvenue, Monsieur le PCA":"Bienvenue, "+moi.nom)}}
+
+
+
+/* ---------- Espace d'appel ---------- */
+let appG="individuel";
+const GROUPES={conseil:{n:"Conseil d'administration et comités",court:"Conseil"},membres:{n:"Tous les membres",court:"Membres"}};
+const VUES_APPEL={individuel:"Appel individuel",conseil:"Conseil d'administration et comités",membres:"Tous les membres"};
+function waNum(t){let d=String(t||"").replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);if(d.length===10)d="225"+d;return d.length>=11?d:null}
+function personnes(g){
+  if(g==="conseil")return dirSorted().filter(d=>d.organe!=="Direction").map(d=>{const m=d.membre&&membre(d.membre);return{id:"d_"+d.id,nom:d.nom,tel:d.tel||(m&&m.tel)||"",sub:d.fonction+" · "+d.organe}});
+  return S.membres.slice().sort((a,b)=>(a.nom||"").localeCompare(b.nom||"")).map(m=>({id:"m_"+m.id,nom:m.nom,tel:m.tel||"",sub:(m.code?m.code+" · ":"")+(m.section||"")}));
+}
+const convDe=g=>S.convocations.filter(c=>c.groupe===g).sort((a,b)=>(b.cree||"").localeCompare(a.cree||""))[0];
+function convTexte(c){const g=GROUPES[c.groupe];return `*SOCOBEMA-COOP-CA* — Coopérative Bengueleman de Mankono
+*CONVOCATION* · ${g.n}
+
+Objet : ${c.objet}
+Date : ${dfr(c.date)}${c.heure?" à "+c.heure:""}
+Lieu : ${c.lieu||"—"}${c.ordre?"\n\nOrdre du jour :\n"+c.ordre:""}${c.lien?"\n\nPour suivre à distance : "+c.lien:""}
+
+Votre présence est vivement souhaitée.
+Le Président du Conseil d'administration
+Contact : 07 07 64 41 06`}
+function vAppels(){
+  if(appG==="individuel")return vAppelIndiv();
+  const P=personnes(appG),qq=q.toLowerCase(),L=P.filter(x=>!qq||(x.nom+" "+x.sub+" "+x.tel).toLowerCase().includes(qq));
+  const c=convDe(appG),j=c?.joints||{},nJ=c?P.filter(x=>j[x.id]).length:0,avec=P.filter(x=>waNum(x.tel)).length;
+  const lienA=S.params["appel_"+appG],lienW=S.params["wa_"+appG];
+  return `<div class="chipsf">${Object.entries(VUES_APPEL).map(([k,v])=>`<button data-appg="${k}" aria-pressed="${appG===k}">${v}</button>`).join("")}</div>
+  <section class="kpis">
+    ${kpi("membres","Personnes",fmt(P.length),GROUPES[appG].n.toLowerCase())}
+    ${kpi("doc","Avec numéro",fmt(avec),"joignables par téléphone","g")}
+    ${kpi("caisse","Sans numéro",fmt(P.length-avec),P.length-avec?"numéros à compléter":"tout le monde a un numéro",P.length-avec?"w":"g")}
+    ${kpi("contrats","Prévenus",c?`${fmt(nJ)}<small>/ ${fmt(P.length)}</small>`:"—",c?"pour la dernière convocation":"aucune convocation",c?(nJ>=P.length&&P.length?"g":"w"):"")}
+  </section>
+  <div class="cols">
+    <section class="card"><div class="card-h"><h2>Appel de groupe</h2><button class="btn sec sm" data-form="glink" data-for="${appG}">${lienA||lienW?"Modifier les liens":"Ajouter les liens"}</button></div><div class="card-b">
+      <p class="note">Créez un lien d'appel dans WhatsApp (Appels › Créer un lien d'appel) ou Google Meet, puis enregistrez-le ici : chacun le rejoint en un geste.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${okUrl(lienA)?`<a class="btn" href="${esc(lienA)}" target="_blank" rel="noopener">Rejoindre l'appel de groupe</a>`:""}${okUrl(lienW)?`<a class="btn sec" href="${esc(lienW)}" target="_blank" rel="noopener">Ouvrir le groupe WhatsApp</a>`:""}${!okUrl(lienA)&&!okUrl(lienW)?`<button class="btn" data-form="glink" data-for="${appG}">Enregistrer un lien d'appel</button>`:""}</div>
+    </div></section>
+    <section class="card"><div class="card-h"><h2>Convocation</h2><button class="btn sm" data-form="convoc" data-for="${appG}">Nouvelle convocation</button></div><div class="card-b">
+      ${c?`<dl class="dl"><div><dt>Objet</dt><dd>${esc(c.objet)}</dd></div><div><dt>Date</dt><dd>${dfr(c.date)}${c.heure?" · "+esc(c.heure):""}</dd></div><div><dt>Lieu</dt><dd>${esc(c.lieu||"—")}</dd></div><div><dt>Prévenus</dt><dd>${nJ} sur ${P.length}</dd></div></dl>
+      <div class="bar"><i style="width:${P.length?nJ/P.length*100:0}%;background:var(--primary)"></i></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="https://wa.me/?text=${encodeURIComponent(convTexte(c))}" target="_blank" rel="noopener">Envoyer sur WhatsApp</a><button class="btn sec" data-copyconv="${c.id}">Copier le message</button>${delBtn("convocations",c.id)}</div>
+      <p class="note">« Envoyer sur WhatsApp » ouvre WhatsApp : choisissez le groupe ou les personnes. Cochez ensuite « Prévenu » pour chaque personne jointe.</p>`
+      :`<p class="note">Rédigez la convocation (objet, date, lieu, ordre du jour). Elle s'envoie ensuite sur WhatsApp et vous suivez qui a été prévenu.</p>`}
+    </div></section>
+  </div>
+  <section class="card">
+    <div class="toolbar"><div class="search">${ic("search",16)}<input id="q" type="search" placeholder="Rechercher un nom, une fonction, un village" value="${esc(q)}" aria-label="Rechercher"></div><span class="lbl">${L.length} contact(s)</span></div>
+    ${L.length?(()=>{let cur=null,out="";L.forEach(x=>{const k=appG==="conseil"?x.sub.split(" · ")[1]:(x.nom.replace(/^Exemple\s*·\s*/,"")[0]||"#").toUpperCase();if(k!==cur){cur=k;out+=`<div class="ct-sec">${esc(k)}</div>`}
+        out+=ctRow({...x,type:appG==="conseil"?"Conseil":"Membre",sub:appG==="conseil"?x.sub.split(" · ")[0]:x.sub},c?`<button class="tag ${j[x.id]?"ok":"wait"}" data-joint="${x.id}" title="Marquer comme prévenu">${j[x.id]?"Prévenu":"À prévenir"}</button>`:"")});return `<div class="ct-list">${out}</div>`})()
+    :empty(appG==="conseil"?"gouvernance":"membres",q?"Aucun résultat":"Liste vide",q?"Personne ne correspond à cette recherche.":appG==="conseil"?"Ajoutez d'abord les membres du Conseil et des comités, avec leur téléphone.":"Inscrivez d'abord les membres, avec leur téléphone.",q?"":`<button class="btn" data-go="${appG==="conseil"?"gouvernance":"membres"}">${appG==="conseil"?"Ouvrir Conseil et comités":"Ouvrir le registre des membres"}</button>`)}
+  </section>`;
+}
+
+
+const RESULTATS={joint:["Joint","ok"],absent:["Pas de réponse","wait"],rappeler:["À rappeler","wait"],injoignable:["Injoignable","no"]};
+function tousContacts(){
+  const out=[];
+  dirSorted().forEach(d=>{const m=d.membre&&membre(d.membre);out.push({id:"d_"+d.id,nom:d.nom,tel:d.tel||(m&&m.tel)||"",sub:d.fonction,type:d.organe==="Direction"?"Personnel":"Conseil"})});
+  S.membres.forEach(m=>out.push({id:"m_"+m.id,nom:m.nom,tel:m.tel||"",sub:(m.code?m.code+" · ":"")+(m.section||""),type:"Membre"}));
+  S.pisteurs.forEach(x=>out.push({id:"p_"+x.id,nom:x.nom,tel:x.tel||"",sub:(x.code?x.code+" · ":"")+(x.zone||""),type:"Pisteur"}));
+  return out;
+}
+const contact=id=>tousContacts().find(x=>x.id===id);
+const appelsDe=id=>S.appels.filter(a=>a.pid===id).sort((a,b)=>(b.le||"").localeCompare(a.le||""));
+const fdh=iso=>iso?new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" à "+new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+
+const initiales=n=>String(n||"?").replace(/^Exemple\s*·\s*/,"").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()||"?";
+function ctRow(x,extra){const n=waNum(x.tel);return `<div class="ct" data-call="${x.id}"><span class="av t-${x.type||"Membre"}" aria-hidden="true">${esc(initiales(x.nom))}</span><div class="ct-m"><button class="nm" data-call="${x.id}">${esc(x.nom)}</button><span>${esc(x.sub)}</span></div><span class="ct-tel">${x.tel?esc(x.tel):'<span class="tag no" style="cursor:default">Sans numéro</span>'}</span><div class="ct-a">${extra||""}<a class="rb call ${n?"":"off"}" ${n?`href="tel:+${n}"`:""} aria-label="Appeler ${esc(x.nom)}" title="Appel téléphonique">${ic("phone")}</a><a class="rb ${n?"":"off"}" ${n?`href="https://wa.me/${n}" target="_blank" rel="noopener"`:""} aria-label="WhatsApp ${esc(x.nom)}" title="WhatsApp">${ic("chat")}</a></div></div>`}
+function jourLabel(d){const t=today(),y=new Date(Date.now()-864e5).toISOString().slice(0,10);return d===t?"Aujourd'hui":d===y?"Hier":new Date(d+"T12:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
+function vAppelIndiv(){
+  const T=tousContacts(),qq=q.toLowerCase();
+  const L=qq?T.filter(x=>(x.nom+" "+x.sub+" "+x.tel+" "+x.type).toLowerCase().includes(qq)).slice(0,60):[];
+  const J=S.appels.slice().sort((a,b)=>(b.le||"").localeCompare(a.le||"")),auj=J.filter(a=>(a.le||"").slice(0,10)===today());
+  const rap=[],vus=new Set();J.forEach(a=>{if(vus.has(a.pid))return;vus.add(a.pid);if(a.resultat==="rappeler"||a.resultat==="absent")rap.push(a)});
+  const rec=[],v2=new Set();J.forEach(a=>{if(!v2.has(a.pid)&&rec.length<8){v2.add(a.pid);const c=contact(a.pid);if(c)rec.push(c)}});
+  const bureau=dirSorted().filter(d=>d.organe==="Conseil d'administration").slice(0,8).map(d=>contact("d_"+d.id)).filter(Boolean);
+  const qc=x=>`<button class="qc" data-call="${x.id}"><span class="av t-${x.type}">${esc(initiales(x.nom))}</span><b>${esc(x.nom)}</b><span>${esc(x.sub)}</span></button>`;
+  const jours={};J.slice(0,80).forEach(a=>{const d=(a.le||"").slice(0,10);(jours[d]=jours[d]||[]).push(a)});
+  return `<div class="chipsf">${Object.entries(VUES_APPEL).map(([k,v])=>`<button data-appg="${k}" aria-pressed="${appG===k}">${v}</button>`).join("")}</div>
+  <section class="kpis">
+    ${kpi("membres","Contacts",fmt(T.length),"Conseil, membres, pisteurs, personnel")}
+    ${kpi("doc","Appels aujourd'hui",fmt(auj.length),`${auj.filter(a=>a.resultat==="joint").length} personne(s) jointe(s)`,"g")}
+    ${kpi("caisse","À rappeler",fmt(rap.length),rap.length?"dernier appel sans réponse":"personne à rappeler",rap.length?"w":"g")}
+    ${kpi("contrats","Sans numéro",fmt(T.filter(x=>!waNum(x.tel)).length),"fiches à compléter",T.some(x=>!waNum(x.tel))?"w":"g")}
+  </section>
+  <section class="card">
+    <div class="toolbar"><div class="search">${ic("search",16)}<input id="q" type="search" placeholder="Nom, numéro, village ou fonction de la personne à appeler" value="${esc(q)}" aria-label="Rechercher une personne à appeler"></div></div>
+    ${qq?(L.length?`<div class="ct-list">${L.map(x=>ctRow(x)).join("")}</div>`:empty("search","Aucun contact trouvé","Vérifiez l'orthographe, ou cherchez par numéro ou par village."))
+      :`<div class="card-b">
+        ${bureau.length?`<span class="lbl">Bureau du Conseil d'administration</span><div class="quick">${bureau.map(qc).join("")}</div>`:""}
+        ${rec.length?`<span class="lbl">Appelés récemment</span><div class="quick">${rec.map(qc).join("")}</div>`:""}
+        ${!bureau.length&&!rec.length?`<p class="note">Tapez le nom de la personne à appeler. Touchez-la pour ouvrir sa fiche d'appel.</p>`:""}
+      </div>`}
+  </section>
+  ${rap.length?`<section class="card"><div class="card-h"><h2>À rappeler</h2><span class="tag wait" style="cursor:default">${rap.length}</span></div><div class="ct-list">${rap.map(a=>{const c=contact(a.pid)||{id:a.pid,nom:a.nom,tel:a.tel,type:a.type,sub:""};return ctRow({...c,sub:`${RESULTATS[a.resultat][0]} · ${fdh(a.le)}${a.motif?" · "+a.motif:""}`})}).join("")}</div></section>`:""}
+  <section class="card"><div class="card-h"><h2>Journal des appels</h2><span class="lbl">${J.length} appel(s)</span></div>
+    ${J.length?Object.entries(jours).map(([d,arr])=>`<div class="ct-sec">${esc(jourLabel(d))}</div><div class="tl">${arr.map(a=>{const R=RESULTATS[a.resultat]||["","wait"];return `<div class="tl-i"><span class="tl-dot ${R[1]}" aria-hidden="true">${ic(R[1]==="ok"?"check":"phone")}</span><div class="ct-m"><button class="nm" data-call="${a.pid}">${esc(a.nom)}</button><span>${esc(R[0])}${a.motif?" · "+esc(a.motif):""}${a.note?" · "+esc(a.note):""}</span></div><div class="acts"><span class="tl-h">${new Date(a.le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span>${delBtn("appels",a.id)}</div></div>`}).join("")}</div>`).join("")
+    :empty("phone","Aucun appel noté","Après chaque appel, notez le résultat dans la fiche de la personne : il apparaîtra ici, classé par jour.")}
+  </section>`;
+}
+
+/* ---------- Fenêtres ---------- */
+function openModal(kind,arg){modal={kind,arg};renderModal();setTimeout(()=>document.querySelector("#modal input:not([type=hidden]),#modal select")?.focus(),30)}
+function closeModal(){modal=null;document.getElementById("modal").innerHTML=""}
+function sheet(title,body,foot,center,wide){return `<div class="overlay ${center?"center":""}" data-close><div class="sheet ${wide?"wide":""}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sheet-h"><h2>${title}</h2><button class="btn icon" data-x aria-label="Fermer">${ic("x")}</button></div><div class="sheet-b">${body}</div>${foot?`<div class="sheet-f">${foot}</div>`:""}</div></div>`}
+function renderModal(){
+  const el=document.getElementById("modal");if(!modal){el.innerHTML="";return}
+  const keep={};el.querySelectorAll("input,select").forEach(e=>{if(e.id)keep[e.id]=e.type==="radio"?(e.checked?"\u0001on":"\u0001off"):e.value});
+  const k=modal.kind;let h="";
+  if(k==="membre")h=sheet("Inscrire un membre",`<form id="fMembre" class="grid-f">
+    <label class="fl full">Nom et prénoms<input id="m_nom" required autocomplete="off"></label>
+    <label class="fl">Code membre<input id="m_code" value="${nextCode()}"></label>
+    <label class="fl">Téléphone<input id="m_tel" inputmode="tel" placeholder="07 00 00 00 00"></label>
+    <label class="fl">Section / village<input id="m_section" required list="secs"><datalist id="secs">${[...new Set(S.membres.map(m=>m.section))].map(s=>`<option value="${esc(s)}">`).join("")}</datalist></label>
+    <label class="fl">N° carte producteur <em>(facultatif)</em><input id="m_carte"></label>
+    <label class="fl">Culture principale<select id="m_prod">${prodOpts()}</select></label>
+    <label class="fl">Superficie <em>(ha)</em><input id="m_ha" inputmode="decimal"></label>
+    <label class="fl">Date d'adhésion<input id="m_adh" type="date" value="${today()}"></label>
+    <label class="fl">Part sociale<select id="m_part"><option value="1">Réglée</option><option value="">Non réglée</option></select></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fMembre">Inscrire le membre</button>`);
+  if(k==="achat"){const pr=keep.a_p||"cacao";h=sheet("Nouvelle pesée",`<form id="fAchat" class="grid-f">
+    <label class="fl full">Producteur<select id="a_m" required>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}" ${modal.arg===m.id?"selected":""}>${esc(m.nom)} — ${esc(m.section)} (${esc(m.code||"")})</option>`).join("")}</select></label>
+    <label class="fl">Produit<select id="a_p">${prodOpts(pr)}</select></label>
+    <label class="fl">Pisteur <em>(facultatif)</em><select id="a_pi"><option value="">Livraison directe</option>${S.pisteurs.filter(x=>x.actif!==false).sort((a,b)=>a.nom.localeCompare(b.nom)).map(x=>`<option value="${x.id}">${esc(x.nom)} — ${esc(x.zone)}</option>`).join("")}</select></label>
+    <label class="fl">Date<input id="a_d" type="date" value="${today()}"></label>
+    <label class="fl">Nombre de sacs<input id="a_sacs" inputmode="numeric"></label>
+    <label class="fl">Poids brut <em>(kg)</em><input id="a_brut" inputmode="decimal"></label>
+    <label class="fl">Tare / réfaction <em>(kg)</em><input id="a_tare" inputmode="decimal" value="0"></label>
+    <label class="fl">Poids net <em>(kg)</em><input id="a_kg" inputmode="decimal" required></label>
+    <label class="fl">Prix <em>(FCFA/kg)</em><input id="a_px" inputmode="decimal" required value="${esc(S.params["prix_"+pr]||"")}"></label>
+    <label class="fl">Qualité / grade<select id="a_q"><option>Grade 1</option><option>Grade 2</option><option>Sous-grade</option><option>Hors standard</option></select></label>
+    <label class="fl">Humidité <em>(%)</em><input id="a_h" inputmode="decimal" placeholder="Ex. 7,5"></label>
+    <label class="fl">N° de lot <em>(facultatif)</em><input id="a_lot"></label>
+    <label class="fl">Peseur<input id="a_pes" value="${esc(moi&&moi.id!=="pca"?moi.nom:(S.params.peseur||""))}"></label>
+    <label class="fl">Paiement<select id="a_pay"><option value="1">Payé comptant</option><option value="">À payer</option></select></label>
+    <div class="sumline full"><span class="lbl">Montant à payer</span><b id="a_tot">0 F</b></div>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fAchat">Enregistrer et voir le reçu</button>`)}
+  if(k==="vente"){const t=totals();h=sheet("Nouvelle vente",`<form id="fVente" class="grid-f">
+    <label class="fl full">Acheteur / exportateur<input id="v_a" required list="ach"><datalist id="ach">${[...new Set(S.ventes.map(v=>v.acheteur))].map(s=>`<option value="${esc(s)}">`).join("")}</datalist></label>
+    <label class="fl">Produit<select id="v_p">${Object.entries(PRODUITS).map(([k,v])=>`<option value="${k}">${v.n} — stock ${kg(t.stock[k])}</option>`).join("")}</select></label>
+    <label class="fl">Date<input id="v_d" type="date" value="${today()}"></label>
+    <label class="fl">Poids <em>(kg)</em><input id="v_kg" inputmode="decimal" required></label>
+    <label class="fl">Prix <em>(FCFA/kg)</em><input id="v_px" inputmode="decimal" required></label>
+    <label class="fl">N° connaissement <em>(facultatif)</em><input id="v_cn"></label>
+    <label class="fl">Encaissement<select id="v_enc"><option value="1">Encaissé</option><option value="">En attente</option></select></label>
+    <div class="sumline full"><span class="lbl">Montant de la vente</span><b id="v_tot">0 F</b></div>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fVente">Enregistrer la vente</button>`)}
+  if(k==="mvt"){const s=keep.c_s||"sortie";h=sheet("Nouvelle écriture de caisse",`<form id="fMvt" class="grid-f">
+    <label class="fl">Type<select id="c_s"><option value="sortie" ${s==="sortie"?"selected":""}>Dépense</option><option value="entree" ${s==="entree"?"selected":""}>Entrée d'argent</option></select></label>
+    <label class="fl">Poste<select id="c_c">${CATS[s].map(c=>`<option>${c}</option>`).join("")}</select></label>
+    <label class="fl full">Libellé<input id="c_l" required placeholder="Ex. Gasoil camion, tournée de Kongasso"></label>
+    <label class="fl">Montant <em>(FCFA)</em><input id="c_m" inputmode="numeric" required></label>
+    <label class="fl">Date<input id="c_d" type="date" value="${today()}"></label>
+    <label class="fl full">Pièce justificative <em>(n° facture, bon…)</em><input id="c_pj"></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fMvt">Enregistrer l'écriture</button>`)}
+  if(k==="pisteur")h=sheet("Nouveau pisteur",`<form id="fPisteur" class="grid-f">
+    <label class="fl full">Nom et prénoms<input id="pi_nom" required autocomplete="off"></label>
+    <label class="fl">Code pisteur<input id="pi_code" value="${(()=>{let n=0;S.pisteurs.forEach(x=>{const r=/(\d+)$/.exec(x.code||"");if(r)n=Math.max(n,+r[1])});return "PIS-"+String(n+1).padStart(3,"0")})()}"></label>
+    <label class="fl">Téléphone<input id="pi_tel" inputmode="tel"></label>
+    <label class="fl">Zone de collecte<input id="pi_zone" required placeholder="Villages couverts" list="secs2"><datalist id="secs2">${[...new Set(S.membres.map(m=>m.section))].map(s=>`<option value="${esc(s)}">`).join("")}</datalist></label>
+    <label class="fl">N° pièce d'identité <em>(facultatif)</em><input id="pi_cni"></label>
+    <label class="fl">Commission <em>(FCFA/kg)</em><input id="pi_com" inputmode="decimal" required></label>
+    <label class="fl">Moyen de transport<select id="pi_tr"><option>Moto</option><option>Tricycle</option><option>Camion</option><option>Autre</option></select></label>
+    <label class="fl">Date d'engagement<input id="pi_d" type="date" value="${today()}"></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fPisteur">Enregistrer le pisteur</button>`);
+  if(k==="avance"){const x=pisteur(modal.arg);if(!x){closeModal();return}const o=pStats(x);h=sheet("Paiement au pisteur",`<p class="note"><b>${esc(x.nom)}</b> · commission due ${F(o.com)}, déjà versé ${F(o.av)}, reste <b>${F(o.com-o.av)}</b>.</p><form id="fAvance" class="grid-f">
+    <label class="fl">Nature<select id="av_t"><option>Avance de préfinancement</option><option>Paiement de commission</option></select></label>
+    <label class="fl">Montant <em>(FCFA)</em><input id="av_m" inputmode="numeric" required value="${o.com-o.av>0?Math.round(o.com-o.av):""}"></label>
+    <label class="fl">Date<input id="av_d" type="date" value="${today()}"></label>
+    <label class="fl">Pièce <em>(facultatif)</em><input id="av_pj"></label>
+  </form><p class="note">Le montant est inscrit en sortie dans le journal de caisse.</p>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fAvance">Enregistrer le paiement</button>`)}
+  if(k==="pfiche"){const x=pisteur(modal.arg);if(!x){closeModal();return}const o=pStats(x);const L=S.achats.filter(a=>a.pisteur===x.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    h=sheet(esc(x.nom),`<dl class="dl"><div><dt>Code</dt><dd class="ref">${esc(x.code||"—")}</dd></div><div><dt>Zone</dt><dd>${esc(x.zone)}</dd></div><div><dt>Téléphone</dt><dd>${esc(x.tel||"—")}</dd></div><div><dt>Pièce d'identité</dt><dd>${esc(x.cni||"—")}</dd></div><div><dt>Transport</dt><dd>${esc(x.transport||"—")}</dd></div><div><dt>Engagé le</dt><dd>${dfr(x.debut)}</dd></div></dl>
+    <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi"><span class="lbl">Volume</span><span class="v" style="font-size:17px">${kg(o.kg)}</span></div><div class="kpi"><span class="lbl">Commission</span><span class="v" style="font-size:17px">${F(o.com)}</span></div><div class="kpi"><span class="lbl">Reste dû</span><span class="v ${o.com-o.av>0?"out":""}" style="font-size:17px">${F(o.com-o.av)}</span></div></div>
+    <h2>Apports</h2>${L.length?`<div class="tbl" style="border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Date</th><th>Producteur</th><th class="num">Poids</th><th class="num">Commission</th></tr></thead><tbody>${L.map(a=>`<tr><td style="white-space:nowrap">${dfr(a.date)}</td><td>${esc(membre(a.membre)?.nom||"—")}<span class="sub">${PRODUITS[a.produit]?.n}</span></td><td class="num">${fmt(a.kg)} kg</td><td class="num">${F(num(a.kg)*num(x.commission))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Aucun apport. Choisissez ce pisteur dans le formulaire de pesée.</p>`}`,
+    `<button class="btn sec" data-x>Fermer</button><button class="btn sec" data-form="contrat" data-ctype="pisteur" data-for="${x.id}">Contrat</button><button class="btn" data-form="avance" data-for="${x.id}">Payer / avancer</button>`)}
+  if(k==="dirigeant"){const og=keep.g_o||"Conseil d'administration";h=sheet("Ajouter un dirigeant",`<form id="fDir" class="grid-f">
+    <label class="fl">Organe<select id="g_o">${ORGANES.map(o=>`<option ${o===og?"selected":""}>${o}</option>`).join("")}</select></label>
+    <label class="fl">Fonction<select id="g_f">${FONCTIONS[og].map(f=>`<option>${f}</option>`).join("")}</select></label>
+    <label class="fl full">Membre de la coopérative <em>(facultatif)</em><select id="g_m"><option value="">— Saisir le nom ci-dessous —</option>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}">${esc(m.nom)} (${esc(m.code||"")})</option>`).join("")}</select></label>
+    <label class="fl full">Nom et prénoms<input id="g_n" required></label>
+    <label class="fl">Téléphone<input id="g_t" inputmode="tel"></label>
+    <label class="fl">Élu / nommé le<input id="g_d" type="date"></label>
+    <label class="fl">Fin de mandat<input id="g_e" type="date"></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fDir">Enregistrer</button>`)}
+  if(k==="contrat"){const pre=modal.arg||{};const ty=keep.k_t||pre.type||"pisteur";const camp=(S.params.campagne||"").split("-");
+    const fin=camp[1]?camp[1]+"-09-30":"";const deb=camp[0]?camp[0]+"-10-01":today();
+    const party=ty==="pisteur"?`<label class="fl full">Pisteur<select id="k_p" required>${S.pisteurs.map(x=>`<option value="${x.id}" ${pre.id===x.id?"selected":""}>${esc(x.nom)} — ${esc(x.zone)}</option>`).join("")}</select></label>`
+      :ty==="producteur"?`<label class="fl full">Producteur<select id="k_p" required>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}" ${pre.id===m.id?"selected":""}>${esc(m.nom)} (${esc(m.code||"")})</option>`).join("")}</select></label>`
+      :`<label class="fl full">Acheteur / exportateur<input id="k_a" required list="ach2"><datalist id="ach2">${[...new Set(S.ventes.map(v=>v.acheteur))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label><label class="fl">RCCM <em>(facultatif)</em><input id="k_rc"></label><label class="fl">Représenté par<input id="k_ra"></label><label class="fl full">Adresse<input id="k_ad"></label>`;
+    const spec=ty==="pisteur"?`<label class="fl">Commission <em>(FCFA/kg)</em><input id="k_com" inputmode="decimal" value="${esc(pisteur(pre.id||S.pisteurs[0]?.id)?.commission??"")}"></label><label class="fl">Plafond d'avance <em>(FCFA)</em><input id="k_pl" inputmode="numeric" value="0"></label><label class="fl">Produits collectés<input id="k_pr" value="café, cacao et anacarde"></label><label class="fl">Paiement des commissions<select id="k_per"><option>à la fin de chaque quinzaine</option><option>à la fin de chaque semaine</option><option>à la fin de chaque mois</option><option>à chaque livraison</option></select></label>`
+      :ty==="producteur"?`<label class="fl">Produit<select id="k_prod">${prodOpts(membre(pre.id)?.produit)}</select></label><label class="fl">Volume prévisionnel <em>(kg)</em><input id="k_vol" inputmode="numeric"></label><label class="fl full">Paiement<select id="k_pay"><option>à la livraison, contre reçu de pesée</option><option>dans les sept (7) jours suivant la livraison</option><option>par mobile money à la livraison</option></select></label>`
+      :`<label class="fl">Produit<select id="k_prod">${prodOpts()}</select></label><label class="fl">Quantité <em>(kg)</em><input id="k_q" inputmode="numeric" required></label><label class="fl">Prix <em>(FCFA/kg)</em><input id="k_px" inputmode="numeric" required></label><label class="fl">Qualité<input id="k_ql" value="Grade 1"></label><label class="fl">Lieu de livraison<input id="k_li" value="Magasin SOCOBEMA, Mankono"></label><label class="fl">Délai de paiement <em>(jours)</em><input id="k_de" inputmode="numeric" value="7"></label><label class="fl full">Mode de paiement<select id="k_mp"><option>par virement bancaire</option><option>par chèque certifié</option><option>en espèces contre reçu</option></select></label>`;
+    const none=(ty==="pisteur"&&!S.pisteurs.length)||(ty==="producteur"&&!S.membres.length);
+    h=sheet("Nouveau contrat",`<form id="fContrat" class="grid-f">
+      <label class="fl full">Type de contrat<select id="k_t">${Object.entries(CTYPES).map(([k2,v])=>`<option value="${k2}" ${k2===ty?"selected":""}>${v}</option>`).join("")}</select></label>
+      ${none?`<p class="note full">Enregistrez d'abord un ${ty==="pisteur"?"pisteur":"membre"} pour rédiger ce contrat.</p>`:party+spec+`
+      <label class="fl">Début<input id="k_d" type="date" value="${deb}"></label>
+      <label class="fl">Fin<input id="k_f" type="date" value="${fin}" required></label>
+      <label class="fl">Fait à<input id="k_ls" value="Mankono"></label>
+      <label class="fl">Date de signature<input id="k_ds" type="date" value="${today()}"></label>
+      <label class="fl full">Clauses particulières <em>(facultatif)</em><input id="k_cl"></label>`}
+    </form>`,none?`<button class="btn sec" data-x>Fermer</button>`:`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fContrat">Générer le contrat</button>`)}
+  if(k==="cview"){const c=S.contrats.find(x=>x.id===modal.arg);if(!c){closeModal();return}const st=cStatut(c);
+    h=sheet("Contrat "+esc(c.ref),contratHTML(c),`<button class="btn sec" data-csign="${c.id}">${c.signe?"Marquer non signé":"Marquer comme signé"}</button><button class="btn sec" data-ccopy="${c.id}">${ic("copy",16)}Copier</button><button class="btn" data-cdl="${c.id}">${ic("dl",16)}Télécharger</button>`,true,true)}
+  if(k==="plink"){const p=PLATS.find(x=>x.k===modal.arg);h=sheet("Lien : "+p.n,`<form id="fLink" class="grid-f"><label class="fl full">Adresse de la plateforme<input id="l_u" type="url" inputmode="url" placeholder="https://…" value="${esc(S.params[p.k]||"")}"></label></form><p class="note">Ouvrez la plateforme sur votre téléphone, copiez l'adresse affichée dans la barre du navigateur (elle commence par https://) et collez-la ici. Laissez vide pour retirer le lien.</p>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fLink">Enregistrer le lien</button>`,true)}
+  if(k==="convoc"){const g=modal.arg||appG;h=sheet("Nouvelle convocation",`<form id="fConv" class="grid-f">
+    <label class="fl full">Destinataires<select id="cv_g">${Object.entries(GROUPES).map(([k2,v])=>`<option value="${k2}" ${k2===g?"selected":""}>${v.n}</option>`).join("")}</select></label>
+    <label class="fl full">Objet<input id="cv_o" required placeholder="Ex. Réunion du Conseil d'administration"></label>
+    <label class="fl">Date<input id="cv_d" type="date" required value="${today()}"></label>
+    <label class="fl">Heure<input id="cv_h" type="time" value="09:00"></label>
+    <label class="fl full">Lieu<input id="cv_l" value="Siège de la coopérative, Mankono"></label>
+    <label class="fl full">Ordre du jour <em>(un point par ligne)</em><textarea id="cv_od" rows="4" placeholder="1. Bilan de la campagne&#10;2. Prix d'achat&#10;3. Divers"></textarea></label>
+    <label class="fl full">Lien pour suivre à distance <em>(facultatif)</em><input id="cv_lien" type="url" inputmode="url" placeholder="https://…" value="${esc(S.params["appel_"+g]||"")}"></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fConv">Préparer la convocation</button>`)}
+  if(k==="glink"){const g=modal.arg||appG;h=sheet("Liens d'appel · "+GROUPES[g].court,`<form id="fGlink" class="grid-f">
+    <label class="fl full">Lien d'appel de groupe <em>(WhatsApp ou Google Meet)</em><input id="gl_a" type="url" inputmode="url" placeholder="https://call.whatsapp.com/…" value="${esc(S.params["appel_"+g]||"")}"></label>
+    <label class="fl full">Lien du groupe WhatsApp <em>(facultatif)</em><input id="gl_w" type="url" inputmode="url" placeholder="https://chat.whatsapp.com/…" value="${esc(S.params["wa_"+g]||"")}"></label>
+  </form><p class="note">Dans WhatsApp : onglet Appels › « Créer un lien d'appel » (vocal ou vidéo) › Copier le lien. Pour le groupe : infos du groupe › « Inviter via un lien » › Copier le lien.</p>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fGlink">Enregistrer</button>`,true)}
+  if(k==="call"){const x=contact(modal.arg);if(!x){closeModal();return}const n=waNum(x.tel),H=appelsDe(x.id).slice(0,5);
+    const msg=encodeURIComponent(`Bonjour ${x.nom.replace(/^Exemple\s*·\s*/,"")}, ici la SOCOBEMA-COOP-CA (Mankono). `);
+    h=sheet("Fiche d'appel",`<div class="dialer"><span class="av xl t-${x.type}">${esc(initiales(x.nom))}</span><h3>${esc(x.nom)}</h3><span class="lbl">${esc(x.type)} · ${esc(x.sub)}</span><span class="num">${x.tel?esc(x.tel):"Pas de numéro"}</span></div>
+    <div class="dial-acts">
+      <a class="da main ${n?"":"off"}" ${n?`href="tel:+${n}"`:""}><i>${ic("phone")}</i>Appeler</a>
+      <a class="da ${n?"":"off"}" ${n?`href="https://wa.me/${n}" target="_blank" rel="noopener"`:""}><i>${ic("chat")}</i>WhatsApp</a>
+      <a class="da ${n?"":"off"}" ${n?`href="https://wa.me/${n}?text=${msg}" target="_blank" rel="noopener"`:""}><i>${ic("msg")}</i>Message</a>
+      <button type="button" class="da ${x.tel?"":"off"}" data-copytel="${esc(x.tel)}"><i>${ic("copy")}</i>Copier</button>
+    </div>
+    ${n?`<p class="note" style="text-align:center;margin:0 auto">WhatsApp ouvre la conversation : touchez l'icône téléphone ou caméra pour lancer l'appel.</p>`:`<p class="note" style="text-align:center;margin:0 auto">Aucun numéro enregistré : complétez la fiche dans l'onglet ${x.type==="Membre"?"Membres":x.type==="Pisteur"?"Pisteurs":"Conseil"}.</p>`}
+    <form id="fCall" style="display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px">
+      <span class="lbl">Compte rendu de l'appel</span>
+      <div class="respick" role="radiogroup" aria-label="Résultat de l'appel">${Object.entries(RESULTATS).map(([k2,v],i)=>`<label><input type="radio" name="ca_r" id="ca_r_${k2}" value="${k2}" ${i===0?"checked":""}><span>${v[0]}</span></label>`).join("")}</div>
+      <div class="grid-f"><label class="fl">Motif<input id="ca_m" list="motifs" placeholder="Ex. Convocation"><datalist id="motifs"><option value="Convocation"><option value="Paiement"><option value="Livraison de produit"><option value="Part sociale"><option value="Information"></datalist></label>
+      <label class="fl">Note <em>(facultatif)</em><input id="ca_n" maxlength="200"></label></div>
+    </form>
+    ${H.length?`<div style="border-top:1px solid var(--line);padding-top:12px"><span class="lbl">Historique</span><div class="tl" style="margin:0 -18px">${H.map(a=>{const R=RESULTATS[a.resultat]||["","wait"];return `<div class="tl-i"><span class="tl-dot ${R[1]}" aria-hidden="true">${ic(R[1]==="ok"?"check":"phone")}</span><div class="ct-m"><b style="font-weight:600">${esc(R[0])}${a.motif?" · "+esc(a.motif):""}</b>${a.note?`<span>${esc(a.note)}</span>`:""}</div><span class="tl-h">${fdh(a.le)}</span></div>`}).join("")}</div></div>`:""}`,
+    `<button class="btn sec" data-x>Fermer</button><button class="btn" form="fCall">Enregistrer le compte rendu</button>`,true)}
+  if(k==="pcacode"){h=sheet("Changer mon code",`<form id="fPcaCode" class="grid-f"><label class="fl full">Nouveau code à 6 chiffres<input id="pc1" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label><label class="fl full">Retapez le code<input id="pc2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label></form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fPcaCode">Enregistrer</button>`,true)}
+  if(k==="gest"){h=sheet("Ajouter un gestionnaire",`<form id="fGest" class="grid-f">
+    <label class="fl full">Nom et prénoms<input id="g_nom" required autocomplete="off"></label>
+    <label class="fl">Téléphone<input id="g_tel" inputmode="tel" placeholder="07 00 00 00 00"></label>
+    <label class="fl">Rôle<select id="g_role">${["gestionnaire","peseur","lecture"].map(k2=>`<option value="${k2}">${ROLES[k2]}</option>`).join("")}</select></label>
+  </form><p class="note">Un code personnel à 6 chiffres est créé automatiquement. Il ne s'affiche qu'une fois : transmettez-le à la personne.</p>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fGest">Créer l'accès</button>`,true)}
+  if(k==="gcode"){const a=modal.arg,n=waNum(a.tel),txt=`SOCOBEMA Gestion — votre accès personnel\nAdresse : https://socobema-claude.github.io/Socobema-flotte/gestion/\nNom à choisir : ${a.nom}\nCode : ${a.code}\nNe communiquez ce code à personne.`;
+    h=sheet(a.nouveau?"Nouveau code":"Accès créé",`<div class="dialer"><span class="av xl t-Membre">${esc(initiales(a.nom))}</span><h3>${esc(a.nom)}</h3><span class="lbl">${esc(ROLES[a.role]||"")}</span>
+    <span style="font-family:var(--f-num);font-size:44px;font-weight:600;letter-spacing:.18em;padding:10px 18px;border:2px dashed var(--line);border-radius:12px;margin-top:6px">${a.code}</span></div>
+    <p class="note" style="text-align:center;margin:0 auto">Notez ce code ou envoyez-le maintenant : il ne sera plus affiché.${a.nouveau?" L'ancien code ne fonctionne plus.":""}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">${n?`<a class="btn" href="https://wa.me/${n}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a>`:""}<button type="button" class="btn sec" data-copycode="${a.code}">Copier le code</button></div>`,`<button class="btn" data-x>J'ai transmis le code</button>`,true)}
+  if(k==="recu"){const a=S.achats.find(x=>x.id===modal.arg);if(!a){closeModal();return}h=sheet("Reçu de pesée",recuHTML(a)+`<p class="note">Le fichier téléchargé contient deux exemplaires : un pour le producteur, une souche pour la coopérative.</p>`,`<button class="btn sec" data-copyrecu="${a.id}">${ic("copy",16)}Copier le texte</button><button class="btn" data-dlrecu="${a.id}">${ic("dl",16)}Télécharger</button>`,true)}
+  if(k==="fiche"){const m=membre(modal.arg);if(!m){closeModal();return}
+    const L=S.achats.filter(a=>a.membre===m.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    const kT=L.reduce((s,a)=>s+num(a.kg),0),fT=L.reduce((s,a)=>s+mt(a),0),du=L.filter(a=>!a.paye).reduce((s,a)=>s+mt(a),0),r=num(S.params.ristourne);
+    h=sheet(esc(m.nom),`<dl class="dl">
+      <div><dt>Code</dt><dd class="ref">${esc(m.code||"—")}</dd></div><div><dt>Section</dt><dd>${esc(m.section)}</dd></div>
+      <div><dt>Téléphone</dt><dd>${esc(m.tel||"—")}</dd></div><div><dt>Carte producteur</dt><dd>${esc(m.carte||"—")}</dd></div>
+      <div><dt>Culture</dt><dd>${prodTag(m.produit)}</dd></div><div><dt>Superficie</dt><dd>${m.ha?esc(m.ha)+" ha":"—"}</dd></div>
+      <div><dt>Adhésion</dt><dd>${dfr(m.adhesion)}</dd></div><div><dt>Part sociale</dt><dd>${m.part?'<span class="tag ok">Réglée</span>':'<span class="tag no">Non réglée</span>'}</dd></div>
+    </dl>
+    <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="kpi"><span class="lbl">Livré</span><span class="v" style="font-size:17px">${kg(kT)}</span></div>
+      <div class="kpi"><span class="lbl">Valeur</span><span class="v" style="font-size:17px">${F(fT)}</span></div>
+      <div class="kpi"><span class="lbl">Reste dû</span><span class="v ${du?"out":""}" style="font-size:17px">${F(du)}</span></div>
+    </div>
+    ${r?`<p class="note">Ristourne prévue : <b>${F(kT*r)}</b> (${fmt(r)} F/kg).</p>`:""}
+    <h2>Historique des livraisons</h2>
+    ${L.length?`<div class="tbl" style="border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Date</th><th>Produit</th><th class="num">Poids</th><th class="num">Montant</th><th></th></tr></thead><tbody>${L.map(a=>`<tr><td style="white-space:nowrap">${dfr(a.date)}<span class="sub ref">${esc(a.ref||"")}</span></td><td>${prodTag(a.produit)}</td><td class="num">${fmt(a.kg)} kg</td><td class="num">${F(mt(a))}</td><td>${tag(a.paye,"Payé","À payer",`data-pay="${a.id}"`)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Aucune livraison pour ce membre.</p>`}`,
+    `<button class="btn sec" data-x>Fermer</button><button class="btn sec" data-form="contrat" data-ctype="producteur" data-for="${m.id}">Contrat</button><button class="btn" data-form="achat" data-for="${m.id}">Nouvelle pesée</button>`)}
+  el.innerHTML=h;
+  for(const id in keep){const e=document.getElementById(id);if(!e||id==="c_c")continue;if(e.type==="radio")e.checked=keep[id]==="\u0001on";else e.value=keep[id]}
+  calc();
+}
+function enTete(){return `<div class="doc-h"><div class="mark">SB</div><div><b>SOCOBEMA-COOP-CA</b><small>Société Coopérative avec Conseil d'Administration Bengueleman de Mankono<br>Code SNT SC061082 · BP 87 Mankono · Tél. 07 07 64 41 06</small></div></div>`}
+function recuHTML(a,copie){const m=membre(a.membre)||{},pi=a.pisteur&&pisteur(a.pisteur);const L=(k,v)=>v!==undefined&&v!==""&&v!==null?`<tr><td>${k}</td><td class="num">${v}</td></tr>`:"";
+  return `<div class="doc">${enTete()}
+  <div class="doc-t"><span>REÇU DE PESÉE ET D'ACHAT</span><span class="ref" style="color:var(--ink)">${esc(a.ref||"")}</span></div>
+  ${copie?`<div style="padding:6px 16px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)">${copie}</div>`:""}
+  <table><tbody>
+   ${L("Date et heure",dfr(a.date)+(a.heure?" · "+esc(a.heure):""))}
+   ${L("Producteur",esc(m.nom||""))}
+   ${L("Code membre",esc(m.code||"—"))}
+   ${L("N° carte producteur",esc(m.carte||""))}
+   ${L("Section / village",esc(m.section||""))}
+   ${pi?L("Pisteur",esc(pi.nom)):""}
+   ${L("Produit",PRODUITS[a.produit]?.n)}
+   ${L("Qualité",esc(a.qualite||""))}
+   ${a.humidite?L("Taux d'humidité",esc(a.humidite)+" %"):""}
+   ${L("N° de lot",esc(a.lot||""))}
+   ${L("Nombre de sacs",esc(a.sacs||"—"))}
+   ${a.brut?L("Poids brut",fmt(a.brut)+" kg")+L("Tare / réfaction",fmt(a.tare)+" kg"):""}
+   ${L("<b>Poids net</b>","<b>"+fmt(a.kg)+" kg</b>")}
+   ${L("Prix unitaire",fmt(a.prix)+" FCFA/kg")}
+   <tr class="total"><td>MONTANT</td><td class="num">${fmt(mt(a))} FCFA</td></tr>
+   ${L("Montant en lettres",enLettres(Math.round(mt(a)))+" francs CFA")}
+   ${L("Statut du paiement",a.paye?"Payé comptant":"À payer")}
+  </tbody></table>
+  <div class="doc-sig"><div>Le producteur<br>(signature ou empreinte)</div><div>Le peseur${a.peseur?" : "+esc(a.peseur):""}<br>(signature et cachet)</div></div></div>`}
+function enLettres(n){if(!n)return"zéro";const u=["","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize"],d=["","dix","vingt","trente","quarante","cinquante","soixante","soixante","quatre-vingt","quatre-vingt"];
+  const c99=x=>{if(x<17)return u[x];if(x<20)return"dix-"+u[x-10];const t=Math.floor(x/10),r=x%10;if(t===7||t===9)return d[t]+(t===7&&r===1?"-et-":"-")+c99(10+r);return d[t]+(r===1&&t<8?"-et-un":r?"-"+u[r]:t===8?"s":"")};
+  const c999=x=>{const h=Math.floor(x/100),r=x%100;return (h?(h>1?u[h]+"-cent"+(r?"":"s"):"cent")+(r?"-":""):"")+(r?c99(r):"")};
+  let out=[];const g=[[1e9,"milliard"],[1e6,"million"],[1e3,"mille"]];
+  for(const[v,w]of g){const q=Math.floor(n/v);if(q){out.push(w==="mille"?(q===1?"mille":c999(q).replace(/(cent|vingt)s$/,"$1")+"-mille"):c999(q)+"-"+w+(q>1?"s":""));n%=v}}
+  if(n)out.push(c999(n));return out.join("-")}
+function recuTexte(a){const m=membre(a.membre)||{};return `SOCOBEMA-COOP-CA · Code SNT SC061082\nBP 87 Mankono · 07 07 64 41 06\n\nREÇU D'ACHAT ${a.ref||""}\nDate : ${dfr(a.date)}\nProducteur : ${m.nom||""} (${m.code||"-"})\nSection : ${m.section||""}\nProduit : ${PRODUITS[a.produit]?.n}\nSacs : ${a.sacs||"-"}\nPoids net : ${fmt(a.kg)} kg\nPrix : ${fmt(a.prix)} FCFA/kg\nQualité : ${a.qualite||"-"}${a.humidite?" · humidité "+a.humidite+" %":""}\nMONTANT : ${fmt(mt(a))} FCFA\n(${enLettres(Math.round(mt(a)))} francs CFA)\nPeseur : ${a.peseur||"-"}\nStatut : ${a.paye?"PAYÉ":"À PAYER"}`}
+
+/* ---------- Exports ---------- */
+function csvOf(kind){
+  const c=r=>r.map(x=>{const s=String(x??"");return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(";");
+  let rows=[];
+  if(kind==="membres")rows=[["Code","Nom","Section","Téléphone","Carte producteur","Culture","Superficie (ha)","Adhésion","Part sociale"],...S.membres.map(m=>[m.code,m.nom,m.section,m.tel,m.carte,PRODUITS[m.produit]?.n,m.ha,m.adhesion,m.part?"Réglée":"Non réglée"])];
+  if(kind==="achats")rows=[["N° reçu","Date","Code membre","Producteur","Section","Pisteur","Produit","Sacs","Poids net (kg)","Prix (F/kg)","Montant (F)","Statut"],...S.achats.map(a=>{const m=membre(a.membre)||{};return[a.ref,a.date,m.code,m.nom,m.section,pisteur(a.pisteur)?.nom||"",PRODUITS[a.produit]?.n,a.sacs,a.kg,a.prix,mt(a),a.paye?"Payé":"À payer"]})];
+  if(kind==="ventes")rows=[["N° bon","Date","Acheteur","Produit","Poids (kg)","Prix (F/kg)","Montant (F)","Connaissement","Statut"],...S.ventes.map(v=>[v.ref,v.date,v.acheteur,PRODUITS[v.produit]?.n,v.kg,v.prix,mt(v),v.connaissement,v.encaisse?"Encaissé":"En attente"])];
+  if(kind==="caisse")rows=[["Date","Pièce","Libellé","Poste","Entrée (F)","Sortie (F)","Solde (F)"],...journal().reverse().map(r=>[r.date,r.ref,r.lib,r.cat,r.m>0?r.m:"",r.m<0?-r.m:"",r.solde])];
+  if(kind==="pisteurs")rows=[["Code","Pisteur","Zone","Téléphone","Commission (F/kg)","Volume apporté (kg)","Commission due (F)","Avances versées (F)","Reste à payer (F)"],...S.pisteurs.map(x=>{const o=pStats(x);return[x.code,x.nom,x.zone,x.tel,x.commission,o.kg,o.com,o.av,o.com-o.av]})];
+  if(kind==="dirigeants")rows=[["Organe","Fonction","Nom","Téléphone","Début mandat","Fin mandat","Statut"],...dirSorted().map(d=>[d.organe,d.fonction,d.nom,d.tel,d.debut,d.fin,mandat(d).t])];
+  if(kind==="synthese"){const t=totals();rows=[["Produit","Acheté (kg)","Vendu (kg)","Stock (kg)"],...Object.keys(PRODUITS).map(p=>[PRODUITS[p].n,t.achKg[p],t.venKg[p],t.stock[p]])]}
+  if(kind==="ristournes"){const r=num(S.params.ristourne),by={};S.achats.forEach(a=>by[a.membre]=(by[a.membre]||0)+num(a.kg));rows=[["Code","Membre","Section","Livré (kg)","Ristourne (F)"],...Object.entries(by).map(([id,k])=>{const m=membre(id)||{};return[m.code,m.nom,m.section,k,k*r]})]}
+  return "﻿"+rows.map(c).join("\r\n");
+}
+async function save(filename,data,fallbackText){
+  try{const ext=(filename.split(".").pop()||"").toLowerCase(),mime={csv:"text/csv;charset=utf-8",html:"text/html;charset=utf-8",txt:"text/plain;charset=utf-8"}[ext]||"application/octet-stream";
+    const blob=data instanceof Blob?data:new Blob([data],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);toast("Fichier téléchargé : voir le dossier Téléchargements");return}catch(e){}
+  try{await navigator.clipboard.writeText(fallbackText??data);toast("Téléchargement indisponible ici : contenu copié")}catch(_){toast("Téléchargement indisponible sur cet appareil")}
+}
+const DOCCSS=`body{font-family:Arial,sans-serif;max-width:460px;margin:24px auto;color:#16231c;font-size:14px}.mark{width:40px;height:40px;border-radius:8px;background:#b98618;color:#1a1306;display:grid;place-items:center;font-weight:700}.doc{border:1px solid #ccc;border-radius:6px}.doc-h{display:flex;gap:12px;align-items:center;padding:14px;border-bottom:2px solid #16231c}.doc-h small{display:block;color:#555;font-size:11px}.doc-t{display:flex;justify-content:space-between;padding:10px 14px;background:#f2f4f1;font-weight:700}table{width:100%;border-collapse:collapse}td{padding:6px 14px;border-bottom:1px solid #eee}.num{text-align:right}.total td{font-weight:700;font-size:16px;border-top:2px solid #16231c}.doc-sig{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:40px 14px 14px;font-size:11px;color:#555}.doc-sig div{border-top:1px solid #999;padding-top:6px}.ref{font-family:monospace}:root{--muted:#555;--line:#ddd;--ink:#16231c}.art{padding:0 14px 6px}.art h3{font-size:13px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}.art p{margin:0 0 6px;line-height:1.55;text-align:justify}.parties{padding:12px 14px;line-height:1.6}`;
+function wrapDoc(title,inner,w){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${DOCCSS}body{max-width:${w||460}px}</style></head><body>${inner}</body></html>`}
+function recuFichier(a){return wrapDoc("Reçu "+(a.ref||""),`${recuHTML(a,"Exemplaire producteur")}<div style="border-top:1px dashed #999;margin:28px 0;text-align:center;font-size:11px;color:#888">✂ découper ici</div>${recuHTML(a,"Souche coopérative")}`)}
+
+/* ---------- Rendu ---------- */
+function render(){
+  const t=totals();enforceLock();
+  const R=role();document.body.classList.toggle("r-lecture",R==="lecture");document.body.classList.toggle("r-peseur",R==="peseur");document.body.classList.toggle("r-nonpca",R!=="pca");
+  document.getElementById("role").textContent=moi?(moi.role==="pca"?"PCA (administrateur)":moi.nom+" · "+(ROLES[moi.role]||"")):"";
+  document.getElementById("nav").innerHTML=TABS.map(([k,l])=>`<button data-go="${k}" ${view===k?'aria-current="page"':""}>${l}${k==="achats"&&S.achats.some(a=>!a.paye)?`<span class="badge">${S.achats.filter(a=>!a.paye).length}</span>`:""}</button>`).join("");
+  const st=document.getElementById("status");st.className="status"+(mode==="db"?"":" local");const on=navigator.onLine!==false;st.className="status"+(on?"":" local");st.querySelector("span").textContent=on?"À jour":"Hors connexion";
+  const focus=document.activeElement?.id,sel=document.activeElement?.selectionStart;
+  const keep={};document.querySelectorAll("#view form input,#view form select").forEach(e=>{if(e.id)keep[e.id]=e.value});
+  document.getElementById("view").innerHTML=`<div class="ph"><h1>${TITLES[view]}</h1><p>${DESC[view]()}</p></div>`+{accueil:vAccueil,rapports:vRapports,pisteurs:vPisteurs,appels:vAppels,plateformes:vPlateformes,contrats:vContrats,gouvernance:vGouvernance,achats:vAchats,ventes:vVentes,caisse:vCaisse,membres:vMembres,reglages:vReglages}[view]();
+  for(const id in keep){const e=document.getElementById(id);if(e)e.value=keep[id]}
+  if(focus&&document.getElementById(focus)&&!document.getElementById(focus).closest("#modal")){const e=document.getElementById(focus);e.focus();try{if(sel!=null)e.setSelectionRange(sel,sel)}catch(_){}}
+  if(modal&&["fiche","recu","pfiche","cview","call"].includes(modal.kind))renderModal();
+}
+function calc(){
+  const g=id=>document.getElementById(id);
+  if(g("a_tot"))g("a_tot").textContent=F(num(g("a_kg").value)*num(g("a_px").value));
+  if(g("v_tot"))g("v_tot").textContent=F(num(g("v_kg").value)*num(g("v_px").value));
+}
+function go(v){view=v;confirmDel=null;q="";fProd="";fStat="";try{location.hash=v}catch(e){}render();window.scrollTo(0,0);document.querySelector('.tabs [aria-current="page"]')?.scrollIntoView({inline:"center",block:"nearest"})}
+function closeSide(){}
+function closeMenu(){document.getElementById("newMenu").hidden=true;document.getElementById("newBtn").setAttribute("aria-expanded","false")}
+
+document.addEventListener("click",async e=>{
+  if(e.target.matches("[data-close]")){closeModal();return}
+  const b=e.target.closest("button");
+  if(!b){const tr=e.target.closest("tr[data-fiche]");if(tr)openModal("fiche",tr.dataset.fiche);const tp=e.target.closest("tr[data-pfiche]");if(tp)openModal("pfiche",tp.dataset.pfiche);const tc=e.target.closest("tr[data-cview]");if(tc)openModal("cview",tc.dataset.cview);const tk=!e.target.closest("a")&&e.target.closest("[data-call]");if(tk)openModal("call",tk.dataset.call);if(!e.target.closest(".menu"))closeMenu();return}
+  if(b.id==="newBtn"){const m=document.getElementById("newMenu");m.hidden=!m.hidden;b.setAttribute("aria-expanded",String(!m.hidden));return}
+  closeMenu();
+  if(b.dataset.go){closeModal();go(b.dataset.go);return}
+  if(b.dataset.form){if(b.dataset.form==="achat"&&!S.membres.length){toast("Inscrivez d'abord un membre");openModal("membre");return}openModal(b.dataset.form,b.dataset.form==="contrat"&&b.dataset.for?{type:b.dataset.ctype,id:b.dataset.for}:b.dataset.for);return}
+  if(b.hasAttribute("data-x")){closeModal();return}
+  if(b.dataset.askdel){e.stopPropagation();confirmDel=b.dataset.askdel;render();return}
+  if(b.hasAttribute("data-nodel")){confirmDel=null;render();return}
+  if(b.dataset.del){const[c,id]=b.dataset.del.split(":");confirmDel=null;await remove(c,id);toast("Élément supprimé");return}
+  if(b.dataset.part){const m=membre(b.dataset.part);await patch("membres",m.id,{part:!m.part});return}
+  if(b.dataset.pay){const a=S.achats.find(x=>x.id===b.dataset.pay);await patch("achats",a.id,{paye:!a.paye});toast(a.paye?"Pesée marquée à payer":"Pesée marquée payée");return}
+  if(b.dataset.enc){const v=S.ventes.find(x=>x.id===b.dataset.enc);await patch("ventes",v.id,{encaisse:!v.encaisse});return}
+  if(b.dataset.cview){e.stopPropagation();openModal("cview",b.dataset.cview);return}
+  if(b.dataset.csign){const c=S.contrats.find(x=>x.id===b.dataset.csign);await patch("contrats",c.id,{signe:!c.signe});toast(c.signe?"Contrat repassé à signer":"Contrat marqué signé");return}
+  if(b.dataset.ccopy){const c=S.contrats.find(x=>x.id===b.dataset.ccopy);try{await navigator.clipboard.writeText(contratTexte(c));toast("Texte du contrat copié")}catch(_){toast("Copie impossible sur cet appareil")}return}
+  if(b.dataset.cdl){const c=S.contrats.find(x=>x.id===b.dataset.cdl);await save(`Contrat-${c.ref}.html`,wrapDoc("Contrat "+c.ref,contratHTML(c),720),contratTexte(c));return}
+  if(b.dataset.plink){openModal("plink",b.dataset.plink);return}
+  if(b.dataset.call){e.stopPropagation();openModal("call",b.dataset.call);return}
+  if(b.dataset.appgo){appG=b.dataset.appgo;go("appels");return}
+  if(b.dataset.appg){appG=b.dataset.appg;q="";render();return}
+  if(b.dataset.copytel){try{await navigator.clipboard.writeText(b.dataset.copytel);toast("Numéro copié")}catch(_){toast("Copie impossible : notez "+b.dataset.copytel)}return}
+  if(b.dataset.copyconv){const c=S.convocations.find(x=>x.id===b.dataset.copyconv);try{await navigator.clipboard.writeText(convTexte(c));toast("Convocation copiée")}catch(_){toast("Copie impossible sur cet appareil")}return}
+  if(b.dataset.joint){const c=convDe(appG);if(!c)return;const v=!(c.joints||{})[b.dataset.joint];await patch("convocations",c.id,{["joints."+b.dataset.joint]:v});return}
+  if(b.dataset.pact){const x=pisteur(b.dataset.pact);await patch("pisteurs",x.id,{actif:x.actif===false});return}
+  if(b.dataset.recu){openModal("recu",b.dataset.recu);return}
+  if(b.dataset.copyrecu){const a=S.achats.find(x=>x.id===b.dataset.copyrecu);try{await navigator.clipboard.writeText(recuTexte(a));toast("Reçu copié : collez-le dans WhatsApp")}catch(_){toast("Copie impossible sur cet appareil")}return}
+  if(b.dataset.dlrecu){const a=S.achats.find(x=>x.id===b.dataset.dlrecu);await save(`Recu-${a.ref||a.id}.html`,recuFichier(a),recuTexte(a));return}
+  if(b.dataset.export){await save(`SOCOBEMA-${b.dataset.export}-${today()}.csv`,csvOf(b.dataset.export));return}
+  if(b.dataset.fpm!==undefined){fProd=b.dataset.fpm;render();return}
+  if(b.dataset.fs!==undefined){fStat=b.dataset.fs;render();return}
+  if(b.id==="lockBtn"){lockNow();return}
+  if(b.id==="setCode"){showLock("set");return}
+  if(b.dataset.gact){const g=S.gestionnaires.find(x=>x.id===b.dataset.gact);await patch("comptes",g.id,{actif:g.actif===false});toast(g.actif===false?"Accès réactivé":"Accès suspendu");return}
+  if(b.dataset.gcode){const g=S.gestionnaires.find(x=>x.id===b.dataset.gcode);await nouveauCode(g);return}
+  if(b.dataset.copycode){try{await navigator.clipboard.writeText(b.dataset.copycode);toast("Code copié")}catch(_){toast("Notez le code : "+b.dataset.copycode)}return}
+  if(b.id==="delCode"&&role()!=="pca")return;
+  if(b.id==="delCode"){const p={...S.params};delete p.codeHash;S.params=p;if(db){try{await db.doc("config/params").set(p)}catch(x){toast(errMsg(x));return}}else saveLocal();toast("Code d'accès supprimé");render();return}
+  if(b.dataset.period){period=b.dataset.period;render();return}
+  if(b.id==="demo"){await demo();return}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(modal)closeModal();closeMenu();closeSide()}if(e.key==="Enter"&&e.target.matches("tr[data-fiche],tr[data-pfiche]"))e.target.click()});
+document.addEventListener("input",e=>{
+  if(e.target.id==="q"){q=e.target.value;render();return}
+  if(e.target.id==="a_brut"||e.target.id==="a_tare"){const b=num(document.getElementById("a_brut").value);if(b)document.getElementById("a_kg").value=Math.max(0,b-num(document.getElementById("a_tare").value))}
+  calc();
+});
+document.addEventListener("change",e=>{
+  const id=e.target.id;
+  if(id==="fp"){fProd=e.target.value;render()}
+  if(id==="fs"){fStat=e.target.value;render()}
+  if(id==="a_p"){const px=S.params["prix_"+e.target.value];document.getElementById("a_px").value=px||"";calc()}
+  if(id==="g_o"){document.getElementById("g_f").innerHTML=FONCTIONS[e.target.value].map(f=>`<option>${f}</option>`).join("")}
+  if(id==="g_m"){const m=membre(e.target.value);if(m){document.getElementById("g_n").value=m.nom;document.getElementById("g_t").value=m.tel||""}}
+  if(id==="k_t"){modal.arg={type:e.target.value};document.getElementById("modal").innerHTML="";renderModal();return}
+  if(id==="k_p"&&modal?.kind==="contrat"){const x=pisteur(e.target.value);if(x&&document.getElementById("k_com"))document.getElementById("k_com").value=x.commission??"";const m=membre(e.target.value);if(m&&document.getElementById("k_prod"))document.getElementById("k_prod").value=m.produit}
+  if(id==="c_s"){document.getElementById("c_c").innerHTML=CATS[e.target.value].map(c=>`<option>${c}</option>`).join("")}
+});
+document.addEventListener("submit",async e=>{
+  e.preventDefault();const f=e.target,v=id=>(document.getElementById(id)?.value||"").trim();
+  if(f.id==="fMembre"){if(await add("membres",{nom:v("m_nom"),code:v("m_code"),section:v("m_section"),tel:v("m_tel"),carte:v("m_carte"),produit:v("m_prod"),ha:v("m_ha"),adhesion:v("m_adh"),part:!!v("m_part")})){closeModal();toast("Membre inscrit au registre")}}
+  if(f.id==="fAchat"){const d={id:uid(),ref:nextRef("achats","REC"),membre:v("a_m"),produit:v("a_p"),pisteur:v("a_pi"),sacs:v("a_sacs"),brut:num(v("a_brut")),tare:num(v("a_tare")),kg:num(v("a_kg")),prix:num(v("a_px")),date:v("a_d"),paye:!!v("a_pay"),qualite:v("a_q"),humidite:v("a_h"),lot:v("a_lot"),peseur:v("a_pes"),heure:new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})};if(role()==="pca"&&d.peseur&&d.peseur!==S.params.peseur){S.params.peseur=d.peseur;if(db)db.doc("config/params").set(S.params).catch(()=>{});else saveLocal()}
+    if(d.kg<=0)return toast("Indiquez un poids net valide");if(d.prix<=0)return toast("Indiquez le prix au kilo");
+    if(await add("achats",d)){toast("Pesée "+d.ref+" enregistrée");openModal("recu",d.id)}}
+  if(f.id==="fVente"){const d={ref:nextRef("ventes","BL"),acheteur:v("v_a"),produit:v("v_p"),kg:num(v("v_kg")),prix:num(v("v_px")),connaissement:v("v_cn"),date:v("v_d"),encaisse:!!v("v_enc")};
+    if(d.kg<=0)return toast("Indiquez un poids valide");if(d.kg>totals().stock[d.produit])toast("Attention : poids supérieur au stock enregistré");
+    if(await add("ventes",d)){closeModal();toast("Vente "+d.ref+" enregistrée")}}
+  if(f.id==="fMvt"){const d={ref:v("c_pj")||nextRef("mouvements","PC"),sens:v("c_s"),categorie:v("c_c"),libelle:v("c_l"),montant:num(v("c_m")),date:v("c_d")};
+    if(d.montant<=0)return toast("Indiquez un montant valide");if(await add("mouvements",d)){closeModal();toast("Écriture enregistrée")}}
+  if(f.id==="fPisteur"){if(await add("pisteurs",{nom:v("pi_nom"),code:v("pi_code"),tel:v("pi_tel"),zone:v("pi_zone"),cni:v("pi_cni"),commission:num(v("pi_com")),transport:v("pi_tr"),debut:v("pi_d"),actif:true})){closeModal();toast("Pisteur enregistré")}}
+  if(f.id==="fAvance"){const x=pisteur(modal.arg);const d={ref:v("av_pj")||nextRef("mouvements","PC"),sens:"sortie",categorie:"Avances et commissions pisteurs",libelle:v("av_t")+" · "+x.nom,montant:num(v("av_m")),date:v("av_d"),pisteur:x.id};if(d.montant<=0)return toast("Indiquez un montant valide");if(await add("mouvements",d)){closeModal();toast("Paiement inscrit en caisse")}}
+  if(f.id==="fDir"){if(await add("dirigeants",{organe:v("g_o"),fonction:v("g_f"),membre:v("g_m"),nom:v("g_n"),tel:v("g_t"),debut:v("g_d"),fin:v("g_e")})){closeModal();toast("Dirigeant ajouté")}}
+  if(f.id==="fContrat"){const ty=v("k_t");const d={ref:nextRef("contrats","CT"),type:ty,debut:v("k_d"),fin:v("k_f"),lieuSign:v("k_ls"),dateSign:v("k_ds"),clauses:v("k_cl"),signe:false};
+    if(ty==="pisteur")Object.assign(d,{partie:v("k_p"),commission:num(v("k_com")),plafond:num(v("k_pl")),produits:v("k_pr"),periodicite:v("k_per")});
+    if(ty==="producteur")Object.assign(d,{partie:v("k_p"),produit:v("k_prod"),volume:num(v("k_vol")),paiement:v("k_pay")});
+    if(ty==="vente")Object.assign(d,{acheteur:v("k_a"),rccm:v("k_rc"),repAcheteur:v("k_ra"),adresse:v("k_ad"),produit:v("k_prod"),quantite:num(v("k_q")),prixV:num(v("k_px")),qualiteV:v("k_ql"),lieu:v("k_li"),delai:num(v("k_de")),paiementV:v("k_mp")});
+    d.id=uid();if(await add("contrats",d)){toast("Contrat "+d.ref+" généré");openModal("cview",d.id)}}
+  if((f.id==="fLink"||f.id==="fGlink"||f.id==="fParams")&&role()!=="pca"){return toast("Seul le PCA peut modifier ces réglages.")}
+  if(f.id==="fLink"){const u=v("l_u");if(u&&!okUrl(u))return toast("L'adresse doit commencer par https://");const p={...S.params,[modal.arg]:u};S.params=p;if(db){try{await db.doc("config/params").set(p)}catch(err){toast(errMsg(err));return}}else saveLocal();closeModal();toast(u?"Lien enregistré":"Lien retiré");render()}
+  if(f.id==="fCall"){const x=contact(modal.arg);if(!x)return;const d={pid:x.id,nom:x.nom,tel:x.tel,type:x.type,resultat:(document.querySelector('input[name="ca_r"]:checked')||{}).value||"joint",motif:v("ca_m"),note:v("ca_n"),le:new Date().toISOString()};
+    if(await add("appels",d)){toast("Appel noté : "+RESULTATS[d.resultat][0]);renderModal();const f2=document.getElementById("fCall");if(f2)f2.reset()}}
+  if(f.id==="fPcaCode"){const c1=v("pc1"),c2=v("pc2");if(!/^\d{6}$/.test(c1))return toast("Le code doit contenir 6 chiffres.");if(c1!==c2)return toast("Les deux codes ne sont pas identiques.");try{await auth.currentUser.updatePassword(c1);await db.collection("comptes").doc(auth.currentUser.uid).update({codeLe:new Date().toISOString(),majPar:auth.currentUser.uid});closeModal();toast("Votre code a été changé")}catch(x){toast(errMsg(x))}return}
+  if(f.id==="fGest"){if(role()!=="pca")return toast(REFUS);await creerGest({nom:v("g_nom"),tel:v("g_tel"),role:v("g_role")})}
+  if(f.id==="fConv"){const lien=v("cv_lien");if(lien&&!okUrl(lien))return toast("Le lien doit commencer par https://");const d={groupe:v("cv_g"),objet:v("cv_o"),date:v("cv_d"),heure:v("cv_h"),lieu:v("cv_l"),ordre:(document.getElementById("cv_od").value||"").trim(),lien,joints:{}};
+    if(await add("convocations",d)){appG=d.groupe;closeModal();if(view!=="appels")go("appels");else render();toast("Convocation prête : envoyez-la sur WhatsApp")}}
+  if(f.id==="fGlink"){const g=modal.arg||appG,a=v("gl_a"),w=v("gl_w");if((a&&!okUrl(a))||(w&&!okUrl(w)))return toast("Les liens doivent commencer par https://");const p={...S.params,["appel_"+g]:a,["wa_"+g]:w};S.params=p;if(db){try{await db.doc("config/params").set(p)}catch(err){toast(errMsg(err));return}}else saveLocal();closeModal();toast("Liens enregistrés");render()}
+  if(f.id==="fParams"){const p={...S.params,campagne:v("p_c"),prix_cacao:v("p_cacao"),prix_cafe:v("p_cafe"),prix_anacarde:v("p_anacarde"),ristourne:v("p_r")};S.params=p;
+    if(db){try{await db.doc("config/params").set(p)}catch(err){toast(errMsg(err));return}}else saveLocal();toast("Paramètres enregistrés");render()}
+});
+
+async function demo(){
+  const d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+  const M=[["Exemple · Koné Adama","Tiéningboué","cacao","4"],["Exemple · Ouattara Mariam","Kongasso","anacarde","6"],["Exemple · Bamba Seydou","Marandallah","cacao","3,5"],["Exemple · Coulibaly Awa","Mankono","cafe","2"],["Exemple · Diomandé Issa","Kongasso","anacarde","5"]];
+  const ids=[];
+  for(const[i,m]of M.entries()){const o={id:uid(),nom:m[0],code:"EX-"+String(i+1).padStart(4,"0"),section:m[1],tel:"",produit:m[2],ha:m[3],adhesion:d(400),part:i!==2};ids.push(o.id);await add("membres",o)}
+  const pis=[];for(const[i,x]of [["Exemple · Sanogo Lamine","Kongasso, Tiéningboué",25],["Exemple · Fofana Karim","Marandallah",20]].entries()){const o={id:uid(),nom:x[0],code:"EX-PIS-"+(i+1),zone:x[1],tel:"",commission:x[2],transport:"Moto",debut:d(200),actif:true};pis.push(o.id);await add("pisteurs",o)}
+  for(const[o,f,nm]of [["Conseil d'administration","Président du Conseil d'administration (PCA)","Exemple · PCA"],["Conseil d'administration","Secrétaire","Exemple · Secrétaire"],["Conseil d'administration","Trésorier","Exemple · Trésorier"],["Comité de surveillance","Président du comité de surveillance","Exemple · Président surveillance"],["Direction","Directeur / gérant","Exemple · Gérant"]])await add("dirigeants",{organe:o,fonction:f,nom:nm,tel:"",debut:"2021-06-01",fin:"2026-12-31"});
+  const A=[[0,"cacao",420,3],[2,"cacao",310,40],[1,"anacarde",900,75],[4,"anacarde",640,100],[0,"cacao",260,0],[3,"cafe",180,20],[2,"cacao",350,8]];
+  let n=1;for(const[i,p,k,j]of A)await add("achats",{ref:"EX-REC-"+String(n++).padStart(4,"0"),membre:ids[i],pisteur:i===1||i===4?pis[0]:i===2?pis[1]:"",produit:p,sacs:String(Math.round(k/65)),kg:k,prix:1000,date:d(j),paye:j>2});
+  await add("ventes",{ref:"EX-BL-0001",acheteur:"Exemple · Exportateur",produit:"cacao",kg:600,prix:1100,date:d(5),encaisse:true});
+  await add("ventes",{ref:"EX-BL-0002",acheteur:"Exemple · Usinier anacarde",produit:"anacarde",kg:1200,prix:1050,date:d(30),encaisse:false});
+  await add("mouvements",{ref:"EX-PC-0001",sens:"sortie",categorie:"Transport et carburant",libelle:"Exemple · Gasoil camion de ramassage",montant:45000,date:d(6)});
+  await add("mouvements",{ref:"EX-PC-0002",sens:"entree",categorie:"Parts sociales",libelle:"Exemple · Parts sociales reçues",montant:50000,date:d(60)});
+  await add("mouvements",{ref:"EX-PC-0003",sens:"sortie",categorie:"Sacs et matériel",libelle:"Exemple · Achat de sacs de jute",montant:30000,date:d(15)});
+  toast("Exemples chargés (prix fictifs)");
+}
+
+/* ---------- Démarrage ---------- */
+try{const h=location.hash.slice(1);if(TITLES[h])view=h}catch(e){}
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(TITLES[h]&&h!==view){view=h;render()}});
+if(!window.FIREBASE_CONFIG||!window.FIREBASE_CONFIG.apiKey){render()}
+else{
+  firebase.initializeApp(window.FIREBASE_CONFIG);auth=firebase.auth();db=firebase.firestore();try{db.settings({ignoreUndefinedProperties:true,merge:true})}catch(_){}
+  setTimeout(()=>{if(lockMode()==="loading"){slow=true;render()}},12000);
+  db.collection("comptes").onSnapshot(s=>{S.comptes=s.docs.map(x=>({...x.data(),id:x.id}));syncGest();comptesOk=true;resolveMoi();render()},e=>{console.warn(e);slow=true;render()});
+  db.doc("config/admin").onSnapshot(s=>{adminUid=s.exists?s.data().uid:null;adminOk=true;syncGest();resolveMoi();render()},e=>{console.warn(e);slow=true;render()});
+  auth.onAuthStateChanged(()=>{authOk=true;resolveMoi();render()});
+  addEventListener("online",()=>render());addEventListener("offline",()=>render());
+}
+if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+</script>
+
+</body>
+</html>
