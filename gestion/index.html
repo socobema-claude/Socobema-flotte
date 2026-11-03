@@ -332,6 +332,7 @@ const I={
   rapports:'<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   achats:'<path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
   ventes:'<path d="M2 7h12v9H2z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
   caisse:'<rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3 10h18M15 15h3"/>',
   membres:'<circle cx="9" cy="8" r="3.3"/><path d="M3 20c.7-3.4 3.1-5.3 6-5.3s5.3 1.9 6 5.3"/><path d="M16 4.6a3.3 3.3 0 0 1 0 6.6M18 14.9c1.8.5 3 2 3.4 4.1"/>',
   reglages:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -639,7 +640,7 @@ function vGouvernance(){
   </section>
   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sec" data-appgo="conseil">Appeler le Conseil</button><button class="btn sec" data-export="dirigeants">${ic("dl",16)}Exporter la liste</button><button class="btn" data-form="dirigeant">${ic("gouvernance",16)}Ajouter un dirigeant</button></div>
   ${D.length?ORGANES.filter(o=>D.some(d=>d.organe===o)).map(o=>`<section class="card"><div class="card-h"><h2>${o}</h2><span class="lbl">${D.filter(d=>d.organe===o).length} personne(s)</span></div><div class="tbl"><table><thead><tr><th>Fonction</th><th>Nom et prénoms</th><th>Téléphone</th><th>Mandat</th><th>Statut</th><th></th></tr></thead><tbody>
-    ${D.filter(d=>d.organe===o).map(d=>{const m=mandat(d);return `<tr><td><b>${esc(d.fonction)}</b></td><td>${esc(d.nom)}${d.membre&&membre(d.membre)?`<span class="sub ref">Membre ${esc(membre(d.membre).code||"")}</span>`:""}</td><td>${esc(d.tel||"—")}</td><td style="white-space:nowrap">${d.debut?dfr(d.debut):"—"} → ${d.fin?dfr(d.fin):"…"}</td><td><span class="tag ${m.c}">${m.t}</span></td><td><div class="acts">${delBtn("dirigeants",d.id)}</div></td></tr>`}).join("")}</tbody></table></div></section>`).join("")
+    ${D.filter(d=>d.organe===o).map(d=>{const m=mandat(d);return `<tr><td><b>${esc(d.fonction)}</b></td><td>${esc(d.nom)}${d.membre&&membre(d.membre)?`<span class="sub ref">Membre ${esc(membre(d.membre).code||"")}</span>`:""}</td><td>${esc(d.tel||"—")}</td><td style="white-space:nowrap">${d.debut?dfr(d.debut):"—"} → ${d.fin?dfr(d.fin):"…"}</td><td><span class="tag ${m.c}">${m.t}</span></td><td><div class="acts"><button class="btn icon" data-form="dirigeant" data-for="${d.id}" aria-label="Modifier" title="Modifier">${ic("edit",16)}</button>${delBtn("dirigeants",d.id)}</div></td></tr>`}).join("")}</tbody></table></div></section>`).join("")
   :`<div class="card">${empty("gouvernance","Organes non renseignés","Ajoutez le Président du Conseil d'administration, les administrateurs, les membres du comité de gestion et du comité de surveillance, ainsi que le personnel de direction.",`<button class="btn" data-form="dirigeant">Ajouter un dirigeant</button>`)}</div>`}`;
 }
 
@@ -992,15 +993,17 @@ function renderModal(){
     <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi"><span class="lbl">Volume</span><span class="v" style="font-size:17px">${kg(o.kg)}</span></div><div class="kpi"><span class="lbl">Commission</span><span class="v" style="font-size:17px">${F(o.com)}</span></div><div class="kpi"><span class="lbl">Reste dû</span><span class="v ${o.com-o.av>0?"out":""}" style="font-size:17px">${F(o.com-o.av)}</span></div></div>
     <h2>Apports</h2>${L.length?`<div class="tbl" style="border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Date</th><th>Producteur</th><th class="num">Poids</th><th class="num">Commission</th></tr></thead><tbody>${L.map(a=>`<tr><td style="white-space:nowrap">${dfr(a.date)}</td><td>${esc(membre(a.membre)?.nom||"—")}<span class="sub">${PRODUITS[a.produit]?.n}</span></td><td class="num">${fmt(a.kg)} kg</td><td class="num">${F(num(a.kg)*num(x.commission))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Aucun apport. Choisissez ce pisteur dans le formulaire de pesée.</p>`}`,
     `<button class="btn sec" data-x>Fermer</button><button class="btn sec" data-form="contrat" data-ctype="pisteur" data-for="${x.id}">Contrat</button><button class="btn" data-form="avance" data-for="${x.id}">Payer / avancer</button>`)}
-  if(k==="dirigeant"){const og=keep.g_o||"Conseil d'administration";h=sheet("Ajouter un dirigeant",`<form id="fDir" class="grid-f">
+  if(k==="dirigeant"){const e=modal.arg?S.dirigeants.find(d=>d.id===modal.arg):null;const V=f=>esc(e?(e[f]||""):"");
+    const og=keep.g_o||(e&&ORGANES.includes(e.organe)?e.organe:"Conseil d'administration");const fs=FONCTIONS[og].slice();if(e&&e.organe===og&&e.fonction&&!fs.includes(e.fonction))fs.unshift(e.fonction);
+    h=sheet(e?"Modifier le dirigeant":"Ajouter un dirigeant",`<form id="fDir" class="grid-f" ${e?`data-edit="${e.id}"`:""}>
     <label class="fl">Organe<select id="g_o">${ORGANES.map(o=>`<option ${o===og?"selected":""}>${o}</option>`).join("")}</select></label>
-    <label class="fl">Fonction<select id="g_f">${FONCTIONS[og].map(f=>`<option>${f}</option>`).join("")}</select></label>
-    <label class="fl full">Membre de la coopérative <em>(facultatif)</em><select id="g_m"><option value="">— Saisir le nom ci-dessous —</option>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}">${esc(m.nom)} (${esc(m.code||"")})</option>`).join("")}</select></label>
-    <label class="fl full">Nom et prénoms<input id="g_n" required></label>
-    <label class="fl">Téléphone<input id="g_t" inputmode="tel"></label>
-    <label class="fl">Élu / nommé le<input id="g_d" type="date"></label>
-    <label class="fl">Fin de mandat<input id="g_e" type="date"></label>
-  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fDir">Enregistrer</button>`)}
+    <label class="fl">Fonction<select id="g_f">${fs.map(f=>`<option ${e&&f===e.fonction?"selected":""}>${esc(f)}</option>`).join("")}</select></label>
+    <label class="fl full">Membre de la coopérative <em>(facultatif)</em><select id="g_m"><option value="">— Saisir le nom ci-dessous —</option>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}" ${e&&e.membre===m.id?"selected":""}>${esc(m.nom)} (${esc(m.code||"")})</option>`).join("")}</select></label>
+    <label class="fl full">Nom et prénoms<input id="g_n" required value="${V("nom")}"></label>
+    <label class="fl">Téléphone<input id="g_t" inputmode="tel" value="${V("tel")}"></label>
+    <label class="fl">Élu / nommé le<input id="g_d" type="date" value="${V("debut")}"></label>
+    <label class="fl">Fin de mandat<input id="g_e" type="date" value="${V("fin")}"></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fDir">${e?"Enregistrer les modifications":"Enregistrer"}</button>`)}
   if(k==="contrat"){const pre=modal.arg||{};const ty=keep.k_t||pre.type||"pisteur";const camp=(S.params.campagne||"").split("-");
     const fin=camp[1]?camp[1]+"-09-30":"";const deb=camp[0]?camp[0]+"-10-01":today();
     const party=ty==="pisteur"?`<label class="fl full">Pisteur<select id="k_p" required>${S.pisteurs.map(x=>`<option value="${x.id}" ${pre.id===x.id?"selected":""}>${esc(x.nom)} — ${esc(x.zone)}</option>`).join("")}</select></label>`
@@ -1240,6 +1243,7 @@ document.addEventListener("submit",async e=>{
     if(d.montant<=0)return toast("Indiquez un montant valide");if(await add("mouvements",d)){closeModal();toast("Écriture enregistrée")}}
   if(f.id==="fPisteur"){if(await add("pisteurs",{nom:v("pi_nom"),code:v("pi_code"),tel:v("pi_tel"),zone:v("pi_zone"),cni:v("pi_cni"),commission:num(v("pi_com")),transport:v("pi_tr"),debut:v("pi_d"),actif:true})){closeModal();toast("Pisteur enregistré")}}
   if(f.id==="fAvance"){const x=pisteur(modal.arg);const d={ref:v("av_pj")||nextRef("mouvements","PC"),sens:"sortie",categorie:"Avances et commissions pisteurs",libelle:v("av_t")+" · "+x.nom,montant:num(v("av_m")),date:v("av_d"),pisteur:x.id};if(d.montant<=0)return toast("Indiquez un montant valide");if(await add("mouvements",d)){closeModal();toast("Paiement inscrit en caisse")}}
+  if(f.id==="fDir"&&f.dataset.edit){await patch("dirigeants",f.dataset.edit,{organe:v("g_o"),fonction:v("g_f"),membre:v("g_m"),nom:v("g_n"),tel:v("g_t"),debut:v("g_d"),fin:v("g_e")});closeModal();toast("Dirigeant mis à jour");return}
   if(f.id==="fDir"){if(await add("dirigeants",{organe:v("g_o"),fonction:v("g_f"),membre:v("g_m"),nom:v("g_n"),tel:v("g_t"),debut:v("g_d"),fin:v("g_e")})){closeModal();toast("Dirigeant ajouté")}}
   if(f.id==="fContrat"){const ty=v("k_t");const d={ref:nextRef("contrats","CT"),type:ty,debut:v("k_d"),fin:v("k_f"),lieuSign:v("k_ls"),dateSign:v("k_ds"),clauses:v("k_cl"),signe:false};
     if(ty==="pisteur")Object.assign(d,{partie:v("k_p"),commission:num(v("k_com")),plafond:num(v("k_pl")),produits:v("k_pr"),periodicite:v("k_per")});
