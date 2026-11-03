@@ -924,17 +924,18 @@ function renderModal(){
   const el=document.getElementById("modal");if(!modal){el.innerHTML="";return}
   const keep={};el.querySelectorAll("input,select").forEach(e=>{if(e.id)keep[e.id]=e.type==="radio"?(e.checked?"\u0001on":"\u0001off"):e.value});
   const k=modal.kind;let h="";
-  if(k==="membre")h=sheet("Inscrire un membre",`<form id="fMembre" class="grid-f">
-    <label class="fl full">Nom et prénoms<input id="m_nom" required autocomplete="off"></label>
-    <label class="fl">Code membre<input id="m_code" value="${nextCode()}"></label>
-    <label class="fl">Téléphone<input id="m_tel" inputmode="tel" placeholder="07 00 00 00 00"></label>
-    <label class="fl">Section / village<input id="m_section" required list="secs"><datalist id="secs">${[...new Set(S.membres.map(m=>m.section))].map(s=>`<option value="${esc(s)}">`).join("")}</datalist></label>
-    <label class="fl">N° carte producteur <em>(facultatif)</em><input id="m_carte"></label>
-    <label class="fl">Culture principale<select id="m_prod">${prodOpts()}</select></label>
-    <label class="fl">Superficie <em>(ha)</em><input id="m_ha" inputmode="decimal"></label>
-    <label class="fl">Date d'adhésion<input id="m_adh" type="date" value="${today()}"></label>
-    <label class="fl">Part sociale<select id="m_part"><option value="1">Réglée</option><option value="">Non réglée</option></select></label>
-  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fMembre">Inscrire le membre</button>`);
+  if(k==="membre"){const e=modal.arg?membre(modal.arg):null;const V=f=>esc(e?(e[f]||""):"");
+    h=sheet(e?"Modifier le membre":"Inscrire un membre",`<form id="fMembre" class="grid-f" ${e?`data-edit="${e.id}"`:""}>
+    <label class="fl full">Nom et prénoms<input id="m_nom" required autocomplete="off" value="${V("nom")}"></label>
+    <label class="fl">Code membre<input id="m_code" value="${e?V("code"):nextCode()}"></label>
+    <label class="fl">Téléphone<input id="m_tel" inputmode="tel" placeholder="07 00 00 00 00" value="${V("tel")}"></label>
+    <label class="fl">Section / village<input id="m_section" required list="secs" value="${V("section")}"><datalist id="secs">${[...new Set(S.membres.map(m=>m.section))].map(s=>`<option value="${esc(s)}">`).join("")}</datalist></label>
+    <label class="fl">N° carte producteur <em>(facultatif)</em><input id="m_carte" value="${V("carte")}"></label>
+    <label class="fl">Culture principale<select id="m_prod">${prodOpts(e?e.produit:undefined)}</select></label>
+    <label class="fl">Superficie <em>(ha)</em><input id="m_ha" inputmode="decimal" value="${V("ha")}"></label>
+    <label class="fl">Date d'adhésion<input id="m_adh" type="date" value="${e?V("adhesion"):today()}"></label>
+    <label class="fl">Part sociale<select id="m_part"><option value="1">Réglée</option><option value="" ${e&&!e.part?"selected":""}>Non réglée</option></select></label>
+  </form>`,`<button class="btn sec" data-x>Annuler</button><button class="btn" form="fMembre">${e?"Enregistrer les modifications":"Inscrire le membre"}</button>`)}
   if(k==="achat"){const pr=keep.a_p||"cacao";h=sheet("Nouvelle pesée",`<form id="fAchat" class="grid-f">
     <label class="fl full">Producteur<select id="a_m" required>${S.membres.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(m=>`<option value="${m.id}" ${modal.arg===m.id?"selected":""}>${esc(m.nom)} — ${esc(m.section)} (${esc(m.code||"")})</option>`).join("")}</select></label>
     <label class="fl">Produit<select id="a_p">${prodOpts(pr)}</select></label>
@@ -1081,7 +1082,7 @@ function renderModal(){
     ${r?`<p class="note">Ristourne prévue : <b>${F(kT*r)}</b> (${fmt(r)} F/kg).</p>`:""}
     <h2>Historique des livraisons</h2>
     ${L.length?`<div class="tbl" style="border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Date</th><th>Produit</th><th class="num">Poids</th><th class="num">Montant</th><th></th></tr></thead><tbody>${L.map(a=>`<tr><td style="white-space:nowrap">${dfr(a.date)}<span class="sub ref">${esc(a.ref||"")}</span></td><td>${prodTag(a.produit)}</td><td class="num">${fmt(a.kg)} kg</td><td class="num">${F(mt(a))}</td><td>${tag(a.paye,"Payé","À payer",`data-pay="${a.id}"`)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Aucune livraison pour ce membre.</p>`}`,
-    `<button class="btn sec" data-x>Fermer</button><button class="btn sec" data-form="contrat" data-ctype="producteur" data-for="${m.id}">Contrat</button><button class="btn" data-form="achat" data-for="${m.id}">Nouvelle pesée</button>`)}
+    `<button class="btn sec" data-x>Fermer</button><button class="btn sec" data-form="membre" data-for="${m.id}">Modifier</button><button class="btn sec" data-form="contrat" data-ctype="producteur" data-for="${m.id}">Contrat</button><button class="btn" data-form="achat" data-for="${m.id}">Nouvelle pesée</button>`)}
   el.innerHTML=h;
   for(const id in keep){const e=document.getElementById(id);if(!e||id==="c_c")continue;if(e.type==="radio")e.checked=keep[id]==="\u0001on";else e.value=keep[id]}
   calc();
@@ -1227,6 +1228,7 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("submit",async e=>{
   e.preventDefault();const f=e.target,v=id=>(document.getElementById(id)?.value||"").trim();
+  if(f.id==="fMembre"&&f.dataset.edit){const id=f.dataset.edit;await patch("membres",id,{nom:v("m_nom"),code:v("m_code"),section:v("m_section"),tel:v("m_tel"),carte:v("m_carte"),produit:v("m_prod"),ha:v("m_ha"),adhesion:v("m_adh"),part:!!v("m_part")});openModal("fiche",id);toast("Fiche du membre mise à jour");return}
   if(f.id==="fMembre"){if(await add("membres",{nom:v("m_nom"),code:v("m_code"),section:v("m_section"),tel:v("m_tel"),carte:v("m_carte"),produit:v("m_prod"),ha:v("m_ha"),adhesion:v("m_adh"),part:!!v("m_part")})){closeModal();toast("Membre inscrit au registre")}}
   if(f.id==="fAchat"){const d={id:uid(),ref:nextRef("achats","REC"),membre:v("a_m"),produit:v("a_p"),pisteur:v("a_pi"),sacs:v("a_sacs"),brut:num(v("a_brut")),tare:num(v("a_tare")),kg:num(v("a_kg")),prix:num(v("a_px")),date:v("a_d"),paye:!!v("a_pay"),qualite:v("a_q"),humidite:v("a_h"),lot:v("a_lot"),peseur:v("a_pes"),heure:new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})};if(role()==="pca"&&d.peseur&&d.peseur!==S.params.peseur){S.params.peseur=d.peseur;if(db)db.doc("config/params").set(S.params).catch(()=>{});else saveLocal()}
     if(d.kg<=0)return toast("Indiquez un poids net valide");if(d.prix<=0)return toast("Indiquez le prix au kilo");
