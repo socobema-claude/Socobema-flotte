@@ -1020,9 +1020,9 @@ function showRecu(kind,x){const p=pisById(x.pisteurId)||{nom:"",tel:""};let titl
   else{title=TYP[x.type];to=p.tel;
     txt=`${TYP[x.type].toUpperCase()} N° ${code("MV",x.id)}\n${CFG.nom}\nDate : ${dFr(x.date)}\nPisteur : ${p.nom}\nMontant : ${F(x.montant)}\nMode : ${x.mode}${x.ref?" (réf. "+x.ref+")":""}${x.note?"\nRemarque : "+x.note:""}\n\nSignature du pisteur : ..................`}
   $("#rcT").textContent=title;$("#rcTxt").textContent=txt;$("#rcCopy").onclick=()=>copy(txt,"Reçu copié");
-  const isBS=kind==="t"&&x.vers==="vente";$("#rcLogo").hidden=!isBS;const qb=$("#rcQr"),qt=isBS?qrBS(x):"";qb.innerHTML="";qb.hidden=true;let qrUrl="";
+  const isBS=kind==="t"&&x.vers==="vente";$("#rcLogo").hidden=false;const qb=$("#rcQr"),qt=isBS?qrBS(x):"";qb.innerHTML="";qb.hidden=true;let qrUrl="";
   if(qt&&window.QRCode){try{new QRCode(qb,{text:qt,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});const c=qb.querySelector("canvas");qrUrl=c?c.toDataURL("image/png"):"";qb.insertAdjacentHTML("beforeend",'<small style="display:block;color:#555;margin-top:6px">Scannez pour lire le bordereau</small>');qb.hidden=false}catch(e){qb.innerHTML=""}}
-  $("#rcPrint").onclick=()=>printDoc(title,txt,qrUrl,isBS);
+  $("#rcPrint").onclick=()=>printDoc(title,txt,qrUrl,true);
   $("#rcWa").hidden=!waNum(to);$("#rcWa").href=waNum(to)?"https://wa.me/"+waNum(to)+"?text="+encodeURIComponent(txt):"#";open_("#mRecu")}
 
 function qrBS(x){return[`SOCOBEMA - BORDEREAU DE SORTIE ${code("BS",x.id)}`,`Date: ${dFr(x.date)}`,`Depart: ${magName(x.de)}`,`Acheteur: ${x.acheteur||"-"}`,x.destination?`Livraison: ${x.destination}`:"",`Produit: ${pName(x.produit)}`,`Sacs: ${x.sacs}`,`Poids net: ${x.poidsEnvoye} kg`,x.kor!=null?`KOR: ${x.kor} lbs`:"",`Camion: ${x.camion||"-"}`,`Chauffeur: ${x.chauffeur||"-"}`,`Connaissement: ${x.connaissement||"-"}`,"Document interne"].filter(Boolean).join("\n")}
