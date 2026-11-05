@@ -120,7 +120,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
 
 <header class="top"><div class="wrap">
   <div class="who"><div><small>Gestion des pisteurs · commercialisation</small><h1 id="hName">Coopérative</h1><small id="meBadge" style="margin-top:6px;letter-spacing:.04em;text-transform:none;font-size:.85rem"></small> <button class="btn light sm" id="bLock" type="button" style="margin-top:6px">Verrouiller</button></div>
-    <div class="quick"><button class="btn light sm" data-new="achat">+ Achat bord champ</button><button class="btn light sm" data-new="livraison">+ Livraison au magasin</button><button class="btn light sm" data-new="sacs">+ Sacs</button><button class="btn light sm" data-new="transfert">+ Transfert entre magasins</button><button class="btn light sm" data-new="argent">+ Avance / paiement</button></div></div>
+    <div class="quick"><button class="btn light sm" data-new="achat">+ Achat bord champ</button><button class="btn light sm" data-new="livraison">+ Livraison au magasin</button><button class="btn light sm" data-new="sacs">+ Sacs</button><button class="btn light sm" data-new="transfert">+ Transfert entre magasins</button><button class="btn light sm" data-new="sortie">+ Bordereau de sortie</button><button class="btn light sm" data-new="argent">+ Avance / paiement</button></div></div>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-t="bord" aria-selected="true">Tableau de bord</button>
     <button class="tab" role="tab" data-t="pis" aria-selected="false">Pisteurs</button>
@@ -179,7 +179,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
   </section>
 
   <section role="tabpanel" id="t-mag" hidden>
-    <div class="toolbar"><h2>Magasins</h2><div class="r"><button class="btn ghost" id="bMagReg">Ajouter ou modifier un magasin</button><button class="btn" data-new="transfert">+ Transfert ou sortie</button></div></div>
+    <div class="toolbar"><h2>Magasins</h2><div class="r"><button class="btn ghost" id="bMagReg">Ajouter ou modifier un magasin</button><button class="btn ghost" data-new="transfert">+ Transfert</button><button class="btn" data-new="sortie">+ Bordereau de sortie</button></div></div>
     <p class="note">Stock à la date de fin choisie : livraisons des pisteurs + transferts reçus − transferts et ventes sortis. Les produits « en route » ne sont comptés qu'à leur réception.</p>
     <div class="mags" id="magCards"></div>
     <div class="toolbar"><h2>Transferts et sorties</h2><button class="btn ghost" data-csv="transferts">Exporter (CSV)</button></div>
@@ -367,7 +367,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
 </div>
 
 <form class="modal" id="mTr" hidden aria-label="Transfert">
-  <div class="mh"><h2>Transfert ou sortie de stock</h2><button type="button" class="x" data-close aria-label="Fermer">×</button></div>
+  <div class="mh"><h2 id="tTitle">Transfert ou sortie de stock</h2><button type="button" class="x" data-close aria-label="Fermer">×</button></div>
   <div class="f">
     <div><label for="tDe">Depuis le magasin</label><select id="tDe"></select></div>
     <div><label for="tVers">Vers</label><select id="tVers"></select></div>
@@ -376,8 +376,12 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
     <div><label for="tSacs">Nombre de sacs</label><input id="tSacs" type="number" min="0" step="1" inputmode="numeric"></div>
     <div><label for="tPoids">Poids net envoyé (kg)</label><input id="tPoids" type="number" min="0" step="0.1" inputmode="decimal"></div>
     <div id="tAchBox" class="full" hidden><label for="tAch">Acheteur (exportateur, usine…)</label><input id="tAch"></div>
+    <div class="tSort" hidden><label for="tDest">Lieu de livraison (port, usine, ville)</label><input id="tDest"></div>
+    <div class="tSort" hidden><label for="tKor">KOR (lbs, anacarde)</label><input id="tKor" type="number" min="0" max="70" step="0.1" inputmode="decimal"></div>
+    <div class="tSort full" hidden><label for="tCon">N° du connaissement officiel (CCAK ou Café-Cacao)</label><input id="tCon" placeholder="À recopier depuis le connaissement officiel"></div>
     <div><label for="tCam">Camion (immatriculation)</label><input id="tCam"></div>
     <div><label for="tChauf">Chauffeur et téléphone</label><input id="tChauf"></div>
+    <div class="full note tSort" hidden style="margin:0">Bordereau interne de SOCOBEMA : il suit la sortie du magasin et baisse le stock. Il accompagne le connaissement officiel mais ne le remplace pas.</div>
     <div class="full calc" id="tCalc"></div>
     <div class="full"><label for="tNote">Remarque (facultatif)</label><input id="tNote"></div>
   </div>
@@ -430,7 +434,7 @@ pre.msg{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:1
 <div class="modal" id="mRecu" hidden aria-label="Reçu">
   <div class="mh"><h2 id="rcT">Reçu</h2><button type="button" class="x" data-close aria-label="Fermer">×</button></div>
   <pre class="msg" id="rcTxt"></pre>
-  <div class="mf"><button class="btn ghost" id="rcCopy">Copier</button><a class="btn" id="rcWa" target="_blank" rel="noopener">Envoyer sur WhatsApp</a></div>
+  <div class="mf"><button class="btn ghost" id="rcCopy">Copier</button><button class="btn ghost" id="rcPrint">Imprimer / PDF</button><a class="btn" id="rcWa" target="_blank" rel="noopener">Envoyer sur WhatsApp</a></div>
 </div>
 
 <div class="lock" id="lock">
@@ -602,12 +606,12 @@ function renderMag(){const ks=Object.keys(CFG.prod);
     <div class="sub">${esc(m.lieu||"")}${m.resp?" · Resp. "+esc(m.resp):""}${m.tel?" · "+esc(telFmt(m.tel)):""}</div>
     ${rows.length?`<table><thead><tr><th>Produit</th><th class="n">En stock</th><th class="n">En route</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(pName(r.k))}</td><td class="n" style="${r.st<0?"color:var(--ko)":""}">${KG(r.st)}</td><td class="n">${r.route?KG(r.route):"–"}</td></tr>`).join("")}</tbody></table>`:`<p class="note">Aucun stock pour l'instant.</p>`}
     ${rows.some(r=>r.st<0)?`<p class="err">Stock négatif : une livraison ou un transfert manque, ou une sortie a été saisie en trop.</p>`:""}
-    <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-new="transfert" data-m="${m.id}">Transférer ou vendre</button></div></div>`};
+    <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" data-new="transfert" data-m="${m.id}">Transférer</button><button class="btn sm" data-new="sortie" data-m="${m.id}">Bordereau de sortie</button></div></div>`};
   $("#magCards").innerHTML=mags().map(card).join("");
   const t=TR.filter(x=>inP(x.date||"")&&(!$("#fProd").value||x.produit===$("#fProd").value)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  $("#trTable").innerHTML=tbl(t.map(x=>{const perte=x.poidsRecu!=null?r1(x.poidsEnvoye-x.poidsRecu):null;return`<tr><td>${dFr(x.date)}</td><td>${esc(magName(x.de))} → <b>${esc(x.vers==="vente"?(x.acheteur?"Vente : "+x.acheteur:"Vente / sortie"):magName(x.vers))}</b></td><td>${esc(pName(x.produit))}</td><td class="n">${nf(x.sacs)}</td><td class="n">${KG(x.poidsEnvoye)}</td><td class="n">${x.poidsRecu!=null?KG(x.poidsRecu):"–"}</td>
+  $("#trTable").innerHTML=tbl(t.map(x=>{const perte=x.poidsRecu!=null?r1(x.poidsEnvoye-x.poidsRecu):null;return`<tr><td>${dFr(x.date)}</td><td>${esc(magName(x.de))} → <b>${esc(x.vers==="vente"?(x.acheteur?"Vente : "+x.acheteur:"Vente / sortie"):magName(x.vers))}</b>${x.vers==="vente"?`<br><small>${code("BS",x.id)}${x.connaissement?" · Conn. "+esc(x.connaissement):""}${x.kor!=null?" · KOR "+nf(x.kor,1):""}</small>`:""}</td><td>${esc(pName(x.produit))}</td><td class="n">${nf(x.sacs)}</td><td class="n">${KG(x.poidsEnvoye)}</td><td class="n">${x.poidsRecu!=null?KG(x.poidsRecu):"–"}</td>
     <td class="n">${perte!=null&&x.vers!=="vente"?KG(perte):"–"}</td><td>${x.vers==="vente"?'<span class="pill p-idle">Sorti</span>':x.poidsRecu==null?'<span class="pill p-warn">En route</span>':'<span class="pill p-ok">Reçu le '+dFr(x.dateRecu)+'</span>'}</td>
-    <td style="white-space:nowrap">${x.vers!=="vente"&&x.poidsRecu==null?`<button class="btn sm" data-recv="${x.id}">Confirmer réception</button> `:""}<button class="btn ghost sm" data-recu="t|${x.id}">Bon</button> <button class="btn ghost sm" data-del="transferts|${x.id}">Annuler</button></td></tr>`}),
+    <td style="white-space:nowrap">${x.vers!=="vente"&&x.poidsRecu==null?`<button class="btn sm" data-recv="${x.id}">Confirmer réception</button> `:""}<button class="btn ghost sm" data-recu="t|${x.id}">${x.vers==="vente"?"Bordereau":"Bon"}</button> <button class="btn ghost sm" data-del="transferts|${x.id}">Annuler</button></td></tr>`}),
    `<th>Départ</th><th>Trajet</th><th>Produit</th><th class="n">Sacs</th><th class="n">Envoyé</th><th class="n">Reçu</th><th class="n">Perte</th><th>Statut</th><th></th>`,"Les transferts d'un magasin secondaire vers le magasin principal, et les ventes, apparaîtront ici.");
   const all=mags(),kk=ks.filter(k=>all.some(m=>{const v=stock(m.id,k);return v.st||v.route}));
   $("#byMag").innerHTML=kk.length?`<div class="tablewrap"><table><thead><tr><th>Produit</th>${all.map(m=>`<th class="n">${esc(m.nom)}</th>`).join("")}<th class="n">En route</th><th class="n">Total</th></tr></thead><tbody>${kk.map(k=>{let tot=0,rt=0;const c=all.map(m=>{const v=stock(m.id,k);tot+=v.st;rt+=v.route;return`<td class="n">${KG(v.st)}</td>`}).join("");return`<tr><td><b>${esc(pName(k))}</b></td>${c}<td class="n">${KG(rt)}</td><td class="n">${KG(tot+rt)}</td></tr>`}).join("")}</tbody></table></div>`
@@ -658,7 +662,7 @@ const myRole=()=>{if(!SESSION)return null;if(SESSION.key===ADMIN_UID)return"prop
 const can=a=>!!db&&!!SESSION&&(myRole()==="proprietaire"||(PERMS[myRole()]||[]).includes(a));
 const roleName=r=>r==="pisteur"?"Pisteur":r==="proprietaire"?"Propriétaire (tous les droits)":ROLES[r]||"Sans rôle (consultation)";
 function guard(a){if(can(a))return true;toast("Votre rôle ("+roleName(myRole())+") ne permet pas : "+ACTS[a].toLowerCase()+".");return false}
-const NEWMAP={achat:"ach",livraison:"liv",argent:"arg",sacs:"sac",transfert:"tr"};
+const NEWMAP={achat:"ach",livraison:"liv",argent:"arg",sacs:"sac",transfert:"tr",sortie:"tr"};
 function fbErr(x){const c=(x&&x.code)||"";
   if(c==="permission-denied")return"Accès refusé : votre rôle ne le permet pas, ou votre code n'est plus valide.";
   if(c==="auth/network-request-failed"||c==="unavailable")return"Pas de connexion internet. Réessayez quand le réseau revient.";
@@ -910,13 +914,14 @@ $("#mSac").addEventListener("submit",async e=>{e.preventDefault();if(needDb("#sa
 
 /* Transferts */
 const magOpts=(sel,val,extra)=>{$(sel).innerHTML=mags().filter(m=>m.actif!==false||m.id===val).map(m=>`<option value="${m.id}">${esc(m.nom)}${m.type==="principal"?" (principal)":""}</option>`).join("")+(extra||"");if(val)$(sel).value=val};
-function openTr(mid){if(!guard("tr"))return;magOpts("#tDe",mid||mags().find(m=>m.type!=="principal"&&m.actif!==false)?.id||principal().id);setVers();
+function togSort(){const v=$("#tVers").value==="vente";$("#tAchBox").hidden=!v;document.querySelectorAll("#mTr .tSort").forEach(x=>x.hidden=!v);$("#tTitle").textContent=v?"Bordereau de sortie du magasin":"Transfert entre magasins"}
+function openTr(mid,sortie){if(!guard("tr"))return;magOpts("#tDe",mid||mags().find(m=>m.type!=="principal"&&m.actif!==false)?.id||principal().id);setVers();if(sortie)$("#tVers").value="vente";
   $("#tPrd").innerHTML=actProds().map(([k,v])=>`<option value="${k}">${esc(v.nom)}</option>`).join("");
-  ["#tSacs","#tPoids","#tAch","#tCam","#tChauf","#tNote"].forEach(x=>$(x).value="");$("#tDate").value=today();delete $("#mTr").dataset.ok;calcT();err("#trErr","");open_("#mTr")}
+  ["#tSacs","#tPoids","#tAch","#tCam","#tChauf","#tNote","#tDest","#tKor","#tCon"].forEach(x=>$(x).value="");togSort();$("#tDate").value=today();delete $("#mTr").dataset.ok;calcT();err("#trErr","");open_("#mTr")}
 function setVers(){const de=$("#tDe").value,cur=$("#tVers").value;$("#tVers").innerHTML=mags().filter(m=>m.id!==de&&m.actif!==false).map(m=>`<option value="${m.id}">${esc(m.nom)}</option>`).join("")+`<option value="vente">Vente / sortie (exportateur, usine…)</option>`;
-  if([...$("#tVers").options].some(o=>o.value===cur))$("#tVers").value=cur;else{const p=principal();if(p.id!==de)$("#tVers").value=p.id}$("#tAchBox").hidden=$("#tVers").value!=="vente"}
+  if([...$("#tVers").options].some(o=>o.value===cur))$("#tVers").value=cur;else{const p=principal();if(p.id!==de)$("#tVers").value=p.id}togSort()}
 function calcT(){const v=stock($("#tDe").value,$("#tPrd").value);$("#tCalc").textContent=`Stock disponible dans ce magasin : ${KG(v.st)}`;return v}
-$("#tDe").addEventListener("change",()=>{setVers();calcT()});$("#tVers").addEventListener("change",()=>{$("#tAchBox").hidden=$("#tVers").value!=="vente"});$("#tPrd").addEventListener("change",calcT);
+$("#tDe").addEventListener("change",()=>{setVers();calcT()});$("#tVers").addEventListener("change",togSort);$("#tPrd").addEventListener("change",calcT);
 ["#tDe","#tPrd","#tPoids"].forEach(x=>$(x).addEventListener("input",()=>delete $("#mTr").dataset.ok));
 $("#mTr").addEventListener("submit",async e=>{e.preventDefault();if(needDb("#trErr"))return;const kg=r1($("#tPoids").value),v=calcT();
   if(!$("#tVers").value)return err("#trErr","Choisissez la destination.");if(!(kg>0))return err("#trErr","Indiquez le poids envoyé.");
@@ -924,8 +929,9 @@ $("#mTr").addEventListener("submit",async e=>{e.preventDefault();if(needDb("#trE
   if(kg>v.st+0.05&&!$("#mTr").dataset.ok){$("#mTr").dataset.ok="1";return err("#trErr",`Le stock enregistré dans ce magasin n'est que de ${KG(v.st)}. Vérifiez les livraisons, puis appuyez à nouveau sur « Enregistrer » pour confirmer.`)}
   delete $("#mTr").dataset.ok;const vente=$("#tVers").value==="vente";
   const data={de:$("#tDe").value,vers:$("#tVers").value,date:$("#tDate").value||today(),produit:$("#tPrd").value,sacs:Math.round(+$("#tSacs").value||0),poidsEnvoye:kg,poidsRecu:vente?kg:null,dateRecu:vente?($("#tDate").value||today()):null,acheteur:vente?$("#tAch").value.trim().slice(0,80):"",camion:$("#tCam").value.trim().toUpperCase().slice(0,20),chauffeur:$("#tChauf").value.trim().slice(0,80),note:$("#tNote").value.trim().slice(0,140),saisiLe:new Date().toISOString(),saisiPar:ACTOR()};
+  if(vente){const kor=+$("#tKor").value;if($("#tKor").value!==""&&!(kor>0&&kor<=70))return err("#trErr","Le KOR doit être entre 1 et 70 lbs.");data.destination=$("#tDest").value.trim().slice(0,80);data.kor=$("#tKor").value===""?null:r1(kor);data.connaissement=$("#tCon").value.trim().toUpperCase().slice(0,40)}
   if(locked(data.date))return err("#trErr",lockMsg());
-  try{const ref=await db.collection("transferts").add(data);close_();toast(vente?"Sortie enregistrée":"Transfert enregistré : en route");showRecu("t",{id:ref.id,...data})}catch(x){err("#trErr","L'enregistrement n'a pas abouti. Vérifiez votre connexion et réessayez.")}});
+  try{const ref=await db.collection("transferts").add(data);close_();toast(vente?"Bordereau de sortie enregistré":"Transfert enregistré : en route");showRecu("t",{id:ref.id,...data})}catch(x){err("#trErr","L'enregistrement n'a pas abouti. Vérifiez votre connexion et réessayez.")}});
 function openRec(id){if(!guard("tr"))return;const x=TR.find(t=>t.id===id);if(!x)return;recId=id;$("#recInfo").textContent=`${nf(x.sacs)} sac(s) de ${pName(x.produit)}, ${KG(x.poidsEnvoye)} envoyés de ${magName(x.de)} le ${dFr(x.date)}${x.camion?" (camion "+x.camion+")":""}.`;
   $("#rcDate").value=today();$("#rcSacs").value=x.sacs||"";$("#rcPoids").value=x.poidsEnvoye;err("#recErr","");open_("#mRec")}
 $("#mRec").addEventListener("submit",async e=>{e.preventDefault();if(needDb("#recErr"))return;const x=TR.find(t=>t.id===recId);const kg=r1($("#rcPoids").value);
@@ -1005,12 +1011,19 @@ function showRecu(kind,x){const p=pisById(x.pisteurId)||{nom:"",tel:""};let titl
     txt=`REÇU D'ACHAT N° ${code("RA",x.id)}\n${CFG.nom}\nDate : ${dFr(x.date)}\nProducteur : ${x.producteur}${x.village?" ("+x.village+")":""}\nProduit : ${pName(x.produit)}\nSacs : ${nf(x.sacs)}\nPoids brut : ${nf(x.poidsBrut,1)} kg · Tare : ${nf(x.tare,1)} kg\nPoids net : ${nf(x.poidsNet,1)} kg\nPrix : ${F(x.prix)}/kg\nMONTANT : ${F(x.montant)} (${x.paye==="non"?"reste à payer":"payé comptant"})\nAcheté par le pisteur ${p.nom}${p.tel?" ("+telFmt(p.tel)+")":""}`}
   else if(kind==="l"){title="Bon de réception au magasin";to=p.tel;
     txt=`BON DE RÉCEPTION N° ${code("BR",x.id)}${x.bon?" (bon pisteur "+x.bon+")":""}\n${CFG.nom} · ${x.magasin||""}\nDate : ${dFr(x.date)}\nPisteur : ${p.nom}\nProduit : ${pName(x.produit)}\nSacs reçus : ${nf(x.sacs)}\nPoids net reçu : ${nf(x.poids,1)} kg\nQualité : ${x.qualite}\nValeur : ${F(x.valeur)} (${F(x.prix)}/kg)\nCommission du pisteur : ${F(x.commission)}`}
+  else if(kind==="t"&&x.vers==="vente"){title="Bordereau de sortie";to=(magById(x.de)||{}).tel;
+    txt=`BORDEREAU DE SORTIE N° ${code("BS",x.id)}\n${CFG.nom}${CFG.tel?" · "+telFmt(CFG.tel):""}\nDocument interne : accompagne le connaissement officiel, ne le remplace pas.\n\nDate de sortie : ${dFr(x.date)}\nMagasin de départ : ${magName(x.de)}\nAcheteur : ${x.acheteur||"–"}${x.destination?"\nLieu de livraison : "+x.destination:""}\n\nProduit : ${pName(x.produit)}\nNombre de sacs : ${nf(x.sacs)}\nPoids net : ${nf(x.poidsEnvoye,1)} kg${x.kor!=null?"\nKOR : "+nf(x.kor,1)+" lbs":""}\n\nCamion : ${x.camion||"–"}\nChauffeur : ${x.chauffeur||"–"}\nN° connaissement officiel : ${x.connaissement||"................"}${x.note?"\nRemarque : "+x.note:""}\n\nSignature du magasinier : ..................\nSignature du chauffeur : ..................\nVisa du responsable : ..................`}
   else if(kind==="t"){title=x.vers==="vente"?"Bon de sortie":"Bon de transfert";to=(magById(x.vers)||{}).tel;
     txt=`${x.vers==="vente"?"BON DE SORTIE":"BON DE TRANSFERT"} N° ${code("BT",x.id)}\n${CFG.nom}\nDate de départ : ${dFr(x.date)}\nDe : ${magName(x.de)}\nVers : ${x.vers==="vente"?"Vente"+(x.acheteur?" à "+x.acheteur:""):magName(x.vers)}\nProduit : ${pName(x.produit)}\nSacs : ${nf(x.sacs)}\nPoids net envoyé : ${nf(x.poidsEnvoye,1)} kg${x.camion?"\nCamion : "+x.camion:""}${x.chauffeur?"\nChauffeur : "+x.chauffeur:""}${x.poidsRecu!=null&&x.vers!=="vente"?"\nReçu le "+dFr(x.dateRecu)+" : "+nf(x.poidsRecu,1)+" kg":""}\n\nSignature au départ : ..................\nSignature à l'arrivée : ..................`}
   else{title=TYP[x.type];to=p.tel;
     txt=`${TYP[x.type].toUpperCase()} N° ${code("MV",x.id)}\n${CFG.nom}\nDate : ${dFr(x.date)}\nPisteur : ${p.nom}\nMontant : ${F(x.montant)}\nMode : ${x.mode}${x.ref?" (réf. "+x.ref+")":""}${x.note?"\nRemarque : "+x.note:""}\n\nSignature du pisteur : ..................`}
-  $("#rcT").textContent=title;$("#rcTxt").textContent=txt;$("#rcCopy").onclick=()=>copy(txt,"Reçu copié");
+  $("#rcT").textContent=title;$("#rcTxt").textContent=txt;$("#rcCopy").onclick=()=>copy(txt,"Reçu copié");$("#rcPrint").onclick=()=>printDoc(title,txt);
   $("#rcWa").hidden=!waNum(to);$("#rcWa").href=waNum(to)?"https://wa.me/"+waNum(to)+"?text="+encodeURIComponent(txt):"#";open_("#mRecu")}
+
+function printDoc(title,txt){const lines=txt.split("\n"),h=lines.shift();
+  const body=lines.map(l=>{if(!l.trim())return'<div class="sp"></div>';const i=l.indexOf(" : ");if(i>0&&!/^Document interne/.test(l))return`<div class="r"><span>${esc(l.slice(0,i))}</span><b>${esc(l.slice(i+3))}</b></div>`;return`<div class="t">${esc(l)}</div>`}).join("");
+  const html=`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(h)}</title><style>body{font-family:system-ui,Arial,sans-serif;color:#111;margin:0;padding:24px;background:#fff}.box{max-width:640px;margin:auto;border:2px solid #2f5d34;border-radius:10px;padding:20px}h1{font-size:1.15rem;margin:0 0 6px;color:#2f5d34;letter-spacing:.02em}.t{font-size:.92rem;margin:2px 0}.r{display:flex;justify-content:space-between;gap:16px;border-bottom:1px dotted #bbb;padding:6px 0;font-size:.95rem}.r span{color:#444}.r b{text-align:right}.sp{height:10px}.ft{margin-top:16px;font-size:.75rem;color:#666;text-align:center}@media print{body{padding:0}.no{display:none}}</style></head><body><div class="box"><h1>${esc(h)}</h1>${body}<div class="ft">Imprimé le ${new Date().toLocaleString("fr-FR")}</div></div><p class="no" style="text-align:center"><button onclick="print()" style="padding:10px 18px;font-size:1rem">Imprimer ou enregistrer en PDF</button></p><script>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open("","_blank");if(!w){toast("Autorisez l'ouverture des fenêtres pour imprimer");return}w.document.open();w.document.write(html);w.document.close()}
 
 /* Fiche du pisteur */
 function releve(p,s){return `RELEVÉ DU PISTEUR ${p.nom.toUpperCase()}\n${CFG.nom} · du ${dFr($("#dFrom").value)} au ${dFr($("#dTo").value)}\n\nCollecté (achats déclarés) : ${nf(s.kgA,1)} kg pour ${F(s.valA)}\nLivré au magasin : ${nf(s.kgL,1)} kg, valeur ${F(s.valL)}\nÉcart de poids : ${nf(s.ecart,1)} kg (${nf(s.ecP,1)} %)\n\nCompte depuis le début :\nAvances reçues : ${F(s.av)}\nRemboursements : ${F(s.rb)}\n${s.solde>0?"Reste à justifier par des livraisons ou à rembourser : "+F(s.solde):s.solde<0?"La coopérative vous doit : "+F(-s.solde):"Compte soldé"}\nCommission due : ${F(Math.max(0,s.comDue))} (déjà payée : ${F(s.cp)})\n\nMontant pris : ${F(s.av)}\nPoids rendu au magasin : ${nf(s.kgAll,1)} kg (valeur ${F(s.valAll)})\nArgent restant : ${s.solde>=0?F(s.solde):"la coopérative vous doit "+F(-s.solde)}\n\nSacs :\n${s.sacs.map(t=>`• ${t.nom} : remis ${nf(t.rem)}, rendus ${nf(t.plein+t.vide)}, restants ${nf(t.reste)}`).join("\n")}`}
@@ -1033,7 +1046,7 @@ function openFiche(pid){ficheId=pid;const p=pisById(pid);if(!p)return;const s=st
 /* Boutons des listes */
 document.addEventListener("click",e=>{const b=e.target.closest("[data-new],[data-recv],[data-fiche],[data-editpis],[data-del],[data-recu],[data-payprod],[data-go],[data-csv]");if(!b)return;const d=b.dataset;
   if(d.new==="sacs"){openSac(d.p);return}
-  if(d.new==="transfert"){openTr(d.m);return}if(d.recv){openRec(d.recv);return}
+  if(d.new==="transfert"){openTr(d.m);return}if(d.new==="sortie"){openTr(d.m||principal().id,true);return}if(d.recv){openRec(d.recv);return}
   if(d.new==="achat")openAch(d.p);else if(d.new==="livraison")openLiv(d.p);else if(d.new==="argent")openArg(d.p,d.ty);
   else if(d.fiche)openFiche(d.fiche);else if(d.editpis)openPis(pisById(d.editpis));else if(d.go==="addpis"){showTab("pis");openPis()}
   else if(d.recu){const[k,id]=d.recu.split("|");const x=(k==="a"?ACH:k==="l"?LIV:k==="t"?TR:MVT).find(y=>y.id===id);if(x)showRecu(k,x)}
@@ -1047,7 +1060,7 @@ async function csv(kind){if(!guard("exp"))return;const dl={save:async o=>saveBlo
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const pn=id=>(pisById(id)||{}).nom||"";let rows;
   if(kind==="achats")rows=[["Date","Pisteur","Producteur","Village","Produit","Sacs","Poids brut (kg)","Tare (kg)","Poids net (kg)","Prix (F/kg)","Montant (F)","Producteur payé","Humidité %"]].concat(ACH.filter(inF).map(x=>[x.date,pn(x.pisteurId),x.producteur,x.village,pName(x.produit),x.sacs,x.poidsBrut,x.tare,x.poidsNet,x.prix,x.montant,x.paye,x.humidite??""]));
   else if(kind==="livraisons")rows=[["Date","Pisteur","Produit","Magasin","Bon","Type de sacs","Sacs","Poids reçu (kg)","Prix (F/kg)","Valeur (F)","Commission (F)","Qualité"]].concat(LIV.filter(inF).map(x=>[x.date,pn(x.pisteurId),pName(x.produit),magName(livMag(x)),x.bon,sacName(x.sacType||sacTypes()[0].id),x.sacs,x.poids,x.prix,x.valeur,x.commission,x.qualite]));
-  else if(kind==="transferts")rows=[["Date départ","De","Vers","Acheteur","Produit","Sacs","Poids envoyé (kg)","Poids reçu (kg)","Perte (kg)","Date réception","Camion","Chauffeur"]].concat(TR.filter(x=>inP(x.date||"")).map(x=>[x.date,magName(x.de),magName(x.vers),x.acheteur,pName(x.produit),x.sacs,x.poidsEnvoye,x.poidsRecu??"",x.poidsRecu!=null&&x.vers!=="vente"?r1(x.poidsEnvoye-x.poidsRecu):"",x.dateRecu||"",x.camion,x.chauffeur]));
+  else if(kind==="transferts")rows=[["Date départ","De","Vers","Acheteur","Produit","Sacs","Poids envoyé (kg)","Poids reçu (kg)","Perte (kg)","Date réception","Camion","Chauffeur","N° bordereau","Lieu de livraison","KOR (lbs)","N° connaissement officiel"]].concat(TR.filter(x=>inP(x.date||"")).map(x=>[x.date,magName(x.de),magName(x.vers),x.acheteur,pName(x.produit),x.sacs,x.poidsEnvoye,x.poidsRecu??"",x.poidsRecu!=null&&x.vers!=="vente"?r1(x.poidsEnvoye-x.poidsRecu):"",x.dateRecu||"",x.camion,x.chauffeur,x.vers==="vente"?code("BS",x.id):"",x.destination||"",x.kor??"",x.connaissement||""]));
   else rows=[["Date","Pisteur","Type","Montant (F)","Mode","Référence","Remarque"]].concat(MVT.filter(x=>inP(x.date||"")).map(x=>[x.date,pn(x.pisteurId),TYP[x.type],x.montant,x.mode,x.ref,x.note]));
   const txt="﻿"+rows.map(r=>r.map(v=>typeof v==="number"?String(v).replace(".",","):q(v)).join(";")).join("\r\n");
   try{await dl.save({filename:kind+"_"+today()+".csv",data:new Blob([txt],{type:"text/csv"})})}catch(x){if(x&&x.code!=="declined")toast("L'export n'a pas abouti.")}}
